@@ -58,11 +58,10 @@ cd planner-api && npm run dev
 ## Dokumentation
 
 - [Architektur](Docs/ARCHITECTURE.md)
-- [Raummodell](Docs/ROOM_MODEL.md)
-- [Preismodell](Docs/PRICING_MODEL.md)
-- [Angebotsmodell](Docs/QUOTE_MODEL.md)
-- [Render-Protokoll](Docs/RENDER_PROTOCOL.md)
-- [Sprintplan MVP](Docs/SPRINT_PLAN_MVP.md)
+- [Domänenmodelle](Docs/DOMAIN_MODELS.md) – Raummodell, Preislogik, Angebotswesen
+- [Interop](Docs/INTEROP.md) – DXF/DWG, SketchUp, Render-Worker-Protokoll
+- [Roadmap](Docs/ROADMAP.md) – Sprints 0–19 (MVP) + Phase 2 (20–24)
+- [Status](Docs/STATUS.md) – MVP-Abschluss, Review-Ergebnisse, offene Punkte
 
 ## Mitmachen
 
