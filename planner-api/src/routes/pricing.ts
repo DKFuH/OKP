@@ -4,6 +4,7 @@ import type { BlockDefinition, BOMLine, GlobalDiscountSettings, PriceSummary } f
 
 import { prisma } from '../db.js'
 import { sendBadRequest, sendNotFound } from '../errors.js'
+import { getEligibleProgramBlocks } from '../services/blockProgramService.js'
 import { evaluateBlock, findBestBlock } from '../services/blockEvaluator.js'
 import { calculatePriceSummary } from '../services/priceCalculator.js'
 
@@ -76,7 +77,24 @@ const BlockPreviewRequestSchema = z.object({
 
 const EvaluateBlocksRequestSchema = z.object({
   price_summary: BlockPricingSummarySchema.optional(),
-  blocks: z.array(BlockDefinitionSchema).min(1),
+  program_id: z.string().uuid().optional(),
+  blocks: z.array(BlockDefinitionSchema).min(1).optional(),
+}).superRefine((value, ctx) => {
+  if (!value.program_id && (!value.blocks || value.blocks.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Either program_id or blocks must be provided',
+      path: ['blocks'],
+    })
+  }
+
+  if (value.program_id && value.blocks) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Use either program_id or blocks, not both',
+      path: ['program_id'],
+    })
+  }
 })
 
 function calculatePricingPreview(lines: BOMLine[], settings: GlobalDiscountSettings) {
@@ -84,9 +102,11 @@ function calculatePricingPreview(lines: BOMLine[], settings: GlobalDiscountSetti
 }
 
 function calculateBlockPreview(priceSummary: PriceSummary, blocks: BlockDefinition[]) {
+  const evaluations = blocks.map((block) => evaluateBlock(priceSummary, block))
+
   return {
-    evaluations: blocks.map((block) => evaluateBlock(priceSummary, block)),
-    best_block: findBestBlock(priceSummary, blocks),
+    evaluations,
+    best_block: evaluations.length > 0 ? findBestBlock(priceSummary, blocks) : null,
   }
 }
 
@@ -121,6 +141,23 @@ async function getStoredPriceSummary(projectId: string): Promise<PriceSummary | 
       : null
 
   return isPriceSummarySnapshot(nestedPriceSummary) ? nestedPriceSummary : null
+}
+
+async function loadBlockProgram(programId: string) {
+  return prisma.blockProgram.findUnique({
+    where: { id: programId },
+    include: {
+      groups: true,
+      conditions: true,
+      definitions: {
+        orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+        include: {
+          group: true,
+          conditions: true,
+        },
+      },
+    },
+  })
 }
 
 export async function pricingRoutes(app: FastifyInstance) {
@@ -160,7 +197,7 @@ export async function pricingRoutes(app: FastifyInstance) {
 
     const project = await prisma.project.findUnique({
       where: { id: parsedParams.data.projectId },
-      select: { id: true },
+      select: { id: true, lead_status: true },
     })
     if (!project) {
       return sendNotFound(reply as never, 'Project not found')
@@ -178,7 +215,44 @@ export async function pricingRoutes(app: FastifyInstance) {
       return sendNotFound(reply as never, 'Price summary snapshot not found')
     }
 
-    return reply.send(calculateBlockPreview(priceSummary, parsed.data.blocks as BlockDefinition[]))
+    let blocks = (parsed.data.blocks as BlockDefinition[] | undefined) ?? []
+    let programName: string | null = null
+
+    if (parsed.data.program_id) {
+      const program = await loadBlockProgram(parsed.data.program_id)
+      if (!program) {
+        return sendNotFound(reply as never, 'Block program not found')
+      }
+
+      blocks = getEligibleProgramBlocks(program, priceSummary, project.lead_status)
+      programName = program.name
+    }
+
+    const result = calculateBlockPreview(priceSummary, blocks)
+
+    if (parsed.data.program_id) {
+      const persisted = await prisma.projectBlockEvaluation.create({
+        data: {
+          project_id: parsedParams.data.projectId,
+          program_id: parsed.data.program_id,
+          best_block_definition_id: result.best_block?.block_id ?? null,
+          price_summary: priceSummary as Prisma.InputJsonValue,
+          evaluations: result.evaluations as unknown as Prisma.InputJsonValue,
+          best_block: (result.best_block ?? null) as Prisma.InputJsonValue | null,
+        },
+      })
+
+      return reply.send({
+        ...result,
+        evaluation_id: persisted.id,
+        program: {
+          id: parsed.data.program_id,
+          name: programName,
+        },
+      })
+    }
+
+    return reply.send(result)
   }
 
   app.get<{ Params: { projectId: string } }>('/projects/:projectId/price-summary', async (request, reply) => {
