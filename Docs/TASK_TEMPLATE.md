@@ -160,3 +160,156 @@ Konfigurator für Herstellerartikel um vollständige Options-/Variantenführung 
 
 ### Nicht in Scope
 - Kein neuer Katalogmodus außerhalb Standard/Hersteller.
+
+---
+
+## Phase-3 Basis-Taskvorlagen (Sprints 25-30)
+
+## TASK-25-P01 – Projekt-/Aufgabenmanagement
+
+**Sprint:** 25
+**Zuständig:** Claude Code | Codex
+**Abhängigkeiten:** TASK-23-S01, TASK-24-A01
+**Priorität:** Muss
+**Status:** Offen
+
+### Ziel
+Projekte mit Status, Fristen, Prioritäten und Verantwortlichen teamfähig steuern (Kanban + Gantt).
+
+### Akzeptanzkriterien
+- [ ] `Project` enthält `project_status`, `deadline`, `priority`, `assigned_to`, `progress_pct`.
+- [ ] Board-API (`/projects/board`) unterstützt Filter nach Status/Branch/Frist.
+- [ ] Drag&Drop-Statuswechsel ist persistent und läuft tenant-sicher.
+- [ ] 5-10 Tests decken Workflow, Filter und Rechte ab.
+
+### Technische Hinweise
+- APIs: `PATCH /projects/:id/status`, `PATCH /projects/:id/assign`, `GET /projects/gantt`.
+
+### Nicht in Scope
+- Kein vollwertiges Ressourcen-/Kapazitätsplanungsmodul.
+
+---
+
+## TASK-26-D01 – Dokumentenmanagement
+
+**Sprint:** 26
+**Zuständig:** Claude Code
+**Abhängigkeiten:** TASK-25-P01
+**Priorität:** Muss
+**Status:** Offen
+
+### Ziel
+Projektbezogene Dokumente zentral speichern, filtern, vorschauen und sicher teilen.
+
+### Akzeptanzkriterien
+- [ ] `Document`-Entity inkl. Typ, Tags, Sichtbarkeit und Upload-Metadaten ist vorhanden.
+- [ ] Stapel-Upload, Vorschau (PDF/Bild), Suche und Tag-Filter sind im Frontend verfügbar.
+- [ ] Quote-PDF, Rendering und CAD-Import werden automatisch als Dokumente angehängt.
+- [ ] Dateien liegen tenant-sicher in S3-kompatiblem Object Storage.
+
+### Technische Hinweise
+- APIs: `POST/GET/DELETE /projects/:id/documents`.
+
+### Nicht in Scope
+- Kein DMS-Versionierungs-Workflow mit Freigabeketten.
+
+---
+
+## TASK-27-C01 – Kontakte / CRM-Light
+
+**Sprint:** 27
+**Zuständig:** Claude Code | Codex
+**Abhängigkeiten:** TASK-24-A01
+**Priorität:** Muss
+**Status:** Offen
+
+### Ziel
+Kontakte als zentrale CRM-Light-Schicht einführen und mit Projekten verbinden.
+
+### Akzeptanzkriterien
+- [ ] `Contact`-Entity inkl. `lead_source` und Basis-Kundendaten ist implementiert.
+- [ ] Projekt-Kontakt-Verknüpfung (`/projects/:id/contacts/:contactId`) ist verfügbar.
+- [ ] Webplaner-Leads erzeugen automatisch `Contact` + verknüpftes Lead-Projekt.
+- [ ] Kontaktübersicht zeigt Projektanzahl und Umsatzkennzahlen.
+
+### Technische Hinweise
+- API: `GET/POST /contacts` mit tenant-sicherer Suche.
+
+### Nicht in Scope
+- Keine Kampagnen-/Newsletter-Automation.
+
+---
+
+## TASK-28-B01 – Personalisierte Dashboards / KPIs
+
+**Sprint:** 28
+**Zuständig:** Claude Code
+**Abhängigkeiten:** TASK-23-A01, TASK-25-P01, TASK-27-C01
+**Priorität:** Soll
+**Status:** Offen
+
+### Ziel
+Nutzerspezifische Dashboards mit konfigurierbaren KPI-/Listen-Widgets bereitstellen.
+
+### Akzeptanzkriterien
+- [ ] `DashboardConfig` pro User ist speicher- und ladbar.
+- [ ] Mindestens 4 Standard-Widgets (`sales_chart`, `current_projects`, `current_contacts`, `kpi_cards`) sind produktiv.
+- [ ] Layout kann per Drag&Drop angepasst und persistiert werden.
+- [ ] KPI-Werte aktualisieren sich zeitnah bei Projekt-/Quote-Änderungen.
+
+### Technische Hinweise
+- APIs: `GET/PUT /dashboards/:userId`, `GET /kpis/sales-chart`.
+
+### Nicht in Scope
+- Kein frei programmierbarer Widget-Marktplatz.
+
+---
+
+## TASK-29-I01 – Katalogindexierung & Preisanpassung
+
+**Sprint:** 29
+**Zuständig:** Codex
+**Abhängigkeiten:** TASK-20-C01
+**Priorität:** Muss
+**Status:** Offen
+
+### Ziel
+Projektbezogene EK-/VK-Indexe einführen, ohne Katalogstammdaten zu verändern.
+
+### Akzeptanzkriterien
+- [ ] `CatalogIndex`-Entity ist mit Projekt und Katalog verknüpft.
+- [ ] Pricing berücksichtigt `purchase_index` und `sales_index` deterministisch.
+- [ ] BOM/Quote zeigen den angewandten Index nachvollziehbar an.
+- [ ] Regressionstests schützen die 9-stufige Preislogik.
+
+### Technische Hinweise
+- APIs: `POST/GET /projects/:id/catalog-indices`.
+
+### Nicht in Scope
+- Kein globales, tenant-weites Überschreiben aller Kataloge ohne Projektbezug.
+
+---
+
+## TASK-30-C01 – Cloud-Sync & Plattform-Features
+
+**Sprint:** 30
+**Zuständig:** Claude Code | Codex
+**Abhängigkeiten:** TASK-26-D01, TASK-27-C01, TASK-28-B01
+**Priorität:** Muss
+**Status:** Offen
+
+### Ziel
+Cloud-Betrieb mit Auto-Backup, globaler Suche, Benachrichtigungen und Export abschließen.
+
+### Akzeptanzkriterien
+- [ ] Tägliche Snapshots für Projekte/Quotes werden automatisiert gesichert.
+- [ ] Globale Suche über Projekte/Kontakte/Dokumente funktioniert tenant-sicher.
+- [ ] Kritische Projekt-/Dokument-Events erzeugen E-Mail-Benachrichtigungen.
+- [ ] CSV/Excel-Exporte für Projekt- und Kontaktlisten sind verfügbar.
+- [ ] End-to-End-Test besteht: Lead -> Planung -> Quote -> Projektmanagement -> Abschluss.
+
+### Technische Hinweise
+- APIs: `/search`, `/webhooks/email-notifications`, `/projects/export-csv`.
+
+### Nicht in Scope
+- Kein Full-ERP-Finanzmodul (FiBu/DATEV/Controlling).

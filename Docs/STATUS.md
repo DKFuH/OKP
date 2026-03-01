@@ -1,6 +1,6 @@
 # STATUS.md
 
-Projektstatus per 2026-03-01 - MVP-Abschluss, Review-Ergebnisse, offene Punkte.
+Projektstatus per 2026-03-01 - MVP abgeschlossen, Phase 2 umgesetzt, Phase 3 geplant.
 
 ---
 
@@ -43,15 +43,21 @@ Alle Reviews (TASK-3-R01 bis TASK-11-R01) intern ausgeführt. Alle Findings umge
 
 ---
 
-## Nächste Schritte
+## Phase-2 Abschluss / Übergabe in Phase 3
 
-- Phase 2 starten (Sprint 20 - Herstellerkatalog & Schrankkonfigurator (Light)):
-  - DB-Tabellen `manufacturers`, `catalog_articles`, `article_options`, `article_variants`, `article_prices`, `article_rules` im Prisma-Schema ergänzen.
-  - Domain-Typen `Manufacturer`, `CatalogArticle`, `ArticleOption`, `ArticleVariant`, `ArticlePrice`, `ArticleRule` in API und Shared Layer konsistent verankern.
-  - Import-Pipeline (CSV/JSON) für einen Pilot-Hersteller umsetzen.
-- API-Stubs fachlich auffüllen:
-  - `imports`, `openings`, `placements`, `bom` in der Reihenfolge, die für End-to-End-Flows von Planung -> BOM -> Pricing -> Angebot am wichtigsten ist.
-- Build-Umgebung `planner-api` bereinigen:
-  - Node/TypeScript/ESM-Konfiguration stabilisieren, bis alle Tests und Builds reproduzierbar laufen.
-- Regressions-Review:
-  - Nach größeren Refactorings in Sprint 20 und Sprint 21 (Herstellerkatalog, Automatismen) ROADMAP-Meilensteine (Sprints 6/8/13/15/19) mit Stichproben erneut validieren.
+- Sprint 20-24 Kernziele sind in Architektur und Feature-Set verankert (Herstellerkatalog, Auto-Completion, Rule Engine v2, Multi-Tenant, Webplaner-Handover).
+- Für verbleibende P0/P1-Lücken wurde ein priorisierter Umsetzungs- und DoD-Plan geführt und schrittweise abgearbeitet.
+- Nächster Ausbaupfad verschiebt den Fokus von reiner Planung auf Studio-Workflow und Cloud-Betrieb.
+
+---
+
+## Nächste Schritte (Phase 3, Sprints 25-30)
+
+- Sprint 25: Projekt-/Aufgabenmanagement mit Kanban + Gantt.
+- Sprint 26: Dokumentenmanagement mit Upload, Vorschau, Suche und S3-kompatiblem Storage.
+- Sprint 27: Kontakte/CRM-Light inkl. Webplaner-Lead-Übernahme.
+- Sprint 28: Personalisierte Dashboards/KPIs mit speicherbarer Widget-Konfiguration.
+- Sprint 29: Katalogindexierung für projektbezogene EK/VK-Preissteuerung.
+- Sprint 30: Cloud-Sync, globale Suche, Export und E-Mail-Benachrichtigungen.
+- Referenzplanung: `Docs/PHASE_3_DOD_AND_EXECUTION_PLAN.md`
+

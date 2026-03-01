@@ -1,6 +1,6 @@
 # ROADMAP.md
 
-Sprint-Planung für MVP (Sprints 0-19) und Phase 2 (Sprints 20-24).
+Sprint-Planung für MVP (Sprints 0-19), Phase 2 (Sprints 20-24) und Phase 3 (Sprints 25-30).
 
 ---
 
@@ -142,3 +142,40 @@ Sprint-Planung für MVP (Sprints 0-19) und Phase 2 (Sprints 20-24).
 3. Prüf-Engine braucht klare DoD, sonst entsteht Rule-Spaghetti.
 4. Multi-Tenant muss früh mit Migrations- und Index-Disziplin kommen.
 5. Webplaner ist ein anderes Produkt: guided UX, kein Profi-Editor.
+
+---
+
+## Phase 3 - Sprints 25-30
+
+**Ausgangslage (nach Sprint 24):** Kern-Planung, Preis/BOM, Angebote, Multi-Tenant, BI-Light und Lead-Handover sind vorhanden.
+
+**Ziel:** Entwicklung zur vollwertigen Studio-Plattform mit Projektsteuerung, Dokumentenmanagement, CRM-Light, personalisierten Dashboards, Katalogindexierung und Cloud-Workflow.
+
+### Sprint-Übersicht
+
+| Sprint | Thema | Deliverables |
+|--------|-------|--------------|
+| 25 | Projekt-/Aufgabenmanagement | `project_status`, Kanban-Board, Gantt-Basis, Status-/Assign-APIs |
+| 26 | Dokumentenmanagement | `Document`-Entity, Upload/Preview/Filter, S3-kompatibles Storage |
+| 27 | Kontakte / CRM-Light | `Contact`-Entity, Projektverknüpfung, Webplaner-Lead-Automation |
+| 28 | Personalisierte Dashboards / KPIs | `DashboardConfig`, Widget-Layout, KPI-Endpunkte |
+| 29 | Katalogindexierung & Preisanpassung | `CatalogIndex`, EK/VK-Indizes, Pricing-Integration |
+| 30 | Cloud-Sync & Plattform-Features | Global Search, Export, Notification-Webhooks, Auto-Backup |
+
+### Meilenstein
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 30 | End-to-End-Plattform: Lead -> Planung -> Quote -> Projektmanagement -> Abschluss |
+
+### Referenz
+
+- Detailplanung und DoD: `Docs/PHASE_3_DOD_AND_EXECUTION_PLAN.md`
+
+### Risiken Phase 3
+
+1. Dokumenten-Storage und Zugriffskontrolle müssen tenant-sicher und revisionsfähig sein.
+2. KPI-/Dashboard-Updates brauchen klare Latenz- und Konsistenzstrategie.
+3. Preisindexierung darf die bestehende 9-stufige Kalkulation nicht regressiv beeinflussen.
+4. Globale Suche benötigt robuste, domänenübergreifende Indexpflege.
+5. E-Mail-/Webhook-Zustellung braucht Retry- und Fehlertoleranzkonzept.
