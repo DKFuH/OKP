@@ -85,6 +85,18 @@
   background: var(--surface-default);
 }
 
+.field input:focus-visible,
+.field select:focus-visible,
+.fieldCompact select:focus-visible,
+.btnPrimary:focus-visible,
+.btnSecondary:focus-visible,
+.btnGhost:focus-visible,
+.listItem:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary-color) 70%, var(--border-subtle));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-light) 85%, white);
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -297,11 +309,12 @@
 .btnPrimary,
 .btnSecondary,
 .btnGhost {
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
   padding: 0.6rem 1rem;
   cursor: pointer;
   font: inherit;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .btnPrimary {
@@ -320,6 +333,13 @@
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
   padding: 0.45rem 0.75rem;
+}
+
+.btnPrimary:hover,
+.btnSecondary:hover,
+.btnGhost:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .emptyState,
