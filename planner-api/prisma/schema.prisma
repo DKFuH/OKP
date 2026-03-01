@@ -1,0 +1,343 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// Benutzer (light)
+// ─────────────────────────────────────────
+
+model User {
+  id         String    @id @default(uuid())
+  email      String    @unique
+  name       String
+  password_hash String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  projects   Project[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// Projekte
+// ─────────────────────────────────────────
+
+model Project {
+  id          String    @id @default(uuid())
+  user_id     String
+  name        String
+  description String?
+  status      ProjectStatus @default(active)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  versions    ProjectVersion[]
+  rooms       Room[]
+  quotes      Quote[]
+  render_jobs RenderJob[]
+  import_jobs ImportJob[]
+
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  active
+  archived
+}
+
+// ─────────────────────────────────────────
+// Projektversionierung
+// ─────────────────────────────────────────
+
+model ProjectVersion {
+  id          String    @id @default(uuid())
+  project_id  String
+  version     Int
+  snapshot    Json      // vollständiger Projektstand als JSON
+  label       String?
+  created_at  DateTime  @default(now())
+
+  project     Project   @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@unique([project_id, version])
+  @@map("project_versions")
+}
+
+// ─────────────────────────────────────────
+// Räume
+// ─────────────────────────────────────────
+
+model Room {
+  id                  String    @id @default(uuid())
+  project_id          String
+  name                String
+  ceiling_height_mm   Int       @default(2500)
+  boundary            Json      // { vertices: Vertex[], wall_segments: WallSegment[] }
+  ceiling_constraints Json      @default("[]")
+  openings            Json      @default("[]")
+  placements          Json      @default("[]")
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  project             Project   @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("rooms")
+}
+
+// ─────────────────────────────────────────
+// Kaufmännische Stammdaten
+// ─────────────────────────────────────────
+
+model TaxGroup {
+  id        String  @id @default(uuid())
+  name      String  // z.B. "Standard DE"
+  tax_rate  Float   // z.B. 0.19
+
+  catalog_items CatalogItem[]
+  extra_costs   ExtraCost[]
+
+  @@map("tax_groups")
+}
+
+model PriceList {
+  id          String    @id @default(uuid())
+  name        String
+  valid_from  DateTime
+  valid_until DateTime?
+  created_at  DateTime  @default(now())
+
+  items       PriceListItem[]
+
+  @@map("price_lists")
+}
+
+model PriceListItem {
+  id               String    @id @default(uuid())
+  price_list_id    String
+  catalog_item_id  String
+  list_price_net   Float
+  dealer_price_net Float
+
+  price_list       PriceList    @relation(fields: [price_list_id], references: [id], onDelete: Cascade)
+  catalog_item     CatalogItem  @relation(fields: [catalog_item_id], references: [id], onDelete: Cascade)
+
+  @@unique([price_list_id, catalog_item_id])
+  @@map("price_list_items")
+}
+
+model PricingGroup {
+  id                   String  @id @default(uuid())
+  name                 String  // z.B. "Küchenmöbel"
+  default_discount_pct Float   @default(0)
+
+  catalog_items CatalogItem[]
+
+  @@map("pricing_groups")
+}
+
+// ─────────────────────────────────────────
+// Katalog
+// ─────────────────────────────────────────
+
+model CatalogItem {
+  id                  String       @id @default(uuid())
+  sku                 String       @unique
+  name                String
+  type                CatalogItemType
+  width_mm            Int
+  height_mm           Int
+  depth_mm            Int
+  list_price_net      Float
+  dealer_price_net    Float
+  default_markup_pct  Float        @default(0)
+  tax_group_id        String
+  pricing_group_id    String?
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+
+  tax_group           TaxGroup     @relation(fields: [tax_group_id], references: [id])
+  pricing_group       PricingGroup? @relation(fields: [pricing_group_id], references: [id])
+  price_list_items    PriceListItem[]
+
+  @@map("catalog_items")
+}
+
+enum CatalogItemType {
+  base_cabinet
+  wall_cabinet
+  tall_cabinet
+  trim
+  worktop
+  appliance
+  accessory
+}
+
+// ─────────────────────────────────────────
+// Angebotseinstellungen
+// ─────────────────────────────────────────
+
+model QuoteSettings {
+  id                     String  @id @default(uuid())
+  project_id             String  @unique
+  quote_number_prefix    String  @default("ANG")
+  default_validity_days  Int     @default(30)
+  default_free_text      String?
+  default_footer_text    String?
+  show_prices_on_quote   Boolean @default(true)
+  show_item_numbers      Boolean @default(true)
+  global_discount_pct    Float   @default(0)
+
+  extra_costs ExtraCost[]
+
+  @@map("quote_settings")
+}
+
+model ExtraCost {
+  id               String        @id @default(uuid())
+  quote_settings_id String
+  label            String
+  amount_net       Float
+  tax_group_id     String
+  type             ExtraCostType
+
+  quote_settings   QuoteSettings @relation(fields: [quote_settings_id], references: [id], onDelete: Cascade)
+  tax_group        TaxGroup      @relation(fields: [tax_group_id], references: [id])
+
+  @@map("extra_costs")
+}
+
+enum ExtraCostType {
+  freight
+  assembly
+  other
+}
+
+// ─────────────────────────────────────────
+// Angebote (Platzhalter für Sprint 13)
+// ─────────────────────────────────────────
+
+model Quote {
+  id           String      @id @default(uuid())
+  project_id   String
+  version      Int         @default(1)
+  quote_number String
+  status       QuoteStatus @default(draft)
+  valid_until  DateTime
+  free_text    String?
+  footer_text  String?
+  price_snapshot Json?
+  created_at   DateTime    @default(now())
+
+  project      Project     @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  items        QuoteItem[]
+
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  draft
+  sent
+  accepted
+  rejected
+  expired
+}
+
+model QuoteItem {
+  id              String  @id @default(uuid())
+  quote_id        String
+  position        Int
+  type            String
+  description     String
+  qty             Float
+  unit            String
+  unit_price_net  Float
+  line_net        Float
+  tax_rate        Float
+  line_gross      Float
+  notes           String?
+  show_on_quote   Boolean @default(true)
+
+  quote           Quote   @relation(fields: [quote_id], references: [id], onDelete: Cascade)
+
+  @@map("quote_items")
+}
+
+// ─────────────────────────────────────────
+// Render-Jobs (Platzhalter für Sprint 15)
+// ─────────────────────────────────────────
+
+model RenderJob {
+  id             String          @id @default(uuid())
+  project_id     String
+  status         RenderJobStatus @default(queued)
+  scene_payload  Json?
+  worker_id      String?
+  assigned_at    DateTime?
+  started_at     DateTime?
+  completed_at   DateTime?
+  error_message  String?
+  created_at     DateTime        @default(now())
+
+  project        Project         @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  result         RenderJobResult?
+
+  @@map("render_jobs")
+}
+
+enum RenderJobStatus {
+  queued
+  assigned
+  running
+  done
+  failed
+}
+
+model RenderJobResult {
+  id             String    @id @default(uuid())
+  job_id         String    @unique
+  image_url      String
+  width_px       Int
+  height_px      Int
+  render_time_ms Int
+  created_at     DateTime  @default(now())
+
+  job            RenderJob @relation(fields: [job_id], references: [id], onDelete: Cascade)
+
+  @@map("render_job_results")
+}
+
+// ─────────────────────────────────────────
+// Import-Jobs (Platzhalter für Sprint 3.5)
+// ─────────────────────────────────────────
+
+model ImportJob {
+  id               String          @id @default(uuid())
+  project_id       String
+  status           ImportJobStatus @default(queued)
+  source_format    String          // dxf | dwg | skp
+  source_filename  String
+  file_size_bytes  Int
+  import_asset     Json?
+  protocol         Json            @default("[]")
+  error_message    String?
+  created_at       DateTime        @default(now())
+  completed_at     DateTime?
+
+  project          Project         @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("import_jobs")
+}
+
+enum ImportJobStatus {
+  queued
+  processing
+  done
+  failed
+}
