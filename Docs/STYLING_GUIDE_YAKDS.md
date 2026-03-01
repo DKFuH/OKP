@@ -154,8 +154,8 @@ Empfehlung:
 
 ## Definition of Done (Styling)
 
-- [ ] Keine neuen Hardcoded-Brand-Farben in Seitenmodulen
-- [ ] Primäraktionen verwenden überall `--primary-color`
-- [ ] Karten/Container nutzen konsistente Radius-/Shadow-Tokens
-- [ ] Fokuszustände sind sichtbar und konsistent
-- [ ] Mobile-Ansichten bleiben ohne Layout-Brüche nutzbar
+- [x] Keine neuen Hardcoded-Brand-Farben in Seitenmodulen
+- [x] Primäraktionen verwenden überall `--primary-color`
+- [x] Karten/Container nutzen konsistente Radius-/Shadow-Tokens
+- [x] Fokuszustände sind sichtbar und konsistent
+- [x] Mobile-Ansichten bleiben ohne Layout-Brüche nutzbar
