@@ -13,6 +13,7 @@ import { validateApi, type ValidateResponse } from '../api/validate.js'
 import { autoCompletionApi, type AutoCompleteResult } from '../api/autoCompletion.js'
 import { usePolygonEditor, edgeLengthMm } from '../editor/usePolygonEditor.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
+import { PopoutWindow } from '../components/editor/PopoutWindow.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
 import { LeftSidebar } from '../components/editor/LeftSidebar.js'
 import { RightSidebar, type CeilingConstraint, type ConfiguredDimensions } from '../components/editor/RightSidebar.js'
@@ -66,6 +67,7 @@ export function Editor() {
   const [validationLoading, setValidationLoading] = useState(false)
   const [autoCompleteLoading, setAutoCompleteLoading] = useState(false)
   const [autoCompleteResult, setAutoCompleteResult] = useState<AutoCompleteResult | null>(null)
+  const [isPreviewPopoutOpen, setIsPreviewPopoutOpen] = useState(false)
 
   // Editor-State nach oben gehoben, damit RightSidebar darauf zugreifen kann
   const editor = usePolygonEditor()
@@ -366,12 +368,18 @@ export function Editor() {
     }).catch((e: Error) => console.error('Dachschrägen speichern fehlgeschlagen:', e))
   }, [handleRoomUpdated])
 
+  const selectedRoom = project?.rooms.find(r => r.id === selectedRoomId) ?? null
+  selectedRoomRef.current = selectedRoom as unknown as RoomPayload | null
+
+  useEffect(() => {
+    if (!selectedRoom) {
+      setIsPreviewPopoutOpen(false)
+    }
+  }, [selectedRoom])
+
   if (loading) return <div className={styles.center}>Lade Projekt…</div>
   if (error) return <div className={styles.center}>{error}</div>
   if (!project) return null
-
-  const selectedRoom = project.rooms.find(r => r.id === selectedRoomId) ?? null
-  selectedRoomRef.current = selectedRoom as unknown as RoomPayload | null
 
   // Auswahl-Info für RightSidebar
   const { state } = editor
@@ -420,6 +428,15 @@ export function Editor() {
             onClick={() => setViewMode((prev) => (prev === '2d' ? '3d' : '2d'))}
           >
             {viewMode === '2d' ? '3D Preview' : '2D Editor'}
+          </button>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={() => setIsPreviewPopoutOpen((prev) => !prev)}
+            disabled={!selectedRoom}
+            title="3D-Ansicht in separatem Fenster öffnen"
+          >
+            {isPreviewPopoutOpen ? '3D-Fenster schließen' : '3D in Fenster'}
           </button>
           <button type="button" className={styles.btnSecondary}>Angebot</button>
         </div>
@@ -486,6 +503,16 @@ export function Editor() {
       </div>
 
       <StatusBar project={project} selectedRoom={selectedRoom} />
+
+      {isPreviewPopoutOpen && (
+        <PopoutWindow
+          title={`${project.name} - 3D Preview`}
+          name={`yakds-preview-${project.id}`}
+          onClose={() => setIsPreviewPopoutOpen(false)}
+        >
+          <Preview3D room={selectedRoom as unknown as RoomPayload | null} />
+        </PopoutWindow>
+      )}
     </div>
   )
 }
