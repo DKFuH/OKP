@@ -41,6 +41,48 @@ interface AutoCompletionOptions {
     addSidePanels?: boolean            // Wangen an freien Abschlüssen
 }
 
+type GeneratedLongPartType = 'worktop' | 'plinth' | 'side_panel'
+
+interface DesiredGeneratedItem {
+    item_type: GeneratedLongPartType
+    label: string
+    qty: number
+    unit: string
+    build_number: number
+    params_json: Record<string, unknown>
+    source_placement_ids: string[]
+}
+
+function stableJson(value: unknown): string {
+    if (Array.isArray(value)) {
+        return `[${value.map((entry) => stableJson(entry)).join(',')}]`
+    }
+    if (value && typeof value === 'object') {
+        const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
+        return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`).join(',')}}`
+    }
+    return JSON.stringify(value)
+}
+
+function generatedItemSignature(input: {
+    item_type: string
+    label: string
+    qty: number
+    unit: string
+    params_json: unknown
+    source_placement_ids: string[]
+}): string {
+    const sourceIds = [...input.source_placement_ids].sort((a, b) => a.localeCompare(b))
+    return [
+        input.item_type,
+        input.label,
+        String(input.qty),
+        input.unit,
+        stableJson(input.params_json),
+        sourceIds.join(','),
+    ].join('|')
+}
+
 // ─── Main Service ─────────────────────────────────────────────────
 
 export const AutoCompletionService = {
@@ -71,21 +113,7 @@ export const AutoCompletionService = {
             addSidePanels: opts.addSidePanels ?? true,
         }
 
-        // 1. Lösche alte generated_items für diesen Raum
-        const oldItems = await prisma.generatedItem.findMany({
-            where: { project_id, room_id, is_generated: true },
-            select: { id: true },
-        })
-        if (oldItems.length > 0) {
-            await prisma.generatedItemSourceLink.deleteMany({
-                where: { generated_item_id: { in: oldItems.map((i) => i.id) } },
-            })
-            await prisma.generatedItem.deleteMany({
-                where: { id: { in: oldItems.map((i) => i.id) } },
-            })
-        }
-
-        // 2. Map PlacedObject → AutoLongPartCabinet (shared-schemas interface)
+        // 1. Map PlacedObject → AutoLongPartCabinet (shared-schemas interface)
         const cabinets: AutoLongPartCabinet[] = placements.map((p) => ({
             id: p.id,
             wall_id: p.wall_id,
@@ -98,10 +126,10 @@ export const AutoCompletionService = {
             joins_right_corner: p.joins_right_corner,
         }))
 
-        // 3. Cluster cabinets by wall using shared-schemas logic (handles corner joints)
+        // 2. Cluster cabinets by wall using shared-schemas logic (handles corner joints)
         const clusters = clusterCabinetsByWall(cabinets)
 
-        const created: { type: string; label: string; qty: number; unit: string }[] = []
+        const desiredItems: DesiredGeneratedItem[] = []
         let buildNumber = 1
 
         const worktopParams: WorktopParams = {
@@ -124,93 +152,147 @@ export const AutoCompletionService = {
             // ── Arbeitsplatte ─────────────────────────────────────────
             const worktopSegments = calculateWorktopSegments(cluster, worktopParams)
             for (const segment of worktopSegments) {
-                const wt = await prisma.generatedItem.create({
-                    data: {
-                        project_id,
-                        room_id,
-                        item_type: 'worktop',
-                        label: worktopSegments.length > 1
-                            ? `Arbeitsplatte Segment ${segment.segment_index} (Wand ${cluster.wall_id})`
-                            : `Arbeitsplatte (Wand ${cluster.wall_id})`,
-                        qty: segment.length_mm,
-                        unit: 'mm',
-                        build_number: buildNumber,
-                        params_json: {
-                            wall_id: cluster.wall_id,
-                            depth_mm: segment.depth_mm,
-                            segment_index: segment.segment_index,
-                            joint_left: segment.joint_left,
-                            joint_right: segment.joint_right,
-                        },
-                        source_links: {
-                            create: placementIds.map((pid) => ({ source_placement_id: pid })),
-                        },
+                desiredItems.push({
+                    item_type: 'worktop',
+                    label: worktopSegments.length > 1
+                        ? `Arbeitsplatte Segment ${segment.segment_index} (Wand ${cluster.wall_id})`
+                        : `Arbeitsplatte (Wand ${cluster.wall_id})`,
+                    qty: segment.length_mm,
+                    unit: 'mm',
+                    build_number: buildNumber,
+                    params_json: {
+                        wall_id: cluster.wall_id,
+                        depth_mm: segment.depth_mm,
+                        segment_index: segment.segment_index,
+                        joint_left: segment.joint_left,
+                        joint_right: segment.joint_right,
                     },
+                    source_placement_ids: placementIds,
                 })
-                created.push({ type: 'worktop', label: wt.label, qty: segment.length_mm, unit: 'mm' })
             }
 
             // ── Sockel ────────────────────────────────────────────────
             const plinthSegments = calculatePlinthSegments(cluster, plinthParams)
             for (const segment of plinthSegments) {
-                const pl = await prisma.generatedItem.create({
-                    data: {
-                        project_id,
-                        room_id,
-                        item_type: 'plinth',
-                        label: plinthSegments.length > 1
-                            ? `Sockelbrett Segment ${segment.segment_index} (Wand ${cluster.wall_id})`
-                            : `Sockelbrett (Wand ${cluster.wall_id})`,
-                        qty: segment.length_mm,
-                        unit: 'mm',
-                        build_number: buildNumber,
-                        params_json: {
-                            wall_id: cluster.wall_id,
-                            height_mm: segment.height_mm,
-                            recess_mm: segment.recess_mm,
-                        },
-                        source_links: {
-                            create: placementIds.map((pid) => ({ source_placement_id: pid })),
-                        },
+                desiredItems.push({
+                    item_type: 'plinth',
+                    label: plinthSegments.length > 1
+                        ? `Sockelbrett Segment ${segment.segment_index} (Wand ${cluster.wall_id})`
+                        : `Sockelbrett (Wand ${cluster.wall_id})`,
+                    qty: segment.length_mm,
+                    unit: 'mm',
+                    build_number: buildNumber,
+                    params_json: {
+                        wall_id: cluster.wall_id,
+                        height_mm: segment.height_mm,
+                        recess_mm: segment.recess_mm,
                     },
+                    source_placement_ids: placementIds,
                 })
-                created.push({ type: 'plinth', label: pl.label, qty: segment.length_mm, unit: 'mm' })
             }
 
             // ── Seitenwangen ─────────────────────────────────────────
             if (options.addSidePanels) {
                 for (const side of ['links', 'rechts'] as const) {
-                    const sp = await prisma.generatedItem.create({
-                        data: {
-                            project_id,
-                            room_id,
-                            item_type: 'side_panel',
-                            label: `Abschlussblende ${side} (Wand ${cluster.wall_id})`,
-                            qty: 1,
-                            unit: 'Stk',
-                            build_number: buildNumber,
-                            params_json: {
-                                wall_id: cluster.wall_id,
-                                side,
-                                height_mm: Math.max(...cluster.cabinets.map((c) => c.height_mm ?? 0)),
-                                depth_mm: cluster.max_depth_mm,
-                            },
-                            source_links: {
-                                create: [{ source_placement_id: placementIds[side === 'links' ? 0 : placementIds.length - 1] }],
-                            },
+                    desiredItems.push({
+                        item_type: 'side_panel',
+                        label: `Abschlussblende ${side} (Wand ${cluster.wall_id})`,
+                        qty: 1,
+                        unit: 'Stk',
+                        build_number: buildNumber,
+                        params_json: {
+                            wall_id: cluster.wall_id,
+                            side,
+                            height_mm: Math.max(...cluster.cabinets.map((c) => c.height_mm ?? 0)),
+                            depth_mm: cluster.max_depth_mm,
                         },
+                        source_placement_ids: [placementIds[side === 'links' ? 0 : placementIds.length - 1]],
                     })
-                    created.push({ type: 'side_panel', label: sp.label, qty: 1, unit: 'Stk' })
                 }
             }
 
             buildNumber++
         }
 
+        // 3. Reconcile existing generated long parts with deterministic signatures
+        const existingItems = await prisma.generatedItem.findMany({
+            where: {
+                project_id,
+                room_id,
+                is_generated: true,
+                item_type: { in: ['worktop', 'plinth', 'side_panel'] },
+            },
+            include: {
+                source_links: {
+                    select: { source_placement_id: true },
+                },
+            },
+        })
+
+        const existingBySignature = new Map<string, Array<{ id: string }>>()
+        for (const item of existingItems) {
+            const sourceIds = item.source_links.map((link) => link.source_placement_id)
+            const signature = generatedItemSignature({
+                item_type: item.item_type,
+                label: item.label,
+                qty: item.qty,
+                unit: item.unit,
+                params_json: item.params_json,
+                source_placement_ids: sourceIds,
+            })
+            const list = existingBySignature.get(signature) ?? []
+            list.push({ id: item.id })
+            existingBySignature.set(signature, list)
+        }
+
+        const created: { type: string; label: string; qty: number; unit: string }[] = []
+        const matchedExistingIds = new Set<string>()
+
+        for (const desired of desiredItems) {
+            const signature = generatedItemSignature(desired)
+            const matching = existingBySignature.get(signature)
+            if (matching && matching.length > 0) {
+                const reused = matching.shift()!
+                matchedExistingIds.add(reused.id)
+                continue
+            }
+
+            await prisma.generatedItem.create({
+                data: {
+                    project_id,
+                    room_id,
+                    item_type: desired.item_type,
+                    label: desired.label,
+                    qty: desired.qty,
+                    unit: desired.unit,
+                    build_number: desired.build_number,
+                    params_json: desired.params_json,
+                    source_links: {
+                        create: desired.source_placement_ids.map((sourcePlacementId) => ({ source_placement_id: sourcePlacementId })),
+                    },
+                },
+            })
+
+            created.push({ type: desired.item_type, label: desired.label, qty: desired.qty, unit: desired.unit })
+        }
+
+        const staleItemIds = existingItems
+            .filter((item) => !matchedExistingIds.has(item.id))
+            .map((item) => item.id)
+
+        if (staleItemIds.length > 0) {
+            await prisma.generatedItemSourceLink.deleteMany({
+                where: { generated_item_id: { in: staleItemIds } },
+            })
+            await prisma.generatedItem.deleteMany({
+                where: { id: { in: staleItemIds } },
+            })
+        }
+
         return {
             project_id,
             room_id,
-            deleted: oldItems.length,
+            deleted: staleItemIds.length,
             created: created.length,
             items: created,
         }

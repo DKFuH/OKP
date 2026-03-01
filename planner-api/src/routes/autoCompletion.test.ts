@@ -1,41 +1,55 @@
 import Fastify from 'fastify'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { prismaMock } = vi.hoisted(() => ({
-  prismaMock: {
-    project: { findFirst: vi.fn() },
-    room: { findFirst: vi.fn() },
-    placement: { findMany: vi.fn() },
-    generatedItem: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-    generatedItemSourceLink: { deleteMany: vi.fn() },
+const PROJECT_ID = '11111111-1111-1111-1111-111111111111'
+const ROOM_ID = '22222222-2222-2222-2222-222222222222'
+
+const { serviceMock } = vi.hoisted(() => ({
+  serviceMock: {
+    rebuild: vi.fn(),
+    list: vi.fn(),
   },
 }))
 
-vi.mock('../db.js', () => ({ prisma: prismaMock }))
+vi.mock('../services/autoCompletionService.js', () => ({
+  AutoCompletionService: serviceMock,
+}))
+
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: {
+    room: { findUnique: vi.fn() },
+  },
+}))
+
+vi.mock('../db.js', () => ({
+  prisma: prismaMock,
+}))
 
 import { autoCompletionRoutes } from './autoCompletion.js'
 
-const PROJECT_ID = 'proj-1'
-const ROOM_ID = 'room-1'
-
 describe('autoCompletionRoutes', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   it('POST auto-complete triggers rebuild and returns summary', async () => {
-    prismaMock.project.findFirst.mockResolvedValue({ id: PROJECT_ID })
-    prismaMock.room.findFirst.mockResolvedValue({ id: ROOM_ID })
-    prismaMock.placement.findMany.mockResolvedValue([
-      { id: 'p-1', wall_id: 'w-1', offset_mm: 0, width_mm: 600, depth_mm: 600, height_mm: 720, type: 'base' },
-      { id: 'p-2', wall_id: 'w-1', offset_mm: 600, width_mm: 600, depth_mm: 600, height_mm: 720, type: 'base' },
-    ])
-    prismaMock.generatedItem.findMany.mockResolvedValue([])
-    prismaMock.generatedItem.create.mockImplementation(({ data }: { data: { label: string; item_type: string; qty: number; unit: string } }) =>
-      Promise.resolve({ id: 'gi-new', ...data })
-    )
+    prismaMock.room.findUnique.mockResolvedValue({
+      id: ROOM_ID,
+      project_id: PROJECT_ID,
+      placements: [
+        { id: 'p-1', wall_id: 'w-1', offset_mm: 0, width_mm: 600, depth_mm: 600, height_mm: 720, type: 'base' },
+      ],
+    })
+
+    serviceMock.rebuild.mockResolvedValue({
+      project_id: PROJECT_ID,
+      room_id: ROOM_ID,
+      deleted: 1,
+      created: 2,
+      items: [
+        { type: 'worktop', label: 'Arbeitsplatte (Wand w-1)', qty: 1200, unit: 'mm' },
+      ],
+    })
 
     const app = Fastify()
     await app.register(autoCompletionRoutes, { prefix: '/api/v1' })
@@ -48,14 +62,14 @@ describe('autoCompletionRoutes', () => {
 
     expect(res.statusCode).toBe(200)
     const body = res.json()
-    expect(body).toMatchObject({ project_id: PROJECT_ID, room_id: ROOM_ID })
-    expect(body.created).toBeGreaterThan(0)
+    expect(body).toMatchObject({ project_id: PROJECT_ID, room_id: ROOM_ID, created: 2 })
+    expect(serviceMock.rebuild).toHaveBeenCalledTimes(1)
     await app.close()
   })
 
   it('GET auto-complete lists generated items', async () => {
-    prismaMock.generatedItem.findMany.mockResolvedValue([
-      { id: 'gi-1', item_type: 'worktop', label: 'Arbeitsplatte (Wand w-1)', qty: 1200, unit: 'mm', source_links: [], catalog_article: null },
+    serviceMock.list.mockResolvedValue([
+      { id: 'gi-1', item_type: 'worktop', label: 'Arbeitsplatte (Wand w-1)', qty: 1200, unit: 'mm', source_links: [] },
     ])
 
     const app = Fastify()
@@ -68,6 +82,7 @@ describe('autoCompletionRoutes', () => {
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual(expect.arrayContaining([expect.objectContaining({ item_type: 'worktop' })]))
+    expect(serviceMock.list).toHaveBeenCalledWith(PROJECT_ID, ROOM_ID)
     await app.close()
   })
 })

@@ -1,7 +1,13 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sendBadRequest } from '../errors.js'
-import { calculateBOM, sumBOMLines, type ProjectSnapshotPricingInput } from '../services/bomCalculator.js'
+import { prisma } from '../db.js'
+import {
+  calculateBOM,
+  sumBOMLines,
+  type GeneratedItemInput,
+  type ProjectSnapshotPricingInput,
+} from '../services/bomCalculator.js'
 
 const FlagsSchema = z.object({
   requires_customization: z.boolean(),
@@ -66,11 +72,58 @@ const BomPreviewRequestSchema = z.object({
   project: ProjectSnapshotSchema,
   options: z.object({
     specialTrimSurchargeNet: z.number().min(0).optional(),
+    includeGeneratedItems: z.boolean().optional(),
+    room_id: z.string().uuid().optional(),
   }).optional(),
 })
 
-function calculateBomPreview(project: ProjectSnapshotPricingInput, specialTrimSurchargeNet?: number) {
-  const lines = calculateBOM(project, { specialTrimSurchargeNet })
+async function loadGeneratedItems(projectId: string, roomId: string): Promise<GeneratedItemInput[]> {
+  const generatedItems = await prisma.generatedItem.findMany({
+    where: {
+      project_id: projectId,
+      room_id: roomId,
+      is_generated: true,
+    },
+    include: {
+      catalog_article: {
+        include: {
+          prices: {
+            orderBy: { valid_from: 'desc' },
+            take: 1,
+          },
+        },
+      },
+    },
+  })
+
+  return generatedItems.map((item) => ({
+    id: item.id,
+    label: item.label,
+    item_type: item.item_type,
+    qty: item.qty,
+    unit: item.unit,
+    ...(item.catalog_article_id ? { catalog_article_id: item.catalog_article_id } : {}),
+    ...(item.catalog_article?.prices?.[0]?.tax_group_id
+      ? { tax_group_id: item.catalog_article.prices[0].tax_group_id }
+      : {}),
+    ...(item.catalog_article?.prices?.[0]
+      ? { list_price_net: item.catalog_article.prices[0].list_net }
+      : {}),
+  }))
+}
+
+async function calculateBomPreview(
+  project: ProjectSnapshotPricingInput,
+  options: { specialTrimSurchargeNet?: number; includeGeneratedItems?: boolean; room_id?: string },
+) {
+  const generatedItems = options.includeGeneratedItems && options.room_id
+    ? await loadGeneratedItems(project.id, options.room_id)
+    : undefined
+
+  const lines = calculateBOM(project, {
+    specialTrimSurchargeNet: options.specialTrimSurchargeNet,
+    generatedItems,
+  })
   const totals = sumBOMLines(lines)
   return { lines, totals }
 }
@@ -82,9 +135,14 @@ export async function bomRoutes(app: FastifyInstance) {
       return sendBadRequest(reply as never, parsed.error.errors[0].message)
     }
 
-    return reply.send(
-      calculateBomPreview(parsed.data.project as ProjectSnapshotPricingInput, parsed.data.options?.specialTrimSurchargeNet),
-    )
+    return reply.send(await calculateBomPreview(
+      parsed.data.project as ProjectSnapshotPricingInput,
+      {
+        specialTrimSurchargeNet: parsed.data.options?.specialTrimSurchargeNet,
+        includeGeneratedItems: parsed.data.options?.includeGeneratedItems,
+        room_id: parsed.data.options?.room_id,
+      },
+    ))
   }
 
   app.post('/bom/preview', handler)

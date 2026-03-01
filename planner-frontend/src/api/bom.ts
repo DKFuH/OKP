@@ -54,6 +54,8 @@ export interface BomPreviewRequest {
   }
   options?: {
     specialTrimSurchargeNet?: number
+    includeGeneratedItems?: boolean
+    room_id?: string
   }
 }
 

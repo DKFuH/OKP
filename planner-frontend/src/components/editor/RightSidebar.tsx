@@ -130,6 +130,14 @@ export function RightSidebar({
           assembly_rate_per_item: 45,
         },
       },
+      ...(selectedRoomId
+        ? {
+            options: {
+              includeGeneratedItems: true,
+              room_id: selectedRoomId,
+            },
+          }
+        : {}),
     }
 
     const preview = await previewBom(payload)
