@@ -6,8 +6,10 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
+import multipart from '@fastify/multipart'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendNotFound } from '../errors.js'
+import { parseIdmArticles } from '../services/idmParser.js'
 
 // ─── Zod Schemas ───────────────────────────────────────────────
 
@@ -84,6 +86,7 @@ const ConfiguratorSnapshotSchema = z.object({
 // ─── Route Handler ───────────────────────────────────────────────
 
 export async function manufacturerRoutes(app: FastifyInstance) {
+    await app.register(multipart, { attachFieldsToBody: false })
 
     // ── Manufacturer CRUD ─────────────────────────────────────────
 
@@ -188,6 +191,76 @@ export async function manufacturerRoutes(app: FastifyInstance) {
     })
 
     // ── Bulk Import ───────────────────────────────────────────────
+
+    /**
+     * POST /import/idm
+     * Accepts a multifile/multipart upload with .ART files (IDM standard)
+     */
+    app.post('/import/idm', async (request, reply) => {
+        const upload = await request.file()
+        if (!upload) return sendBadRequest(reply, 'No file uploaded')
+
+        try {
+            const buffer = await upload.toBuffer()
+            const raw = await parseIdmArticles(buffer)
+
+            if (raw.length === 0) {
+                return reply.send({ message: 'No articles found in IDM file', created: 0 })
+            }
+
+            const manufacturerCode = raw[0].manufacturerCode || 'IDM-VENDOR'
+            const manufacturerName = raw[0].manufacturerName || manufacturerCode
+
+            const mfr = await prisma.manufacturer.upsert({
+                where: { code: manufacturerCode },
+                update: { name: manufacturerName },
+                create: {
+                    name: manufacturerName,
+                    code: manufacturerCode,
+                    tenant_id: (request as any).tenantId || null
+                },
+            })
+
+            let created = 0
+            for (const article of raw) {
+                await prisma.catalogArticle.upsert({
+                    where: { manufacturer_id_sku: { manufacturer_id: mfr.id, sku: article.sku } },
+                    update: {
+                        name: article.name,
+                        article_type: (article.articleType as any) || 'base_cabinet',
+                        base_dims_json: {
+                            width_mm: article.widthMm,
+                            height_mm: article.heightMm,
+                            depth_mm: article.depthMm,
+                        } as Prisma.InputJsonValue,
+                        meta_json: (article.meta_json as any) || {}
+                    },
+                    create: {
+                        sku: article.sku,
+                        name: article.name,
+                        article_type: (article.articleType as any) || 'base_cabinet',
+                        manufacturer_id: mfr.id,
+                        base_dims_json: {
+                            width_mm: article.widthMm,
+                            height_mm: article.heightMm,
+                            depth_mm: article.depthMm,
+                        } as Prisma.InputJsonValue,
+                        meta_json: (article.meta_json as any) || {}
+                    }
+                })
+                created++
+            }
+
+            return reply.status(201).send({
+                manufacturer_id: mfr.id,
+                articles_created: created,
+                source_filename: upload.filename
+            })
+        } catch (error) {
+            console.error('IDM Import Error:', error)
+            return sendBadRequest(reply, `Failed to parse IDM: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+    })
 
     /**
      * POST /import/manufacturer
