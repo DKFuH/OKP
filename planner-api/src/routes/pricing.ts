@@ -9,6 +9,20 @@ import { getEligibleProgramBlocks } from '../services/blockProgramService.js'
 import { evaluateBlock, findBestBlock } from '../services/blockEvaluator.js'
 import { calculatePriceSummary } from '../services/priceCalculator.js'
 
+type CatalogIndexRecord = {
+  id: string
+  project_id: string
+  catalog_id: string
+  purchase_index: number
+  sales_index: number
+  applied_at: Date
+  applied_by: string
+}
+
+const prismaCatalogIndex = (prisma as unknown as Record<string, {
+  findMany: (args: unknown) => Promise<CatalogIndexRecord[]>
+}>).catalogIndex
+
 const ProjectParamsSchema = z.object({
   projectId: z.string().uuid(),
 })
@@ -100,6 +114,70 @@ const EvaluateBlocksRequestSchema = z.object({
 
 function calculatePricingPreview(lines: BOMLine[], settings: GlobalDiscountSettings) {
   return calculatePriceSummary(lines, settings)
+}
+
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+function applyCatalogIndicesToLines(
+  lines: BOMLine[],
+  indices: CatalogIndexRecord[],
+): {
+  lines: BOMLine[]
+  applied: Array<{
+    catalog_id: string
+    purchase_index: number
+    sales_index: number
+    applied_at: string
+    applied_by: string
+    affected_line_ids: string[]
+  }>
+} {
+  const latestByCatalog = new Map<string, CatalogIndexRecord>()
+
+  for (const index of indices) {
+    const current = latestByCatalog.get(index.catalog_id)
+    if (!current || current.applied_at < index.applied_at) {
+      latestByCatalog.set(index.catalog_id, index)
+    }
+  }
+
+  const affected = new Map<string, string[]>()
+
+  const updatedLines = lines.map((line) => {
+    if (!line.catalog_item_id) {
+      return line
+    }
+
+    const index = latestByCatalog.get(line.catalog_item_id)
+    if (!index) {
+      return line
+    }
+
+    const affectedLines = affected.get(index.catalog_id) ?? []
+    affectedLines.push(line.id)
+    affected.set(index.catalog_id, affectedLines)
+
+    return {
+      ...line,
+      list_price_net: roundMoney(line.list_price_net * index.sales_index),
+      dealer_price_net: roundMoney((line.dealer_price_net ?? line.list_price_net) * index.purchase_index),
+    }
+  })
+
+  const applied = [...latestByCatalog.values()]
+    .filter((index) => (affected.get(index.catalog_id)?.length ?? 0) > 0)
+    .map((index) => ({
+      catalog_id: index.catalog_id,
+      purchase_index: index.purchase_index,
+      sales_index: index.sales_index,
+      applied_at: index.applied_at.toISOString(),
+      applied_by: index.applied_by,
+      affected_line_ids: affected.get(index.catalog_id) ?? [],
+    }))
+
+  return { lines: updatedLines, applied }
 }
 
 function calculateBlockPreview(priceSummary: PriceSummary, blocks: BlockDefinition[]) {
@@ -258,6 +336,41 @@ export async function pricingRoutes(app: FastifyInstance) {
     return reply.send(result)
   }
 
+  const projectPricingHandler = async (
+    request: { params: unknown; body: unknown },
+    reply: { send: (payload: unknown) => unknown },
+  ) => {
+    const parsedParams = ProjectParamsSchema.safeParse(request.params)
+    if (!parsedParams.success) {
+      return sendBadRequest(reply as never, parsedParams.error.errors[0].message)
+    }
+
+    const parsed = PricingPreviewRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const lineCatalogIds = [...new Set(parsed.data.bom_lines.map((line) => line.catalog_item_id).filter((id): id is string => Boolean(id)))]
+
+    const indices = lineCatalogIds.length > 0
+      ? await prismaCatalogIndex.findMany({
+        where: {
+          project_id: parsedParams.data.projectId,
+          catalog_id: { in: lineCatalogIds },
+        },
+        orderBy: { applied_at: 'desc' },
+      })
+      : []
+
+    const withIndices = applyCatalogIndicesToLines(parsed.data.bom_lines as BOMLine[], indices)
+    const summary = calculatePricingPreview(withIndices.lines, parsed.data.settings as GlobalDiscountSettings)
+
+    return reply.send({
+      ...summary,
+      catalog_indices_applied: withIndices.applied,
+    })
+  }
+
   app.get<{ Params: { projectId: string } }>('/projects/:projectId/price-summary', async (request, reply) => {
     const parsedParams = ProjectParamsSchema.safeParse(request.params)
     if (!parsedParams.success) {
@@ -282,6 +395,6 @@ export async function pricingRoutes(app: FastifyInstance) {
 
   app.post('/pricing/preview', handler)
   app.post('/pricing/block-preview', blockHandler)
-  app.post('/projects/:projectId/calculate-pricing', handler)
+  app.post('/projects/:projectId/calculate-pricing', projectPricingHandler)
   app.post('/projects/:projectId/evaluate-blocks', projectBlockHandler)
 }
