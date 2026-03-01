@@ -173,6 +173,8 @@ POST /projects/:id/contacts/:contactId
 ### Sprint 28 - Personalisierte Dashboards / KPIs
 
 - **Priorität:** Soll (P1)
+- **Zuständig:** Claude Code
+- **Status:** In Arbeit
 - **Ziel:** Rollen-/nutzerspezifische Steuerungsansichten mit KPI-Widgets.
 
 **Neue Entity (`DashboardConfig`)**
@@ -207,6 +209,21 @@ GET /kpis/sales-chart?period=month
 - User können Dashboard konfigurieren, speichern und wiederherstellen.
 - Projekt-/Quote-Änderungen aktualisieren KPI-Werte zeitnah.
 - 4–5 Standard-Widgets sind produktiv verfügbar.
+
+**Umsetzungsreihenfolge (Startpaket)**
+
+1. `DashboardConfig`-Schema + Migration (pro `user_id`, tenant-sicher).
+2. API `GET/PUT /dashboards/:userId` mit Layout-/Widget-Validierung.
+3. KPI-Endpunkt `GET /kpis/sales-chart?period=month` auf BI-Light-Daten aufsetzen.
+4. Frontend-Container mit persistierbarer Widget-Anordnung implementieren.
+5. MVP-Widgets (`sales_chart`, `current_projects`, `current_contacts`, `kpi_cards`, `project_pipeline`) anbinden.
+
+**How to verify (Sprint 28)**
+
+- Widget-Layout ändern -> speichern -> Reload zeigt identische Anordnung.
+- KPI-Werte reagieren auf neue/aktualisierte Projekte und Angebote.
+- Nutzer A/B sehen eigene Dashboard-Konfigurationen, kein Cross-User-Leak.
+- API validiert ungültige Widget-IDs/Layout-Slots mit 400.
 
 ---
 

@@ -246,7 +246,7 @@ Kontakte als zentrale CRM-Light-Schicht einführen und mit Projekten verbinden.
 **Zuständig:** Claude Code
 **Abhängigkeiten:** TASK-23-A01, TASK-25-P01, TASK-27-C01
 **Priorität:** Soll
-**Status:** Offen
+**Status:** In Arbeit
 
 ### Ziel
 Nutzerspezifische Dashboards mit konfigurierbaren KPI-/Listen-Widgets bereitstellen.
