@@ -1,10 +1,10 @@
 # ROADMAP.md
 
-Sprint-Planung für MVP (Sprints 0–19) und Phase 2 (Sprints 20–24).
+Sprint-Planung für MVP (Sprints 0-19) und Phase 2 (Sprints 20-24).
 
 ---
 
-## MVP – Sprints 0–19
+## MVP - Sprints 0-19
 
 **Zielbild:** Nicht-rechteckige Räume, Dachschrägen, BOM/Preise/Angebote, DXF-Interop, SKP-Referenzimport, externer Render-Worker.
 
@@ -39,7 +39,7 @@ Sprint-Planung für MVP (Sprints 0–19) und Phase 2 (Sprints 20–24).
 ### Meilensteine
 
 | Nach Sprint | Ergebnis |
-|-------------|---------|
+|-------------|----------|
 | 6 | Echte Polygonräume mit Öffnungen und Dachschrägen |
 | 8 | Erste wandbasierte Küchenplanung |
 | 13 | Internes Angebots-MVP |
@@ -55,45 +55,48 @@ Sprint-Planung für MVP (Sprints 0–19) und Phase 2 (Sprints 20–24).
 
 ---
 
-## Phase 2 – Sprints 20–24
+## Phase 2 - Sprints 20-24
 
 **Ausgangslage (Sprint 19):** MVP vollständig. Polygonräume + Placement + BOM + Preis + Angebote + DXF/SKP + Render-Worker alle produktiv.
 
-**Ziel:** Fehlende Funktionen gegenüber professionellen Küchenstudio-Systemen schließen, ohne Architekturbruch.
+**Ziel:** Funktionslücken zu etablierten Studiosystemen schließen (Herstellerkataloge, Automatismen, Prüfmodul, Mehrmandantenfähigkeit, Webplaner), ohne die bestehende Architektur zu brechen.
 
 ---
 
-### Sprint 20 — Herstellerkatalog & Schrankkonfigurator (Light)
+### Sprint 20 - Herstellerkatalog & Schrankkonfigurator (Light)
 
 **Ziel:** 1 Hersteller-Import End-to-End + konfigurierbarer Schrank mit Artikel/Preis/BOM.
 
 **Neues Datenmodell:**
-- `manufacturer`, `catalog_article`, `article_option`, `article_variant`, `article_price`, `article_rules`
+- DB-Tabellen: `manufacturers`, `catalog_articles`, `article_options`, `article_variants`, `article_prices`, `article_rules`
+- Domain-Typen: `Manufacturer`, `CatalogArticle`, `ArticleOption`, `ArticleVariant`, `ArticlePrice`, `ArticleRule`
 
 **Deliverables:** Import-Pipeline (CSV/JSON), Konfigurator-UI (Breite/Höhe/Front/Griff), 30 Tests.
 
-**DoD:** 1 Herstellerkatalog importiert, 1 konfigurierbarer Schrank platzierbar, BOM/Pricing aus `catalog_article`.
+**DoD:** 1 Herstellerkatalog importiert, 1 konfigurierbarer Schrank platzierbar, BOM/Pricing aus `CatalogArticle` und `ArticleVariant`.
 
 ---
 
-### Sprint 21 — Automatismen (Langteile, Zubehör, Auto-Vervollständigung)
+### Sprint 21 - Automatismen (Langteile, Zubehör, Auto-Vervollständigung)
 
 **Ziel:** Automatische BOM-Generierung für Arbeitsplatte, Sockel, Wange, Standardzubehör.
 
 **Scope:**
 - `AutoCompletionService`: Worktop- und Sockel-Segmente entlang Cabinet-Cluster
 - Autogen-Objekte als `generated` markiert, Rebuild bei Änderungen
-- UI: Button „Auto vervollständigen" + Diff-View
+- UI: Button "Auto vervollständigen" + Diff-View
 
 **DoD:** Standardzeile erzeugt automatisch Worktop + Sockel in BOM; Änderungen konsistent.
 
 ---
 
-### Sprint 22 — Prüf-Engine v2 ("Protect"-Niveau)
+### Sprint 22 - Prüf-Engine v2 ("Protect"-Niveau)
 
 **Ziel:** Konfigurierbares Prüfmodul mit Kategorien, Bericht und Finalprüfung.
 
-**Neues Datenmodell:** `rule_definitions`, `rule_runs`, `rule_violations`
+**Neues Datenmodell:**
+- DB-Tabellen: `rule_definitions`, `rule_runs`, `rule_violations`
+- Domain-Typen: `RuleDefinition`, `RuleRun`, `RuleViolationRecord`
 
 **Mindestens 15 Regeln:** Kollision (Tür/Auszug), Abstände, Ergonomie, Vollständigkeit (Arbeitsplatte/Sockel/Blenden), Zubehör.
 
@@ -101,7 +104,7 @@ Sprint-Planung für MVP (Sprints 0–19) und Phase 2 (Sprints 20–24).
 
 ---
 
-### Sprint 23 — Multi-Tenant / BI-Light
+### Sprint 23 - Multi-Tenant / BI-Light
 
 **Ziel:** Vom Single-Studio zu Multi-Tenant mit KPI-Endpunkten.
 
@@ -111,18 +114,22 @@ Sprint-Planung für MVP (Sprints 0–19) und Phase 2 (Sprints 20–24).
 - KPI-Endpunkte: Angebote/Zeitraum, Conversion, Top-Warengruppen
 - Minimal-Dashboard: KPI Cards + Zeitraumfilter
 
+**Domain-Typen:** `Tenant`, `Branch`, `ProjectKpiSnapshot`, `KpiQuery`
+
 **DoD:** 2 Tenants sauber getrennt, KPI-Endpunkte plausibel, Basis-Dashboard.
 
 ---
 
-### Sprint 24 — Online-Webplaner MVP + Handover
+### Sprint 24 - Online-Webplaner MVP + Handover
 
 **Ziel:** Abgespeckter Endkunden-Webplaner (Lead Gen) mit Übergabe ins Profi-Tool.
 
 **Scope:**
 - Vereinfachter Grundriss (rechteckig + Aussparungen), reduzierter Katalog, guided Wizard
-- `lead_project` → „promoted" zu vollem `project` im Profi-Editor
+- `LeadProject` wird zu `Project` im Profi-Editor promoted
 - Consent + Retention Policy
+
+**Domain-Typen:** `LeadProject`, `LeadPlanningPayload`, `LeadPromotionResult`
 
 **DoD:** Endkunde konfiguriert Küche, Lead geht ans Studio, Studio öffnet Projekt im Profi-Editor.
 
@@ -131,7 +138,7 @@ Sprint-Planung für MVP (Sprints 0–19) und Phase 2 (Sprints 20–24).
 ## Risiken Phase 2
 
 1. Herstellerkatalogtiefe professioneller Systeme ist ohne langfristige Datenpflege nicht erreichbar.
-2. Automatismen müssen deterministisch und testbar sein → sonst zerlegt es Pricing/BOM.
-3. Prüf-Engine braucht klare DoD → sonst Rule-Spaghetti.
-4. Multi-Tenant muss früh mit Migrations-/Index-Disziplin kommen.
+2. Automatismen müssen deterministisch und testbar sein, sonst zerlegt es Pricing/BOM.
+3. Prüf-Engine braucht klare DoD, sonst entsteht Rule-Spaghetti.
+4. Multi-Tenant muss früh mit Migrations- und Index-Disziplin kommen.
 5. Webplaner ist ein anderes Produkt: guided UX, kein Profi-Editor.
