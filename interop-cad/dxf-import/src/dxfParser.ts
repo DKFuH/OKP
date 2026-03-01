@@ -12,7 +12,7 @@ import type {
   ImportAsset,
   ImportProtocolEntry,
   Point2D
-} from '@shared/types';
+} from '@yakds/shared-schemas';
 
 type DxfEntity = Record<string, any>;
 type DxfLayer = { color?: number; name?: string; visible?: boolean; frozen?: boolean };
@@ -21,6 +21,7 @@ type DxfDocument = {
   tables?: { layer?: { layers?: Record<string, DxfLayer> } };
   entities?: DxfEntity[];
 };
+type DxfParserConstructor = new () => { parseSync(input: string): unknown };
 
 const DXF_UNIT_FACTORS: Record<number, { units: CadUnits; factor: number }> = {
   1: { units: 'inch', factor: 25.4 },
@@ -231,7 +232,7 @@ export function parseDxf(dxfString: string, sourceFilename: string): ImportAsset
   let document: DxfDocument;
 
   try {
-    document = new DxfParser().parseSync(dxfString) as DxfDocument;
+    document = new (DxfParser as unknown as DxfParserConstructor)().parseSync(dxfString) as DxfDocument;
   } catch {
     return buildEmptyImportAsset(sourceFilename);
   }

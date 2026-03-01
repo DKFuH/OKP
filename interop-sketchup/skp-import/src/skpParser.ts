@@ -7,7 +7,7 @@ import type {
   SkpComponent,
   SkpComponentMapping,
   SkpReferenceModel
-} from '@shared/types';
+} from '@yakds/shared-schemas';
 
 type MockComponentPayload = {
   name?: string;

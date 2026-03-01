@@ -1,7 +1,7 @@
 import Drawing from 'dxf-writer';
 
-import { withoutDuplicateClosure } from '@shared/geometry/geometryUtils';
-import type { ExportPayload, Opening, Point2D, WallSegment2D } from '@shared/types';
+import { withoutDuplicateClosure } from '@yakds/shared-schemas';
+import type { ExportPayload, Opening, Point2D, WallSegment2D } from '@yakds/shared-schemas';
 
 const ROOM_LAYER = 'YAKDS_ROOM';
 const WALLS_LAYER = 'YAKDS_WALLS';

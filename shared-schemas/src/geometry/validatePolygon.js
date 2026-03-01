@@ -1,4 +1,4 @@
-import { distanceBetween, ensureClosedRing, segmentsIntersect, withoutDuplicateClosure } from './geometryUtils';
+import { distanceBetween, ensureClosedRing, segmentsIntersect, withoutDuplicateClosure } from './geometryUtils.js';
 function isAdjacentSegment(firstIndex, secondIndex, segmentCount) {
     if (firstIndex === secondIndex) {
         return true;
@@ -44,3 +44,4 @@ export function validatePolygon(vertices, minEdgeLengthMm = 100) {
         errors
     };
 }
+//# sourceMappingURL=validatePolygon.js.map
