@@ -2,17 +2,19 @@
 
 ## Umfang
 
-Umsetzung Sprint 13 (Angebotsmanagement v1):
+Umsetzung Sprint 13 fuer Angebotsmanagement v1:
 
 - Angebot aus Projekt erzeugen
-- Angebotsversionen automatisch erhöhen
+- Angebotsversionen automatisch erhoehen
 - Angebot abrufen
-- PDF-light Export-Endpunkt bereitstellen
+- PDF-light Export bereitstellen
 
 ## Umgesetzte Dateien
 
 - `planner-api/src/routes/quotes.ts`
 - `planner-api/src/routes/quotes.test.ts`
+- `planner-api/src/services/pdfGenerator.ts`
+- `planner-api/src/services/pdfGenerator.test.ts`
 - `planner-api/src/index.ts`
 
 ## Ergebnis Sprint 13
@@ -20,34 +22,42 @@ Umsetzung Sprint 13 (Angebotsmanagement v1):
 Implementiert wurde:
 
 - `POST /api/v1/projects/:id/create-quote`
-  - prüft Projekt-Existenz
-  - erzeugt neue Angebotsversion (auto-increment)
-  - generiert Angebotsnummer auf Basis Prefix + Jahr + laufender Version
-  - übernimmt `valid_until`, `free_text`, `footer_text` (mit Default aus `quote_settings`)
-  - erzeugt `quote_items` aus übergebenen BOM-Linien
+  - prueft Projekt-Existenz
+  - erzeugt neue Angebotsversion per Auto-Increment
+  - generiert Angebotsnummer auf Basis Prefix, Jahr und laufender Version
+  - uebernimmt `valid_until`, `free_text`, `footer_text` mit Defaults aus `quote_settings`
+  - erzeugt `quote_items` aus uebergebenen BOM-Linien
 
 - `GET /api/v1/quotes/:id`
-  - lädt Angebot inkl. Positionen
+  - laedt Angebot inklusive Positionen
 
 - `POST /api/v1/quotes/:id/export-pdf`
-  - liefert PDF-light URL als API-Vertrag
+  - liefert ein echtes PDF-light als `application/pdf`-Attachment
+  - enthaelt Angebotsnummer, Version, Gueltig-bis, sichtbare Positionen und Summenblock
+  - blendet Positionen mit `show_on_quote: false` aus
+
+- `buildQuotePdf(quote)`
+  - erzeugt ein leichtgewichtiges PDF ohne externe PDF-Library
+  - escaped Freitext und Positionsbeschreibungen fuer sicheren Text-Output
+  - nutzt Snapshot-Summen, falls vorhanden, sonst Fallback auf Positionssummen
 
 ## DoD-Status Sprint 13
 
-- Angebotsnummer: **erfüllt**
-- Gültig-bis: **erfüllt**
-- Freitext/Fußtext: **erfüllt**
-- Angebotsversionen: **erfüllt**
-- PDF light: **erfüllt (URL-Contract)**
+- Angebotsnummer: erfuellt
+- Gueltig-bis: erfuellt
+- Freitext/Fusstext: erfuellt
+- Angebotsversionen: erfuellt
+- PDF light: erfuellt als echter Attachment-Export
 
 ## Teststatus
 
-- `planner-api/src/routes/quotes.test.ts` grün
-- Route-Sanity zusammen mit BOM/Pricing-Routen grün
+- `planner-api/src/routes/quotes.test.ts` gruen
+- `planner-api/src/services/pdfGenerator.test.ts` gruen
+- Route-Sanity zusammen mit BOM- und Pricing-Routen gruen
 
-## Nächster Sprint
+## Naechster Sprint
 
 Sprint 14:
 
 - Browser-3D-Preview
-- Floor-Triangulation, Wände extrudieren, Objekt-Proxy-Meshes
+- Floor-Triangulation, Waende extrudieren, Objekt-Proxy-Meshes

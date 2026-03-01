@@ -1,0 +1,86 @@
+.panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.primaryBtn,
+.secondaryBtn,
+.refreshBtn {
+  border-radius: 6px;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+
+.primaryBtn {
+  border: 1px solid #6366f1;
+  background: #6366f1;
+  color: #ffffff;
+}
+
+.secondaryBtn,
+.refreshBtn {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.metaList {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.55rem;
+  font-size: 0.82rem;
+}
+
+.metaList dt {
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.metaList dd {
+  margin: 0;
+  color: #111827;
+}
+
+.empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+}
