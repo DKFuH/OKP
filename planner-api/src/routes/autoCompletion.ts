@@ -92,4 +92,36 @@ export async function autoCompletionRoutes(app: FastifyInstance) {
             return reply.send(suggestions)
         },
     )
+
+    /**
+     * POST /projects/:project_id/rooms/:room_id/suggestions/apply
+     * Übernimmt einen Zubehör-Vorschlag in die Stückliste.
+     */
+    app.post<{ Params: { project_id: string; room_id: string } }>(
+        '/projects/:project_id/rooms/:room_id/suggestions/apply',
+        async (request, reply) => {
+            const params = ProjectRoomParamsSchema.safeParse(request.params)
+            if (!params.success) return sendBadRequest(reply, params.error.errors[0].message)
+
+            const bodySchema = z.object({
+                catalog_article_id: z.string().uuid(),
+                trigger_article_id: z.string().uuid().optional(),
+            })
+
+            const body = bodySchema.safeParse(request.body)
+            if (!body.success) return sendBadRequest(reply, body.error.errors[0].message)
+
+            try {
+                const item = await AutoCompletionService.applySuggestion(
+                    params.data.project_id,
+                    params.data.room_id,
+                    body.data.catalog_article_id,
+                    body.data.trigger_article_id,
+                )
+                return reply.status(201).send(item)
+            } catch (err) {
+                return sendBadRequest(reply, err instanceof Error ? err.message : 'Failed to apply suggestion')
+            }
+        },
+    )
 }

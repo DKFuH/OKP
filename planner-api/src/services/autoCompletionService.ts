@@ -309,7 +309,7 @@ export const AutoCompletionService = {
 
     /**
      * Schlägt Zubehör für einen Raum vor, basierend auf den IDM-Warengruppen (GRP)
-     * der platzierten Artikel.
+     * der platzierten Artikel. Nutzt RuleEngineV2 Definitionen (category=accessory).
      */
     async suggestAccessories(project_id: string, room_id: string) {
         const room = await prisma.room.findUnique({
@@ -332,7 +332,13 @@ export const AutoCompletionService = {
             select: { id: true, name: true, meta_json: true },
         })
 
+        // Lade Regeln aus der Datenbank (admin-konfigurierbar)
+        const rules = await prisma.ruleDefinition.findMany({
+            where: { category: 'accessory', enabled: true },
+        })
+
         const suggestions: Array<{
+            rule_key: string
             trigger_article_id: string
             trigger_article_name: string
             category: string
@@ -346,14 +352,17 @@ export const AutoCompletionService = {
 
             if (!grp) continue
 
-            const matchingRules = ACCESSORY_SUGGESTION_RULES.filter((r) => r.triggerGrp === grp)
+            for (const ruleDef of rules) {
+                const config = (ruleDef.params_json as any) || {}
+                if (config.triggerGrp !== grp) continue
 
-            for (const rule of matchingRules) {
+                const keywords = Array.isArray(config.keywords) ? config.keywords : []
+
                 // Suche passende Zubehörartikel im Gesamtkatalog
                 const candidates = await prisma.catalogArticle.findMany({
                     where: {
                         article_type: 'accessory',
-                        OR: rule.keywords.map((kw) => ({
+                        OR: keywords.map((kw: string) => ({
                             name: { contains: kw, mode: 'insensitive' },
                         })),
                     },
@@ -363,10 +372,11 @@ export const AutoCompletionService = {
 
                 if (candidates.length > 0) {
                     suggestions.push({
+                        rule_key: ruleDef.rule_key,
                         trigger_article_id: article.id,
                         trigger_article_name: article.name,
-                        category: rule.category,
-                        recommendation_label: rule.label,
+                        category: config.category || 'Zubehör',
+                        recommendation_label: config.label || 'Empfehlung',
                         candidates,
                     })
                 }
@@ -375,39 +385,46 @@ export const AutoCompletionService = {
 
         return suggestions
     },
+
+    /**
+     * Übernimmt einen Zubehör-Vorschlag als GeneratedItem in die Stückliste.
+     */
+    async applySuggestion(
+        project_id: string,
+        room_id: string,
+        catalog_article_id: string,
+        trigger_article_id?: string,
+    ) {
+        const article = await prisma.catalogArticle.findUnique({
+            where: { id: catalog_article_id },
+            select: { id: true, name: true, sku: true, article_type: true },
+        })
+
+        if (!article) {
+            throw new Error('CatalogArticle not found')
+        }
+
+        const generatedItem = await prisma.generatedItem.create({
+            data: {
+                project_id,
+                room_id,
+                catalog_article_id: article.id,
+                item_type: 'other', // Zubehör ist kein Langteil (worktop/plinth)
+                label: article.name,
+                qty: 1,
+                unit: 'Stk',
+                is_generated: true,
+                params_json: {
+                    manual_suggestion_apply: true,
+                    applied_at: new Date().toISOString(),
+                    trigger_article_id,
+                } as Prisma.InputJsonValue,
+                source_links: trigger_article_id ? {
+                    create: { source_placement_id: trigger_article_id }
+                } : undefined,
+            },
+        })
+
+        return generatedItem
+    },
 }
-
-// ─── Hilfsdaten (MVP-Regeln) ──────────────────────────────────────
-
-const ACCESSORY_SUGGESTION_RULES = [
-    {
-        triggerGrp: 'SPL', // Spüle
-        category: 'Armaturen',
-        label: 'Passende Mischbatterie wählen',
-        keywords: ['Armatur', 'Wasserhahn', 'Mischbatterie'],
-    },
-    {
-        triggerGrp: 'SPL',
-        category: 'Siphons',
-        label: 'Geruchsverschluss / Siphon',
-        keywords: ['Siphon', 'Raumsparsiphon', 'Ablaufgarnitur'],
-    },
-    {
-        triggerGrp: 'HER', // Herd
-        category: 'Elektro',
-        label: 'Anschlusskabel 3x1.5mm / 5x2.5mm',
-        keywords: ['Kabel', 'Anschlusskabel', 'Stecker'],
-    },
-    {
-        triggerGrp: 'GSP', // Geschirrspüler
-        category: 'Installation',
-        label: 'Schlauchverlängerung',
-        keywords: ['Verlängerung', 'Schlauch'],
-    },
-    {
-        triggerGrp: 'LUE', // Lüfter
-        category: 'Filter',
-        label: 'Aktivkohlefilter für Umluft',
-        keywords: ['Filter', 'Aktivkohle'],
-    },
-]

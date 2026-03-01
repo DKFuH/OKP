@@ -318,6 +318,66 @@ export const RuleEngineV2 = {
             { rule_key: 'COMP-005', category: 'completeness' as const, severity: 'hint' as const, params_json: {} },
             { rule_key: 'COMP-006', category: 'completeness' as const, severity: 'hint' as const, params_json: {} },
             { rule_key: 'ACC-001', category: 'accessory' as const, severity: 'hint' as const, params_json: {} },
+            {
+                rule_key: 'SUG-SPL-001',
+                category: 'accessory' as const,
+                severity: 'hint' as const,
+                enabled: true,
+                params_json: {
+                    triggerGrp: 'SPL',
+                    category: 'Armaturen',
+                    label: 'Passende Mischbatterie wählen',
+                    keywords: ['Armatur', 'Wasserhahn', 'Mischbatterie']
+                }
+            },
+            {
+                rule_key: 'SUG-SPL-002',
+                category: 'accessory' as const,
+                severity: 'hint' as const,
+                enabled: true,
+                params_json: {
+                    triggerGrp: 'SPL',
+                    category: 'Siphons',
+                    label: 'Geruchsverschluss / Siphon',
+                    keywords: ['Siphon', 'Raumsparsiphon', 'Ablaufgarnitur']
+                }
+            },
+            {
+                rule_key: 'SUG-HER-001',
+                category: 'accessory' as const,
+                severity: 'hint' as const,
+                enabled: true,
+                params_json: {
+                    triggerGrp: 'HER',
+                    category: 'Elektro',
+                    label: 'Anschlusskabel 3x1.5mm / 5x2.5mm',
+                    keywords: ['Kabel', 'Anschlusskabel', 'Stecker']
+                }
+            },
+            {
+                rule_key: 'SUG-GSP-001',
+                category: 'accessory' as const,
+                severity: 'hint' as const,
+                enabled: true,
+                params_json: {
+                    triggerGrp: 'GSP',
+                    category: 'Installation',
+                    label: 'Schlauchverlängerung',
+                    keywords: ['Verlängerung', 'Schlauch']
+                }
+            },
+            {
+                rule_key: 'SUG-LUE-001',
+                category: 'accessory' as const,
+                severity: 'hint' as const,
+                enabled: true,
+                params_json: {
+                    triggerGrp: 'LUE',
+                    category: 'Filter',
+                    label: 'Aktivkohlefilter für Umluft',
+                    keywords: ['Filter', 'Aktivkohle']
+                }
+            },
         ]
         for (const d of defaults) {
             await prisma.ruleDefinition.upsert({ where: { rule_key: d.rule_key }, update: d, create: { ...d, enabled: true } })

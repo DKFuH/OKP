@@ -87,68 +87,68 @@ export async function platformRoutes(app: FastifyInstance) {
     const [projects, contacts, documents] = await Promise.all([
       includeProjects
         ? prisma.project.findMany({
-            where: {
-              tenant_id: tenantId,
-              OR: [
-                { name: { contains: query, mode: 'insensitive' } },
-                { description: { contains: query, mode: 'insensitive' } },
-              ],
-            },
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              project_status: true,
-              updated_at: true,
-            },
-            take: limit,
-            orderBy: { updated_at: 'desc' },
-          })
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { name: { contains: query, mode: 'insensitive' } },
+              { description: { contains: query, mode: 'insensitive' } },
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            project_status: true,
+            updated_at: true,
+          },
+          take: limit,
+          orderBy: { updated_at: 'desc' },
+        })
         : Promise.resolve([]),
       includeContacts
         ? prisma.contact.findMany({
-            where: {
-              tenant_id: tenantId,
-              OR: [
-                { first_name: { contains: query, mode: 'insensitive' } },
-                { last_name: { contains: query, mode: 'insensitive' } },
-                { company: { contains: query, mode: 'insensitive' } },
-                { email: { contains: query, mode: 'insensitive' } },
-              ],
-            },
-            select: {
-              id: true,
-              first_name: true,
-              last_name: true,
-              company: true,
-              email: true,
-              updated_at: true,
-            },
-            take: limit,
-            orderBy: { updated_at: 'desc' },
-          })
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { first_name: { contains: query, mode: 'insensitive' } },
+              { last_name: { contains: query, mode: 'insensitive' } },
+              { company: { contains: query, mode: 'insensitive' } },
+              { email: { contains: query, mode: 'insensitive' } },
+            ],
+          },
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            company: true,
+            email: true,
+            updated_at: true,
+          },
+          take: limit,
+          orderBy: { updated_at: 'desc' },
+        })
         : Promise.resolve([]),
       includeDocuments
         ? prisma.document.findMany({
-            where: {
-              tenant_id: tenantId,
-              OR: [
-                { filename: { contains: query, mode: 'insensitive' } },
-                { original_filename: { contains: query, mode: 'insensitive' } },
-                { tags: { has: query } },
-              ],
-            },
-            select: {
-              id: true,
-              filename: true,
-              type: true,
-              project_id: true,
-              uploaded_at: true,
-              tags: true,
-            },
-            take: limit,
-            orderBy: { uploaded_at: 'desc' },
-          })
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { filename: { contains: query, mode: 'insensitive' } },
+              { original_filename: { contains: query, mode: 'insensitive' } },
+              { tags: { has: query } },
+            ],
+          },
+          select: {
+            id: true,
+            filename: true,
+            type: true,
+            project_id: true,
+            uploaded_at: true,
+            tags: true,
+          },
+          take: limit,
+          orderBy: { uploaded_at: 'desc' },
+        })
         : Promise.resolve([]),
     ])
 
@@ -295,13 +295,13 @@ export async function platformRoutes(app: FastifyInstance) {
         tenant_id: tenantId,
         ...(search
           ? {
-              OR: [
-                { first_name: { contains: search, mode: 'insensitive' } },
-                { last_name: { contains: search, mode: 'insensitive' } },
-                { company: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } },
-              ],
-            }
+            OR: [
+              { first_name: { contains: search, mode: 'insensitive' } },
+              { last_name: { contains: search, mode: 'insensitive' } },
+              { company: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          }
           : {}),
       },
       select: {
@@ -335,5 +335,16 @@ export async function platformRoutes(app: FastifyInstance) {
     reply.header('content-disposition', 'attachment; filename="contacts-export.csv"')
     reply.type('text/csv; charset=utf-8')
     return reply.send(csv)
+  })
+
+  /**
+   * POST /platform/seed-rules
+   * Initialisiert den Regelkatalog in der Datenbank (Admin-Funktion).
+   */
+  app.post('/platform/seed-rules', async (request, reply) => {
+    // In einer echten App: Nur fÃ¼r Super-Admins erlaubt
+    const { RuleEngineV2 } = await import('../services/ruleEngineV2.js')
+    const result = await RuleEngineV2.seedDefaultRules()
+    return reply.send(result)
   })
 }
