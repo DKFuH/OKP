@@ -353,7 +353,7 @@ Prüfe:
 
 ## TASK-12-R01 – Review: Preisengine PR (Sprint 12)
 
-**Sprint:** 12 | **Zuständig:** GROK + Claude | **Status:** Offen
+**Sprint:** 12 | **Zuständig:** GROK + Claude | **Status:** Erledigt (intern, 2026-03-01)
 
 ### GROK-Prompt
 ```
@@ -389,7 +389,7 @@ Prüfe:
 
 ## TASK-13-R01 – Review: Angebotsmanagement PR (Sprint 13)
 
-**Sprint:** 13 | **Zuständig:** Raptor + GPT | **Status:** Offen
+**Sprint:** 13 | **Zuständig:** Raptor + GPT | **Status:** Erledigt (intern, 2026-03-01)
 
 ### Raptor-Prompt
 ```
@@ -426,7 +426,7 @@ Prüfe:
 
 ## TASK-15-R01 – Review: Render-Job-System PR (Sprint 15)
 
-**Sprint:** 15 | **Zuständig:** Raptor + GROK | **Status:** Offen
+**Sprint:** 15 | **Zuständig:** Raptor + GROK | **Status:** Erledigt (intern, 2026-03-01)
 
 ### Raptor-Prompt
 ```
@@ -464,7 +464,7 @@ Prüfe:
 
 ## TASK-17-R01 – Review: Blockverrechnung PR (Sprint 17)
 
-**Sprint:** 17 | **Zuständig:** Claude + GROK | **Status:** Offen
+**Sprint:** 17 | **Zuständig:** Claude + GROK | **Status:** Erledigt (intern, 2026-03-01)
 
 ### Claude-Prompt
 ```

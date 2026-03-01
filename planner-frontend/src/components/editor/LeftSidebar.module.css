@@ -50,6 +50,12 @@
   margin: 0 0 0.5rem;
 }
 
+.error {
+  font-size: 0.8rem;
+  color: #b91c1c;
+  margin: 0 0 0.5rem;
+}
+
 .addBtn {
   width: 100%;
   background: none;
@@ -120,6 +126,7 @@
 }
 
 .catalogItem:hover { background: #f9fafb; }
+.catalogItemActive { background: #ede9fe !important; cursor: pointer; }
 
 .catalogName {
   overflow: hidden;

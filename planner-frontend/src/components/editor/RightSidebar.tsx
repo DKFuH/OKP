@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Vertex, Point2D } from '@shared/types'
 import type { Opening } from '../../api/openings.js'
+import type { Placement } from '../../api/placements.js'
 import type { Room } from '../../api/projects.js'
 import styles from './RightSidebar.module.css'
 
@@ -21,12 +22,15 @@ interface Props {
   selectedEdgeIndex: number | null
   edgeLengthMm: number | null
   selectedOpening: Opening | null
+  selectedPlacement: Placement | null
   ceilingConstraints: CeilingConstraint[]
   selectedWallGeom: { id: string; start: Point2D; end: Point2D } | null
   onMoveVertex: (index: number, pos: Point2D) => void
   onSetEdgeLength: (edgeIndex: number, lengthMm: number) => void
   onUpdateOpening: (opening: Opening) => void
   onDeleteOpening: (openingId: string) => void
+  onUpdatePlacement: (placement: Placement) => void
+  onDeletePlacement: (placementId: string) => void
   onSaveCeilingConstraints: (constraints: CeilingConstraint[]) => void
 }
 
@@ -35,10 +39,12 @@ export function RightSidebar({
   selectedVertexIndex, selectedVertex,
   selectedEdgeIndex, edgeLengthMm,
   selectedOpening,
+  selectedPlacement,
   ceilingConstraints,
   selectedWallGeom,
   onMoveVertex, onSetEdgeLength,
   onUpdateOpening, onDeleteOpening,
+  onUpdatePlacement, onDeletePlacement,
   onSaveCeilingConstraints,
 }: Props) {
   return (
@@ -49,6 +55,13 @@ export function RightSidebar({
           opening={selectedOpening}
           onUpdate={onUpdateOpening}
           onDelete={onDeleteOpening}
+        />
+      ) : selectedPlacement ? (
+        <PlacementPanel
+          key={selectedPlacement.id}
+          placement={selectedPlacement}
+          onUpdate={onUpdatePlacement}
+          onDelete={onDeletePlacement}
         />
       ) : selectedVertex !== null && selectedVertexIndex !== null ? (
         <VertexPanel
@@ -309,6 +322,68 @@ function EdgePanel({ edgeIndex, lengthMm, onSetLength }: {
         />
       </div>
       <p className={styles.hint}>{(lengthMm / 1000).toFixed(3)} m</p>
+    </div>
+  )
+}
+
+// ─── Platzierungs-Panel ───────────────────────────────────────────────────────
+
+function PlacementPanel({ placement, onUpdate, onDelete }: {
+  placement: Placement
+  onUpdate: (p: Placement) => void
+  onDelete: (id: string) => void
+}) {
+  const [offset, setOffset] = useState(String(Math.round(placement.offset_mm)))
+  const [width, setWidth] = useState(String(Math.round(placement.width_mm)))
+  const [depth, setDepth] = useState(String(Math.round(placement.depth_mm)))
+  const [height, setHeight] = useState(String(Math.round(placement.height_mm)))
+
+  useEffect(() => {
+    setOffset(String(Math.round(placement.offset_mm)))
+    setWidth(String(Math.round(placement.width_mm)))
+    setDepth(String(Math.round(placement.depth_mm)))
+    setHeight(String(Math.round(placement.height_mm)))
+  }, [placement.id])
+
+  function commit(field: keyof Placement, raw: string, min = 0) {
+    const n = parseFloat(raw)
+    if (!Number.isFinite(n) || n < min) return
+    onUpdate({ ...placement, [field]: n })
+  }
+
+  return (
+    <div className={styles.section}>
+      <h3 className={styles.sectionTitle}>Platzierung</h3>
+      <p className={styles.hint}>{placement.catalog_item_id.slice(0, 8)}…</p>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Abstand (mm)</label>
+        <input aria-label="Abstand vom Wandstart in mm" className={styles.fieldInput} type="number" min={0}
+          value={offset} onChange={e => setOffset(e.target.value)}
+          onBlur={() => commit('offset_mm', offset)} onKeyDown={e => { if (e.key === 'Enter') commit('offset_mm', offset) }} />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Breite (mm)</label>
+        <input aria-label="Breite der Platzierung in mm" className={styles.fieldInput} type="number" min={1}
+          value={width} onChange={e => setWidth(e.target.value)}
+          onBlur={() => commit('width_mm', width, 1)} onKeyDown={e => { if (e.key === 'Enter') commit('width_mm', width, 1) }} />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Tiefe (mm)</label>
+        <input aria-label="Tiefe der Platzierung in mm" className={styles.fieldInput} type="number" min={1}
+          value={depth} onChange={e => setDepth(e.target.value)}
+          onBlur={() => commit('depth_mm', depth, 1)} onKeyDown={e => { if (e.key === 'Enter') commit('depth_mm', depth, 1) }} />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Höhe (mm)</label>
+        <input aria-label="Höhe der Platzierung in mm" className={styles.fieldInput} type="number" min={1}
+          value={height} onChange={e => setHeight(e.target.value)}
+          onBlur={() => commit('height_mm', height, 1)} onKeyDown={e => { if (e.key === 'Enter') commit('height_mm', height, 1) }} />
+      </div>
+
+      <button type="button" className={styles.deleteBtn} onClick={() => onDelete(placement.id)}>
+        Platzierung löschen
+      </button>
     </div>
   )
 }

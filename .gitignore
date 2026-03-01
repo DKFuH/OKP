@@ -11,3 +11,9 @@ coverage/
 *.skp
 *.dwg
 uploads/
+planner-frontend/src/**/*.js
+planner-frontend/src/**/*.js.map
+shared-schemas/src/**/*.js
+shared-schemas/src/**/*.js.map
+shared-schemas/src/**/*.d.ts
+shared-schemas/src/**/*.d.ts.map

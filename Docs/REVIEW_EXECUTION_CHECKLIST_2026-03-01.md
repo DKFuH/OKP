@@ -23,23 +23,15 @@
 
 ## Schnellstatus
 
-- [ ] TASK-3-R01 ausgeführt
-- [ ] TASK-3-R02 ausgeführt
-- [ ] TASK-5-R01 ausgeführt
-- [ ] TASK-8-R01 ausgeführt
-- [ ] TASK-9-R01 ausgeführt
-- [ ] TASK-10-R01 ausgeführt
-- [ ] TASK-11-R01 ausgeführt
+- [x] TASK-3-R01 ausgeführt
+- [x] TASK-3-R02 ausgeführt
+- [x] TASK-5-R01 ausgeführt
+- [x] TASK-8-R01 ausgeführt
+- [x] TASK-9-R01 ausgeführt
+- [x] TASK-10-R01 ausgeführt
+- [x] TASK-11-R01 ausgeführt
 
-## Hinweise zu aktuell fehlenden Dateien
+## Hinweise zu Scope-Lücken
 
-- `planner-api/src/routes/validate.ts`
-- `planner-api/src/routes/bom.ts`
-- `planner-api/src/routes/imports.ts`
-- `planner-api/src/routes/openings.ts`
-- `planner-api/src/routes/placements.ts`
-- `planner-api/src/services/roomService.ts`
-- `planner-frontend/src/editor/PlacementManager.tsx`
-- `planner-frontend/src/editor/PolygonEditor.tsx`
-
-Die Vorlagen berücksichtigen diese Lücken bereits und fokussieren auf den vorhandenen Code.
+- Die Sprint-Scopes 3 bis 17 sind im Repo inzwischen weitgehend vorhanden und reviewbar.
+- Primär offen bleiben aktuell die Companion-Reviewblöcke für Sprint 0/1/2 sowie die finale Interop-Härtung (Sprint 19).

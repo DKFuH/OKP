@@ -8,6 +8,8 @@ interface Props {
   selectedRoomId: string | null
   onSelectRoom: (id: string) => void
   onAddRoom: () => void
+  selectedCatalogItem: CatalogItem | null
+  onSelectCatalogItem: (item: CatalogItem | null) => void
 }
 
 const TYPE_OPTIONS: Array<{ value: '' | CatalogItemType; label: string }> = [
@@ -20,29 +22,44 @@ const TYPE_OPTIONS: Array<{ value: '' | CatalogItemType; label: string }> = [
   { value: 'accessory', label: 'Zubehör' },
 ]
 
-export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom }: Props) {
+export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, selectedCatalogItem, onSelectCatalogItem }: Props) {
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<'' | CatalogItemType>('')
   const [items, setItems] = useState<CatalogItem[]>([])
   const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const requestTokenRef = useRef(0)
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
+      const requestToken = ++requestTokenRef.current
       setCatalogLoading(true)
+      setCatalogError(null)
       catalogApi
         .list({
           q: query.trim() || undefined,
           type: typeFilter || undefined,
           limit: 50,
         })
-        .then(setItems)
-        .catch(() => setItems([]))
-        .finally(() => setCatalogLoading(false))
+        .then((nextItems) => {
+          if (requestToken !== requestTokenRef.current) return
+          setItems(nextItems)
+        })
+        .catch((e: unknown) => {
+          if (requestToken !== requestTokenRef.current) return
+          setItems([])
+          setCatalogError(e instanceof Error ? e.message : 'Katalog konnte nicht geladen werden')
+        })
+        .finally(() => {
+          if (requestToken !== requestTokenRef.current) return
+          setCatalogLoading(false)
+        })
     }, 300)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
+      requestTokenRef.current += 1
     }
   }, [query, typeFilter])
 
@@ -93,12 +110,19 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom }: 
 
         {catalogLoading ? (
           <p className={styles.empty}>Lade…</p>
+        ) : catalogError ? (
+          <p className={styles.error}>{catalogError}</p>
         ) : items.length === 0 ? (
           <p className={styles.empty}>Keine Artikel gefunden</p>
         ) : (
           <ul className={styles.catalogList}>
             {items.map(item => (
-              <li key={item.id} className={styles.catalogItem} title={`${item.sku} · ${item.width_mm}×${item.depth_mm}×${item.height_mm} mm`}>
+              <li
+                key={item.id}
+                className={`${styles.catalogItem} ${selectedCatalogItem?.id === item.id ? styles.catalogItemActive : ''}`}
+                title={`${item.sku} · ${item.width_mm}×${item.depth_mm}×${item.height_mm} mm`}
+                onClick={() => onSelectCatalogItem(selectedCatalogItem?.id === item.id ? null : item)}
+              >
                 <span className={styles.catalogName}>{item.name}</span>
                 <span className={styles.catalogBadge}>{CATALOG_TYPE_LABELS[item.type]}</span>
               </li>

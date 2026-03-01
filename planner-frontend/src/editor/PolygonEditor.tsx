@@ -1,8 +1,9 @@
 import { useRef, useCallback } from 'react'
-import { Stage, Layer, Line, Circle, Group } from 'react-konva'
+import { Stage, Layer, Line, Circle, Group, Rect } from 'react-konva'
 import type Konva from 'konva'
 import type { Point2D } from '@shared/types'
 import type { Opening } from '../api/openings.js'
+import type { Placement } from '../api/placements.js'
 import type { EditorState, EditorTool } from './usePolygonEditor.js'
 import styles from './PolygonEditor.module.css'
 
@@ -59,6 +60,11 @@ interface Props {
   selectedOpeningId?: string | null
   onSelectOpening?: (id: string | null) => void
   onAddOpening?: (wallId: string, wallLengthMm: number) => void
+  placements?: Placement[]
+  selectedPlacementId?: string | null
+  onSelectPlacement?: (id: string | null) => void
+  canAddPlacement?: boolean
+  onAddPlacement?: (wallId: string, wallLengthMm: number) => void
 }
 
 export function PolygonEditor({
@@ -67,6 +73,7 @@ export function PolygonEditor({
   onSelectVertex, onSelectEdge, onHoverVertex, onDeleteVertex,
   onSetTool, onReset, onSave,
   openings = [], selectedOpeningId, onSelectOpening, onAddOpening,
+  placements = [], selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement,
 }: Props) {
   const stageRef = useRef<Konva.Stage>(null)
 
@@ -126,6 +133,39 @@ export function PolygonEditor({
     onAddOpening(wallId, wallLen)
   }
 
+  // Platzierung hinzufügen für ausgewählte Wand
+  function handleAddPlacementForSelectedEdge() {
+    if (state.selectedEdgeIndex === null || !onAddPlacement) return
+    const i = state.selectedEdgeIndex
+    const wallId = state.wallIds[i]
+    const vI = state.vertices[i]
+    const vNext = state.vertices[(i + 1) % state.vertices.length]
+    const wallLen = Math.hypot(vNext.x_mm - vI.x_mm, vNext.y_mm - vI.y_mm)
+    onAddPlacement(wallId, wallLen)
+  }
+
+  // Canvas-Koordinaten für Placement berechnen
+  function placementCanvasCoords(placement: Placement) {
+    const wallIdx = state.wallIds.indexOf(placement.wall_id)
+    if (wallIdx < 0 || wallIdx >= pts.length) return null
+    const p0 = pts[wallIdx]
+    const p1 = pts[(wallIdx + 1) % pts.length]
+    const dx = p1.x - p0.x
+    const dy = p1.y - p0.y
+    const len = Math.hypot(dx, dy)
+    if (len === 0) return null
+    const dirX = dx / len
+    const dirY = dy / len
+    const scaledOffset = worldToCanvas(placement.offset_mm)
+    const scaledWidth = worldToCanvas(placement.width_mm)
+    return {
+      x1: p0.x + dirX * scaledOffset,
+      y1: p0.y + dirY * scaledOffset,
+      x2: p0.x + dirX * (scaledOffset + scaledWidth),
+      y2: p0.y + dirY * (scaledOffset + scaledWidth),
+    }
+  }
+
   return (
     <div className={styles.container}>
       {/* ── Toolbar ── */}
@@ -138,6 +178,11 @@ export function PolygonEditor({
         {state.tool === 'select' && state.selectedEdgeIndex !== null && onAddOpening && (
           <button type="button" className={styles.toolBtn} onClick={handleAddOpeningForSelectedEdge}>
             + Öffnung
+          </button>
+        )}
+        {state.tool === 'select' && state.selectedEdgeIndex !== null && canAddPlacement && onAddPlacement && (
+          <button type="button" className={styles.toolBtn} onClick={handleAddPlacementForSelectedEdge}>
+            + Platzieren
           </button>
         )}
         <button type="button" className={styles.resetBtn} onClick={onReset}>Zurücksetzen</button>
@@ -217,6 +262,44 @@ export function PolygonEditor({
                     onClick={(e) => {
                       e.cancelBubble = true
                       onSelectOpening?.(isSelected ? null : opening.id)
+                    }}
+                  />
+                )
+              })}
+            </Group>
+          )}
+
+          {/* Platzierungen an Wänden */}
+          {state.closed && (
+            <Group>
+              {placements.map(placement => {
+                const coords = placementCanvasCoords(placement)
+                if (!coords) return null
+                const isSelected = placement.id === selectedPlacementId
+                const midX = (coords.x1 + coords.x2) / 2
+                const midY = (coords.y1 + coords.y2) / 2
+                const dx = coords.x2 - coords.x1
+                const dy = coords.y2 - coords.y1
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI
+                const w = Math.hypot(dx, dy)
+                const d = worldToCanvas(placement.depth_mm)
+                return (
+                  <Rect
+                    key={placement.id}
+                    x={midX}
+                    y={midY}
+                    width={w}
+                    height={Math.max(d, 4)}
+                    offsetX={w / 2}
+                    offsetY={Math.max(d, 4) / 2}
+                    rotation={angle}
+                    fill={isSelected ? '#f97316' : '#a78bfa'}
+                    stroke={isSelected ? '#ea580c' : '#7c3aed'}
+                    strokeWidth={isSelected ? 2 : 1}
+                    opacity={0.7}
+                    onClick={(e) => {
+                      e.cancelBubble = true
+                      onSelectPlacement?.(isSelected ? null : placement.id)
                     }}
                   />
                 )

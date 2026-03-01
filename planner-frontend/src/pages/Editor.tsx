@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Vertex } from '@shared/types'
 import { projectsApi, type ProjectDetail } from '../api/projects.js'
+import type { CatalogItem } from '../api/catalog.js'
+import { placementsApi, type Placement } from '../api/placements.js'
 import { roomsApi, type RoomBoundaryPayload, type RoomPayload } from '../api/rooms.js'
 import { openingsApi, type Opening } from '../api/openings.js'
 import { usePolygonEditor, edgeLengthMm } from '../editor/usePolygonEditor.js'
@@ -22,6 +24,9 @@ export function Editor() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
   const [openings, setOpenings] = useState<Opening[]>([])
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null)
+  const [placements, setPlacements] = useState<Placement[]>([])
+  const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null)
+  const [selectedCatalogItem, setSelectedCatalogItem] = useState<CatalogItem | null>(null)
 
   // Editor-State nach oben gehoben, damit RightSidebar darauf zugreifen kann
   const editor = usePolygonEditor()
@@ -29,7 +34,9 @@ export function Editor() {
   // Stabiler Ref auf selectedRoom/openings (kein stale closure in Callbacks)
   const selectedRoomRef = useRef<RoomPayload | null>(null)
   const openingsRef = useRef<Opening[]>(openings)
+  const placementsRef = useRef<Placement[]>(placements)
   openingsRef.current = openings
+  placementsRef.current = placements
 
   useEffect(() => {
     if (!id) return
@@ -45,9 +52,11 @@ export function Editor() {
   // Editor-Vertices + Öffnungen neu laden wenn Raum wechselt
   useEffect(() => {
     setSelectedOpeningId(null)
+    setSelectedPlacementId(null)
     if (!project || !selectedRoomId) {
       editor.reset()
       setOpenings([])
+      setPlacements([])
       return
     }
     const room = project.rooms.find(r => r.id === selectedRoomId)
@@ -59,6 +68,7 @@ export function Editor() {
     }
     // Öffnungen aus room.openings laden (JSONB, bereits im room-Objekt)
     setOpenings((room?.openings as unknown as Opening[]) ?? [])
+    setPlacements((room?.placements as unknown as Placement[]) ?? [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRoomId])
 
@@ -134,6 +144,55 @@ export function Editor() {
     handleSaveOpenings(newOpenings)
   }, [handleSaveOpenings])
 
+  const handleSavePlacements = useCallback(async (newPlacements: Placement[]) => {
+    if (!selectedRoomRef.current) return
+    try {
+      const saved = await placementsApi.save(selectedRoomRef.current.id, newPlacements)
+      setPlacements(saved)
+    } catch (e) {
+      console.error('Platzierungen speichern fehlgeschlagen:', e)
+    }
+  }, [])
+
+  const handleAddPlacement = useCallback((wallId: string, wallLengthMm: number) => {
+    if (!selectedCatalogItem) {
+      console.warn('Kein Katalogartikel ausgewählt')
+      return
+    }
+
+    const placementWidth = Math.max(1, selectedCatalogItem.width_mm)
+    const offset = Math.max(0, Math.round((wallLengthMm - placementWidth) / 2))
+    const newPlacement: Placement = {
+      id: crypto.randomUUID(),
+      catalog_item_id: selectedCatalogItem.id,
+      wall_id: wallId,
+      offset_mm: offset,
+      width_mm: placementWidth,
+      depth_mm: Math.max(1, selectedCatalogItem.depth_mm),
+      height_mm: Math.max(1, selectedCatalogItem.height_mm),
+    }
+
+    const updated = [...placementsRef.current, newPlacement]
+    setPlacements(updated)
+    setSelectedPlacementId(newPlacement.id)
+    handleSavePlacements(updated)
+  }, [handleSavePlacements, selectedCatalogItem])
+
+  const handleUpdatePlacement = useCallback((updated: Placement) => {
+    const nextPlacements = placementsRef.current.map((placement) => (
+      placement.id === updated.id ? updated : placement
+    ))
+    setPlacements(nextPlacements)
+    handleSavePlacements(nextPlacements)
+  }, [handleSavePlacements])
+
+  const handleDeletePlacement = useCallback((placementId: string) => {
+    const nextPlacements = placementsRef.current.filter((placement) => placement.id !== placementId)
+    setPlacements(nextPlacements)
+    setSelectedPlacementId((current) => (current === placementId ? null : current))
+    handleSavePlacements(nextPlacements)
+  }, [handleSavePlacements])
+
   // Dachschrägen speichern
   const handleSaveCeilingConstraints = useCallback((constraints: CeilingConstraint[]) => {
     if (!selectedRoomRef.current) return
@@ -158,16 +217,17 @@ export function Editor() {
     ? edgeLengthMm(state.vertices, state.selectedEdgeIndex)
     : null
   const selectedOpening = openings.find(o => o.id === selectedOpeningId) ?? null
+  const selectedPlacement = placements.find(p => p.id === selectedPlacementId) ?? null
 
   // Wandgeometrie für Dachschrägen-Panel
-  const selectedWallGeom = (() => {
+  const selectedWallGeom = useMemo(() => {
     const i = state.selectedEdgeIndex
     if (i === null || !state.wallIds[i]) return null
     const v0 = state.vertices[i]
     const v1 = state.vertices[(i + 1) % state.vertices.length]
     if (!v0 || !v1) return null
     return { id: state.wallIds[i], start: { x_mm: v0.x_mm, y_mm: v0.y_mm }, end: { x_mm: v1.x_mm, y_mm: v1.y_mm } }
-  })()
+  }, [state.selectedEdgeIndex, state.vertices, state.wallIds])
 
   const ceilingConstraints = ((selectedRoom as unknown as RoomPayload | null)?.ceiling_constraints as CeilingConstraint[] | undefined) ?? []
 
@@ -194,6 +254,8 @@ export function Editor() {
           selectedRoomId={selectedRoomId}
           onSelectRoom={setSelectedRoomId}
           onAddRoom={handleAddRoom}
+          selectedCatalogItem={selectedCatalogItem}
+          onSelectCatalogItem={setSelectedCatalogItem}
         />
 
         {viewMode === '2d' ? (
@@ -205,6 +267,11 @@ export function Editor() {
             selectedOpeningId={selectedOpeningId}
             onSelectOpening={setSelectedOpeningId}
             onAddOpening={handleAddOpening}
+            placements={placements}
+            selectedPlacementId={selectedPlacementId}
+            onSelectPlacement={setSelectedPlacementId}
+            canAddPlacement={selectedCatalogItem !== null}
+            onAddPlacement={handleAddPlacement}
           />
         ) : (
           <Preview3D room={selectedRoom as unknown as RoomPayload | null} />
@@ -217,12 +284,15 @@ export function Editor() {
           selectedEdgeIndex={state.selectedEdgeIndex}
           edgeLengthMm={selEdgeLen}
           selectedOpening={selectedOpening}
+          selectedPlacement={selectedPlacement}
           ceilingConstraints={ceilingConstraints}
           selectedWallGeom={selectedWallGeom}
           onMoveVertex={editor.moveVertex}
           onSetEdgeLength={editor.setEdgeLength}
           onUpdateOpening={handleUpdateOpening}
           onDeleteOpening={handleDeleteOpening}
+          onUpdatePlacement={handleUpdatePlacement}
+          onDeletePlacement={handleDeletePlacement}
           onSaveCeilingConstraints={handleSaveCeilingConstraints}
         />
       </div>

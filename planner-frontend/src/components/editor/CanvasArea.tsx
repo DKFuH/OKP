@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Opening } from '../../api/openings.js'
+import type { Placement } from '../../api/placements.js'
 import type { RoomPayload } from '../../api/rooms.js'
 import { roomsApi } from '../../api/rooms.js'
 import { PolygonEditor } from '../../editor/PolygonEditor.js'
@@ -14,9 +15,14 @@ interface Props {
   selectedOpeningId: string | null
   onSelectOpening: (id: string | null) => void
   onAddOpening: (wallId: string, wallLengthMm: number) => void
+  placements: Placement[]
+  selectedPlacementId: string | null
+  onSelectPlacement: (id: string | null) => void
+  canAddPlacement: boolean
+  onAddPlacement: (wallId: string, wallLengthMm: number) => void
 }
 
-export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening }: Props) {
+export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [saving, setSaving] = useState(false)
@@ -88,6 +94,11 @@ export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpen
           selectedOpeningId={selectedOpeningId}
           onSelectOpening={onSelectOpening}
           onAddOpening={onAddOpening}
+          placements={placements}
+          selectedPlacementId={selectedPlacementId}
+          onSelectPlacement={onSelectPlacement}
+          canAddPlacement={canAddPlacement}
+          onAddPlacement={onAddPlacement}
         />
       ) : (
         <div className={styles.placeholder}>
