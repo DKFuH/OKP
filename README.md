@@ -1,4 +1,4 @@
-# YAKDS – Yet Another Kitchen Design Software
+# YAKDS – Yet Another Kitchen Design Software (Business)
 
 Webbasierter Küchenplaner für Tischler- und Küchenstudiobetriebe.
 Polygonale Grundrisse, Dachschrägen, CAD-Interop, externe Render-Worker und vollständige kaufmännische Kalkulation in einem System.
