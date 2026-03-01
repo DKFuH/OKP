@@ -1,12 +1,14 @@
 import Fastify from 'fastify'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const RUN_ID = 'run-abc'
-const PROJECT_ID = 'proj-1'
+const RUN_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+const PROJECT_ID = '11111111-1111-1111-1111-111111111111'
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     project: { findFirst: vi.fn() },
+    generatedItem: { findMany: vi.fn() },
+    room: { findUnique: vi.fn() },
     ruleDefinition: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -24,11 +26,14 @@ const { prismaMock } = vi.hoisted(() => ({
 vi.mock('../db.js', () => ({ prisma: prismaMock }))
 
 import { validateV2Routes } from './validateV2.js'
+import { tenantMiddleware } from '../tenantMiddleware.js'
+
+const TENANT_ID = '00000000-0000-0000-0000-000000000001'
 
 function makeSnapshot() {
   return {
     project_id: PROJECT_ID,
-    room_id: 'room-1',
+    room_id: '22222222-2222-2222-2222-222222222222',
     placements: [],
     worktop_items: [],
     plinth_items: [],
@@ -38,7 +43,11 @@ function makeSnapshot() {
 }
 
 describe('validateV2Routes', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    prismaMock.generatedItem.findMany.mockResolvedValue([])
+    prismaMock.room.findUnique.mockResolvedValue(null)
+  })
 
   it('POST validate-v2 runs rules and returns results', async () => {
     prismaMock.project.findFirst.mockResolvedValue({ id: PROJECT_ID })
@@ -54,11 +63,13 @@ describe('validateV2Routes', () => {
     })
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(validateV2Routes, { prefix: '/api/v1' })
 
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${PROJECT_ID}/validate-v2`,
+      headers: { 'x-tenant-id': TENANT_ID },
       payload: makeSnapshot(),
     })
 
@@ -83,11 +94,13 @@ describe('validateV2Routes', () => {
     })
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(validateV2Routes, { prefix: '/api/v1' })
 
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${PROJECT_ID}/validate-v2`,
+      headers: { 'x-tenant-id': TENANT_ID },
       payload: { ...makeSnapshot(), placements: [{ id: 'p-1', wall_id: 'w-1', offset_mm: 0, width_mm: 600, depth_mm: 600, height_mm: 3000, type: 'tall' }] },
     })
 
@@ -102,9 +115,14 @@ describe('validateV2Routes', () => {
     ])
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(validateV2Routes, { prefix: '/api/v1' })
 
-    const res = await app.inject({ method: 'GET', url: `/api/v1/projects/${PROJECT_ID}/validate-v2/history` })
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${PROJECT_ID}/validate-v2/history`,
+      headers: { 'x-tenant-id': TENANT_ID },
+    })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toHaveLength(1)
     await app.close()
@@ -114,10 +132,15 @@ describe('validateV2Routes', () => {
     prismaMock.ruleDefinition.upsert.mockResolvedValue({})
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(validateV2Routes, { prefix: '/api/v1' })
 
-    const res = await app.inject({ method: 'POST', url: '/api/v1/rule-definitions/seed' })
-    expect(res.statusCode).toBe(200)
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rule-definitions/seed',
+      headers: { 'x-tenant-id': TENANT_ID },
+    })
+    expect(res.statusCode).toBe(201)
     expect(res.json().seeded).toBeGreaterThan(0)
     await app.close()
   })
