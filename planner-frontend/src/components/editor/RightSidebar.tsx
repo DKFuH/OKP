@@ -3,6 +3,7 @@ import type { Vertex, Point2D } from '@shared/types'
 import type { Opening } from '../../api/openings.js'
 import type { Placement } from '../../api/placements.js'
 import type { Room } from '../../api/projects.js'
+import type { ValidateResponse } from '../../api/validate.js'
 import styles from './RightSidebar.module.css'
 
 export interface CeilingConstraint {
@@ -32,6 +33,9 @@ interface Props {
   onUpdatePlacement: (placement: Placement) => void
   onDeletePlacement: (placementId: string) => void
   onSaveCeilingConstraints: (constraints: CeilingConstraint[]) => void
+  validationResult: ValidateResponse | null
+  validationLoading: boolean
+  onRunValidation: () => void
 }
 
 export function RightSidebar({
@@ -46,6 +50,7 @@ export function RightSidebar({
   onUpdateOpening, onDeleteOpening,
   onUpdatePlacement, onDeletePlacement,
   onSaveCeilingConstraints,
+  validationResult, validationLoading, onRunValidation,
 }: Props) {
   return (
     <aside className={styles.sidebar}>
@@ -93,10 +98,11 @@ export function RightSidebar({
         </div>
       )}
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Prüfungen</h3>
-        <p className={styles.empty}>Sprint 9 – folgt</p>
-      </div>
+      <ValidationPanel
+        result={validationResult}
+        loading={validationLoading}
+        onRun={onRunValidation}
+      />
 
       <CeilingConstraintPanel
         constraints={ceilingConstraints}
@@ -322,6 +328,46 @@ function EdgePanel({ edgeIndex, lengthMm, onSetLength }: {
         />
       </div>
       <p className={styles.hint}>{(lengthMm / 1000).toFixed(3)} m</p>
+    </div>
+  )
+}
+
+// ─── Validierungs-Panel ───────────────────────────────────────────────────────
+
+const SEVERITY_LABELS = { error: 'Fehler', warning: 'Warnung', hint: 'Hinweis' } as const
+const SEVERITY_CLASS = {
+  error: styles.severityError,
+  warning: styles.severityWarning,
+  hint: styles.severityHint,
+} as const
+
+function ValidationPanel({ result, loading, onRun }: {
+  result: ValidateResponse | null
+  loading: boolean
+  onRun: () => void
+}) {
+  return (
+    <div className={styles.section}>
+      <h3 className={styles.sectionTitle}>Prüfungen</h3>
+      <button type="button" className={styles.addConstraintBtn} onClick={onRun} disabled={loading}>
+        {loading ? 'Prüfe…' : 'Jetzt prüfen'}
+      </button>
+      {result && (
+        <div className={styles.validationResult}>
+          <p className={result.valid ? styles.validOk : styles.validError}>
+            {result.valid ? '✓ Keine Fehler' : `${result.errors.length} Fehler, ${result.warnings.length} Warnungen`}
+          </p>
+          {result.violations.slice(0, 10).map((v, i) => (
+            <div key={i} className={`${styles.violation} ${SEVERITY_CLASS[v.severity]}`}>
+              <span className={styles.violationBadge}>{SEVERITY_LABELS[v.severity]}</span>
+              <span className={styles.violationMsg}>{v.message}</span>
+            </div>
+          ))}
+          {result.violations.length > 10 && (
+            <p className={styles.hint}>… und {result.violations.length - 10} weitere</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -103,3 +103,37 @@
 }
 
 .addConstraintBtn:hover { border-color: #6366f1; color: #6366f1; }
+.addConstraintBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Validation Panel ──────────────────────────────────────────────────────── */
+
+.validationResult { margin-top: 0.5rem; }
+
+.validOk  { font-size: 0.8rem; color: #22c55e; margin: 0.25rem 0; }
+.validError { font-size: 0.8rem; color: #ef4444; margin: 0.25rem 0; }
+
+.violation {
+  border-left: 3px solid #d1d5db;
+  padding: 0.2rem 0.4rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.severityError   { border-left-color: #ef4444; }
+.severityWarning { border-left-color: #f59e0b; }
+.severityHint    { border-left-color: #6366f1; }
+
+.violationBadge {
+  display: block;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.severityError   .violationBadge { color: #ef4444; }
+.severityWarning .violationBadge { color: #f59e0b; }
+.severityHint    .violationBadge { color: #6366f1; }
+
+.violationMsg { color: #374151; line-height: 1.3; }

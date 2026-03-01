@@ -12,14 +12,18 @@ datasource db {
 // ─────────────────────────────────────────
 
 model User {
-  id         String    @id @default(uuid())
-  email      String    @unique
-  name       String
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
   password_hash String
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+  tenant_id     String?
+  branch_id     String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
   projects   Project[]
+  tenant     Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: SetNull)
+  branch     Branch?   @relation(fields: [branch_id], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -29,23 +33,27 @@ model User {
 // ─────────────────────────────────────────
 
 model Project {
-  id          String    @id @default(uuid())
-  user_id     String
-  name        String
-  description String?
-  status      ProjectStatus @default(active)
-  lead_status LeadStatus @default(new)
-  quote_value Float?
+  id                String    @id @default(uuid())
+  user_id           String
+  name              String
+  description       String?
+  status            ProjectStatus @default(active)
+  lead_status       LeadStatus @default(new)
+  quote_value       Float?
   close_probability Int?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  tenant_id         String?
+  branch_id         String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
 
-  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  versions    ProjectVersion[]
-  rooms       Room[]
-  quotes      Quote[]
-  render_jobs RenderJob[]
-  import_jobs ImportJob[]
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tenant            Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: SetNull)
+  branch            Branch?   @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  versions          ProjectVersion[]
+  rooms             Room[]
+  quotes            Quote[]
+  render_jobs       RenderJob[]
+  import_jobs       ImportJob[]
   customer_price_lists CustomerPriceList[]
   customer_discounts CustomerDiscount[]
   project_line_items ProjectLineItem[]
@@ -508,4 +516,261 @@ enum ImportJobStatus {
   processing
   done
   failed
+}
+
+// ─────────────────────────────────────────
+// PHASE 2 – Sprint 23: Multi-Tenant / Filialen
+// ─────────────────────────────────────────
+
+model Tenant {
+  id         String   @id @default(uuid())
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  branches   Branch[]
+  users      User[]
+  projects   Project[]
+
+  @@map("tenants")
+}
+
+model Branch {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  name          String
+  location_json Json?    // { street, city, country, … }
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  users         User[]
+  projects      Project[]
+
+  @@map("branches")
+}
+
+// ─────────────────────────────────────────
+// PHASE 2 – Sprint 20: Herstellerkatalog
+// ─────────────────────────────────────────
+
+model Manufacturer {
+  id         String          @id @default(uuid())
+  name       String
+  code       String          @unique  // z.B. "NOLTE", "NOBILIA"
+  tenant_id  String?
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+
+  articles   CatalogArticle[]
+
+  @@map("manufacturers")
+}
+
+/// Artikel aus dem Herstellerkatalog  (≠ CatalogItem, der interne Legacy-Katalog bleibt bestehen)
+model CatalogArticle {
+  id              String          @id @default(uuid())
+  manufacturer_id String
+  sku             String
+  name            String
+  article_type    ArticleType     @default(base_cabinet)
+  base_dims_json  Json            // { width_mm, height_mm, depth_mm }
+  meta_json       Json            @default("{}")
+  tenant_id       String?
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  manufacturer    Manufacturer    @relation(fields: [manufacturer_id], references: [id], onDelete: Cascade)
+  options         ArticleOption[]
+  variants        ArticleVariant[]
+  prices          ArticlePrice[]
+  generated_items GeneratedItem[]
+
+  @@unique([manufacturer_id, sku])
+  @@map("catalog_articles")
+}
+
+enum ArticleType {
+  base_cabinet
+  wall_cabinet
+  tall_cabinet
+  worktop
+  plinth
+  accessory
+  trim
+  appliance
+}
+
+model ArticleOption {
+  id              String         @id @default(uuid())
+  article_id      String
+  option_key      String         // z.B. "front_color", "handle"
+  option_type     String         // z.B. "enum", "dimension"
+  constraints_json Json          @default("{}")
+  created_at      DateTime       @default(now())
+
+  article         CatalogArticle @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@map("article_options")
+}
+
+model ArticleVariant {
+  id                  String         @id @default(uuid())
+  article_id          String
+  variant_key         String
+  variant_values_json Json           // { option_key: value, … }
+  dims_override_json  Json           @default("{}")
+  created_at          DateTime       @default(now())
+
+  article             CatalogArticle @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@map("article_variants")
+}
+
+model ArticlePrice {
+  id           String         @id @default(uuid())
+  article_id   String
+  price_list_id String
+  valid_from   DateTime
+  valid_to     DateTime?
+  list_net     Float
+  dealer_net   Float
+  tax_group_id String?
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+
+  article      CatalogArticle @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@map("article_prices")
+}
+
+// ─────────────────────────────────────────
+// PHASE 2 – Sprint 21: Auto-Vervollständigung
+// ─────────────────────────────────────────
+
+model GeneratedItem {
+  id                 String                   @id @default(uuid())
+  project_id         String
+  room_id            String?
+  catalog_article_id String?
+  item_type          GeneratedItemType
+  /// Abmessungsinformationen / Optionsausprägungen
+  params_json        Json                     @default("{}")
+  /// qty in mm (Länge für Langteil) oder Stückzahl
+  qty                Float
+  unit               String                  @default("mm")
+  label              String
+  is_generated       Boolean                 @default(true)
+  build_number       Int                     @default(1)
+  created_at         DateTime                @default(now())
+  updated_at         DateTime                @updatedAt
+
+  source_links       GeneratedItemSourceLink[]
+  catalog_article    CatalogArticle?          @relation(fields: [catalog_article_id], references: [id], onDelete: SetNull)
+
+  @@map("generated_items")
+}
+
+enum GeneratedItemType {
+  worktop
+  plinth
+  side_panel
+  handle
+  connector
+  end_cap
+  other
+}
+
+/// Verknüpfung: welche Schrank-Instanz hat dieses Langteil ausgelöst?
+model GeneratedItemSourceLink {
+  id                  String        @id @default(uuid())
+  generated_item_id   String
+  source_placement_id String        // ID der PlacedObject-Referenz (in rooms.placements JSON)
+  created_at          DateTime      @default(now())
+
+  generated_item      GeneratedItem @relation(fields: [generated_item_id], references: [id], onDelete: Cascade)
+
+  @@map("generated_item_source_links")
+}
+
+// ─────────────────────────────────────────
+// PHASE 2 – Sprint 22: Rule Engine v2
+// ─────────────────────────────────────────
+
+model RuleDefinition {
+  id          String          @id @default(uuid())
+  rule_key    String          @unique
+  category    RuleCategory
+  severity    RuleSeverity    @default(warning)
+  params_json Json            @default("{}")
+  enabled     Boolean         @default(true)
+  tenant_id   String?
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+
+  violations  RuleViolation[]
+
+  @@map("rule_definitions")
+}
+
+enum RuleCategory {
+  collision
+  clearance
+  ergonomics
+  completeness
+  accessory
+}
+
+enum RuleSeverity {
+  error
+  warning
+  hint
+}
+
+model RuleRun {
+  id           String          @id @default(uuid())
+  project_id   String
+  run_at       DateTime        @default(now())
+  summary_json Json            @default("{}")
+
+  violations   RuleViolation[]
+
+  @@map("rule_runs")
+}
+
+model RuleViolation {
+  id                 String          @id @default(uuid())
+  run_id             String
+  rule_key           String
+  rule_definition_id String?
+  severity           RuleSeverity
+  entity_refs_json   Json            @default("[]")
+  message            String
+  hint               String?
+  auto_fix_possible  Boolean         @default(false)
+  created_at         DateTime        @default(now())
+
+  run                RuleRun         @relation(fields: [run_id], references: [id], onDelete: Cascade)
+  rule_definition    RuleDefinition? @relation(fields: [rule_definition_id], references: [id], onDelete: SetNull)
+
+  @@map("rule_violations")
+}
+
+// ─────────────────────────────────────────
+// PHASE 2 – Sprint 24: Leads / Webplaner
+// ─────────────────────────────────────────
+
+model Lead {
+  id              String      @id @default(uuid())
+  tenant_id       String?
+  status          LeadStatus  @default(new)
+  contact_json    Json        // { name, email, phone, … }
+  consent_json    Json        @default("{}")
+  room_json       Json        @default("{}")  // vereinfachte Raumgeometrie (Webplaner)
+  cabinets_json   Json        @default("[]") // vereinfachte Schrankliste
+  promoted_to_project_id String? @unique
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  @@map("leads")
 }

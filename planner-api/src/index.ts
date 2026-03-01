@@ -15,6 +15,13 @@ import { quoteRoutes } from './routes/quotes.js'
 import { renderJobRoutes } from './routes/renderJobs.js'
 import { businessRoutes } from './routes/business.js'
 import { blockRoutes } from './routes/blocks.js'
+// Phase 2
+import { manufacturerRoutes } from './routes/manufacturers.js'
+import { autoCompletionRoutes } from './routes/autoCompletion.js'
+import { validateV2Routes } from './routes/validateV2.js'
+import { biRoutes } from './routes/bi.js'
+import { leadRoutes } from './routes/leads.js'
+import { tenantMiddleware } from './tenantMiddleware.js'
 import { prisma } from './db.js'
 
 const app = Fastify({ logger: true })
@@ -22,6 +29,9 @@ const app = Fastify({ logger: true })
 await app.register(cors, {
   origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
 })
+
+// Tenant-Middleware (Phase 2)
+await app.register(tenantMiddleware)
 
 // Routes
 await app.register(projectRoutes, { prefix: '/api/v1' })
@@ -39,6 +49,12 @@ await app.register(quoteRoutes, { prefix: '/api/v1' })
 await app.register(renderJobRoutes, { prefix: '/api/v1' })
 await app.register(businessRoutes, { prefix: '/api/v1' })
 await app.register(blockRoutes, { prefix: '/api/v1' })
+// Phase 2 Routes
+await app.register(manufacturerRoutes, { prefix: '/api/v1' })
+await app.register(autoCompletionRoutes, { prefix: '/api/v1' })
+await app.register(validateV2Routes, { prefix: '/api/v1' })
+await app.register(biRoutes, { prefix: '/api/v1' })
+await app.register(leadRoutes, { prefix: '/api/v1' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok' }))

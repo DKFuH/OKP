@@ -6,6 +6,7 @@ import type { CatalogItem } from '../api/catalog.js'
 import { placementsApi, type Placement } from '../api/placements.js'
 import { roomsApi, type RoomBoundaryPayload, type RoomPayload } from '../api/rooms.js'
 import { openingsApi, type Opening } from '../api/openings.js'
+import { validateApi, type ValidateResponse } from '../api/validate.js'
 import { usePolygonEditor, edgeLengthMm } from '../editor/usePolygonEditor.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
@@ -27,6 +28,8 @@ export function Editor() {
   const [placements, setPlacements] = useState<Placement[]>([])
   const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null)
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<CatalogItem | null>(null)
+  const [validationResult, setValidationResult] = useState<ValidateResponse | null>(null)
+  const [validationLoading, setValidationLoading] = useState(false)
 
   // Editor-State nach oben gehoben, damit RightSidebar darauf zugreifen kann
   const editor = usePolygonEditor()
@@ -193,6 +196,54 @@ export function Editor() {
     handleSavePlacements(nextPlacements)
   }, [handleSavePlacements])
 
+  // Geometrieprüfung ausführen
+  const handleRunValidation = useCallback(async () => {
+    if (!selectedRoomRef.current || !id) return
+    const room = selectedRoomRef.current
+    const boundary = room.boundary as { vertices?: Array<{id:string;x_mm:number;y_mm:number}>; wall_segments?: Array<{id:string;start_vertex_id?:string;end_vertex_id?:string;length_mm?:number}> }
+    const vertices = boundary.vertices ?? []
+    const wallSegments = boundary.wall_segments ?? []
+    const roomPolygon = vertices.map(v => ({ x_mm: v.x_mm, y_mm: v.y_mm }))
+    if (roomPolygon.length < 3) return
+
+    const vertexById = new Map(vertices.map(v => [v.id, v]))
+    const walls = wallSegments.flatMap(w => {
+      const s = vertexById.get(w.start_vertex_id ?? '')
+      const e = vertexById.get(w.end_vertex_id ?? '')
+      if (!s || !e) return []
+      const len = w.length_mm ?? Math.hypot(e.x_mm - s.x_mm, e.y_mm - s.y_mm)
+      return [{ id: w.id, start: { x_mm: s.x_mm, y_mm: s.y_mm }, end: { x_mm: e.x_mm, y_mm: e.y_mm }, length_mm: len }]
+    })
+
+    const objects = placementsRef.current.map(p => ({
+      id: p.id, type: 'base' as const,
+      wall_id: p.wall_id, offset_mm: p.offset_mm,
+      width_mm: p.width_mm, depth_mm: p.depth_mm, height_mm: p.height_mm,
+    }))
+    const openingsMapped = openingsRef.current.map(o => ({
+      id: o.id, wall_id: o.wall_id, offset_mm: o.offset_mm, width_mm: o.width_mm,
+    }))
+    const constraints = (room.ceiling_constraints as CeilingConstraint[] | undefined) ?? []
+
+    setValidationLoading(true)
+    try {
+      const result = await validateApi.run(id, {
+        user_id: 'anonymous',
+        roomPolygon,
+        objects,
+        openings: openingsMapped,
+        walls,
+        ceilingConstraints: constraints,
+        nominalCeilingMm: room.ceiling_height_mm,
+      })
+      setValidationResult(result)
+    } catch (e) {
+      console.error('Validierung fehlgeschlagen:', e)
+    } finally {
+      setValidationLoading(false)
+    }
+  }, [id])
+
   // Dachschrägen speichern
   const handleSaveCeilingConstraints = useCallback((constraints: CeilingConstraint[]) => {
     if (!selectedRoomRef.current) return
@@ -294,6 +345,9 @@ export function Editor() {
           onUpdatePlacement={handleUpdatePlacement}
           onDeletePlacement={handleDeletePlacement}
           onSaveCeilingConstraints={handleSaveCeilingConstraints}
+          validationResult={validationResult}
+          validationLoading={validationLoading}
+          onRunValidation={handleRunValidation}
         />
       </div>
 
