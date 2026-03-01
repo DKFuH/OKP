@@ -48,6 +48,23 @@ function resolveArticleVariantId(article: CatalogArticle, chosenOptions: Record<
   return undefined
 }
 
+function resolveArticlePriceForVariant(article: CatalogArticle, variantId?: string) {
+  const prices = article.prices ?? []
+  if (prices.length === 0) {
+    return undefined
+  }
+
+  if (variantId) {
+    const variantPrice = prices.find((price) => price.article_variant_id === variantId)
+    if (variantPrice) {
+      return variantPrice
+    }
+  }
+
+  const defaultPrice = prices.find((price) => !price.article_variant_id)
+  return defaultPrice ?? prices[0]
+}
+
 export function Editor() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -229,7 +246,6 @@ export function Editor() {
 
     const isArticle = 'base_dims_json' in selectedCatalogItem
     const article = isArticle ? (selectedCatalogItem as CatalogArticle) : null
-    const latestArticlePrice = article?.prices?.[0]
 
     const itemWidth = isArticle ? selectedCatalogItem.base_dims_json.width_mm : selectedCatalogItem.width_mm
     const itemHeight = isArticle ? selectedCatalogItem.base_dims_json.height_mm : selectedCatalogItem.height_mm
@@ -245,6 +261,7 @@ export function Editor() {
       Object.entries(chosenOptions).filter(([, value]) => value.trim() !== ''),
     )
     const resolvedVariantId = article ? resolveArticleVariantId(article, cleanedChosenOptions) : undefined
+    const resolvedArticlePrice = article ? resolveArticlePriceForVariant(article, resolvedVariantId) : undefined
 
     const placementWidth = Math.max(1, dims.width_mm)
     const offset = Math.max(0, Math.round((wallLengthMm - placementWidth) / 2))
@@ -257,11 +274,11 @@ export function Editor() {
       ...(isArticle && Object.keys(cleanedChosenOptions).length > 0
         ? { chosen_options: cleanedChosenOptions }
         : {}),
-      ...(isArticle && latestArticlePrice
+      ...(isArticle && resolvedArticlePrice
         ? {
-            list_price_net: latestArticlePrice.list_net,
-            dealer_price_net: latestArticlePrice.dealer_net,
-            ...(latestArticlePrice.tax_group_id ? { tax_group_id: latestArticlePrice.tax_group_id } : {}),
+            list_price_net: resolvedArticlePrice.list_net,
+            dealer_price_net: resolvedArticlePrice.dealer_net,
+            ...(resolvedArticlePrice.tax_group_id ? { tax_group_id: resolvedArticlePrice.tax_group_id } : {}),
           }
         : {}),
       ...(!isArticle ? { list_price_net: selectedCatalogItem.list_price_net } : {}),

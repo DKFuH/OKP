@@ -65,6 +65,7 @@ export interface CatalogArticle {
   prices?: Array<{
     id: string
     article_id: string
+    article_variant_id?: string
     price_list_id: string
     valid_from: string
     valid_to?: string | null

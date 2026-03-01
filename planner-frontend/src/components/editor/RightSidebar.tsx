@@ -464,6 +464,51 @@ const SEVERITY_CLASS = {
   hint: styles.severityHint,
 } as const
 
+function resolveVariantId(article: CatalogArticle, chosenOptions: Record<string, string>): string | undefined {
+  if (!article.variants || article.variants.length === 0) {
+    return undefined
+  }
+
+  for (const variant of article.variants) {
+    const values = (variant.variant_values_json ?? {}) as Record<string, unknown>
+    const keys = Object.keys(values)
+    if (keys.length === 0) {
+      continue
+    }
+
+    const matches = keys.every((key) => {
+      const selected = chosenOptions[key]
+      if (selected == null || selected.trim() === '') {
+        return false
+      }
+      return String(values[key]) === selected
+    })
+
+    if (matches) {
+      return variant.id
+    }
+  }
+
+  return undefined
+}
+
+function resolveVariantPrice(article: CatalogArticle, variantId?: string) {
+  const prices = article.prices ?? []
+  if (prices.length === 0) {
+    return undefined
+  }
+
+  if (variantId) {
+    const variantPrice = prices.find((price) => price.article_variant_id === variantId)
+    if (variantPrice) {
+      return variantPrice
+    }
+  }
+
+  const defaultPrice = prices.find((price) => !price.article_variant_id)
+  return defaultPrice ?? prices[0]
+}
+
 function ValidationPanel({ result, loading, onRun }: {
   result: ValidateResponse | null
   loading: boolean
@@ -698,6 +743,11 @@ function KonfiguratorPanel({ item, dimensions, onChange, chosenOptions, onSetOpt
 
   const isArticle = 'base_dims_json' in item
   const article = isArticle ? item as CatalogArticle : null
+  const matchedVariantId = article ? resolveVariantId(article, chosenOptions) : undefined
+  const matchedVariant = matchedVariantId
+    ? article?.variants?.find((variant) => variant.id === matchedVariantId)
+    : undefined
+  const previewPrice = article ? resolveVariantPrice(article, matchedVariantId) : undefined
 
   useEffect(() => {
     setW(String(Math.round(dimensions.width_mm)))
@@ -790,6 +840,22 @@ function KonfiguratorPanel({ item, dimensions, onChange, chosenOptions, onSetOpt
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {article && (
+        <div className={styles.optionsBlock}>
+          <h4 className={styles.subTitle}>Varianten-Preview</h4>
+          <p className={styles.hint}>
+            {matchedVariant
+              ? `Variante: ${matchedVariant.variant_key}`
+              : 'Variante: wird aus den gewählten Optionen bestimmt'}
+          </p>
+          <p className={styles.hint}>
+            {previewPrice
+              ? `Preis netto: ${previewPrice.list_net.toFixed(2)} €`
+              : 'Preis netto: nicht verfügbar'}
+          </p>
         </div>
       )}
 
