@@ -13,6 +13,8 @@ import { exportRoutes } from './routes/exports.js'
 import { pricingRoutes } from './routes/pricing.js'
 import { quoteRoutes } from './routes/quotes.js'
 import { renderJobRoutes } from './routes/renderJobs.js'
+import { businessRoutes } from './routes/business.js'
+import { blockRoutes } from './routes/blocks.js'
 import { prisma } from './db.js'
 
 const app = Fastify({ logger: true })
@@ -35,6 +37,8 @@ await app.register(exportRoutes, { prefix: '/api/v1' })
 await app.register(pricingRoutes, { prefix: '/api/v1' })
 await app.register(quoteRoutes, { prefix: '/api/v1' })
 await app.register(renderJobRoutes, { prefix: '/api/v1' })
+await app.register(businessRoutes, { prefix: '/api/v1' })
+await app.register(blockRoutes, { prefix: '/api/v1' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok' }))

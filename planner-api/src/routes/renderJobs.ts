@@ -1,11 +1,8 @@
-import { randomUUID } from 'node:crypto'
 import { FastifyInstance } from 'fastify'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendNotFound } from '../errors.js'
-
-const registeredWorkers = new Set<string>()
 
 const CreateRenderJobParamsSchema = z.object({
   id: z.string().uuid(),
@@ -43,8 +40,25 @@ const FailJobBodySchema = z.object({
   error_message: z.string().min(1).max(2000),
 })
 
-function ensureWorkerRegistered(workerId: string): boolean {
-  return registeredWorkers.has(workerId)
+async function touchRegisteredWorker(workerId: string): Promise<boolean> {
+  const worker = await prisma.renderNode.findUnique({
+    where: { id: workerId },
+    select: { id: true },
+  })
+
+  if (!worker) {
+    return false
+  }
+
+  await prisma.renderNode.update({
+    where: { id: workerId },
+    data: {
+      status: 'active',
+      last_seen_at: new Date(),
+    },
+  })
+
+  return true
 }
 
 export async function renderJobRoutes(app: FastifyInstance) {
@@ -101,12 +115,18 @@ export async function renderJobRoutes(app: FastifyInstance) {
       return sendBadRequest(reply, parsedBody.error.errors[0].message)
     }
 
-    const workerId = randomUUID()
-    registeredWorkers.add(workerId)
+    const worker = await prisma.renderNode.create({
+      data: {
+        node_name: parsedBody.data?.node_name ?? null,
+        status: 'active',
+        last_seen_at: new Date(),
+      },
+    })
 
     return reply.status(201).send({
-      worker_id: workerId,
-      node_name: parsedBody.data?.node_name ?? null,
+      worker_id: worker.id,
+      node_name: worker.node_name,
+      status: worker.status,
     })
   })
 
@@ -116,7 +136,7 @@ export async function renderJobRoutes(app: FastifyInstance) {
       return sendBadRequest(reply, parsedParams.error.errors[0].message)
     }
 
-    if (!ensureWorkerRegistered(parsedParams.data.workerId)) {
+    if (!(await touchRegisteredWorker(parsedParams.data.workerId))) {
       return sendNotFound(reply, 'Worker not registered')
     }
 
@@ -149,7 +169,7 @@ export async function renderJobRoutes(app: FastifyInstance) {
         return sendBadRequest(reply, parsedParams.error.errors[0].message)
       }
 
-      if (!ensureWorkerRegistered(parsedParams.data.workerId)) {
+      if (!(await touchRegisteredWorker(parsedParams.data.workerId))) {
         return sendNotFound(reply, 'Worker not registered')
       }
 
@@ -186,7 +206,7 @@ export async function renderJobRoutes(app: FastifyInstance) {
         return sendBadRequest(reply, parsedBody.error.errors[0].message)
       }
 
-      if (!ensureWorkerRegistered(parsedParams.data.workerId)) {
+      if (!(await touchRegisteredWorker(parsedParams.data.workerId))) {
         return sendNotFound(reply, 'Worker not registered')
       }
 
@@ -241,7 +261,7 @@ export async function renderJobRoutes(app: FastifyInstance) {
         return sendBadRequest(reply, parsedBody.error.errors[0].message)
       }
 
-      if (!ensureWorkerRegistered(parsedParams.data.workerId)) {
+      if (!(await touchRegisteredWorker(parsedParams.data.workerId))) {
         return sendNotFound(reply, 'Worker not registered')
       }
 

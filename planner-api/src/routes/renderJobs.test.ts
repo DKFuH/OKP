@@ -4,6 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     project: { findUnique: vi.fn() },
+    renderNode: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
     renderJob: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -25,6 +30,17 @@ import { renderJobRoutes } from './renderJobs.js'
 describe('renderJobRoutes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    prismaMock.renderNode.create.mockResolvedValue({
+      id: '44444444-4444-4444-4444-444444444444',
+      node_name: 'worker-a',
+      status: 'active',
+      last_seen_at: new Date('2026-03-01T00:00:00.000Z'),
+    })
+    prismaMock.renderNode.findUnique.mockResolvedValue({ id: '44444444-4444-4444-4444-444444444444' })
+    prismaMock.renderNode.update.mockImplementation(async (args: { where: { id: string }, data: Record<string, unknown> }) => ({
+      id: args.where.id,
+      ...args.data,
+    }))
   })
 
   it('creates render jobs for existing projects', async () => {
@@ -62,17 +78,17 @@ describe('renderJobRoutes', () => {
       .mockResolvedValueOnce({
         id: '33333333-3333-3333-3333-333333333333',
         status: 'assigned',
-        worker_id: 'dynamic-worker',
+        worker_id: '44444444-4444-4444-4444-444444444444',
       })
       .mockResolvedValueOnce({
         id: '33333333-3333-3333-3333-333333333333',
         status: 'running',
-        worker_id: 'dynamic-worker',
+        worker_id: '44444444-4444-4444-4444-444444444444',
       })
       .mockResolvedValueOnce({
         id: '33333333-3333-3333-3333-333333333333',
         status: 'done',
-        worker_id: 'dynamic-worker',
+        worker_id: '44444444-4444-4444-4444-444444444444',
       })
 
     prismaMock.renderJobResult.upsert.mockResolvedValue({
@@ -90,6 +106,7 @@ describe('renderJobRoutes', () => {
       payload: { node_name: 'worker-a' },
     })
     expect(registerResponse.statusCode).toBe(201)
+    expect(prismaMock.renderNode.create).toHaveBeenCalled()
 
     const workerId = registerResponse.json().worker_id as string
 
@@ -130,6 +147,24 @@ describe('renderJobRoutes', () => {
     })
     expect(completeResponse.statusCode).toBe(200)
     expect(completeResponse.json().job.status).toBe('done')
+
+    await app.close()
+  })
+
+  it('rejects fetch-job for unknown workers', async () => {
+    prismaMock.renderNode.findUnique.mockResolvedValue(null)
+
+    const app = Fastify()
+    await app.register(renderJobRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/render-workers/66666666-6666-6666-6666-666666666666/fetch-job',
+    })
+
+    expect(response.statusCode).toBe(404)
+    expect(response.json().error).toBe('NOT_FOUND')
+    expect(response.json().message).toBe('Worker not registered')
 
     await app.close()
   })

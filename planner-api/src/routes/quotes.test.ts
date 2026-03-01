@@ -114,11 +114,37 @@ describe('quoteRoutes', () => {
     await app.close()
   })
 
-  it('returns pdf url for export endpoint', async () => {
+  it('returns a pdf attachment for export endpoint', async () => {
     prismaMock.quote.findUnique.mockResolvedValue({
       id: '44444444-4444-4444-4444-444444444444',
       project_id: '11111111-1111-1111-1111-111111111111',
       version: 4,
+      quote_number: 'ANG-2026-0004',
+      valid_until: new Date('2026-03-31T00:00:00.000Z'),
+      free_text: 'Projekt fuer Musterkunde',
+      footer_text: 'Vielen Dank',
+      price_snapshot: {
+        subtotal_net: 500,
+        vat_amount: 95,
+        total_gross: 595,
+      },
+      items: [
+        {
+          id: 'it-1',
+          quote_id: '44444444-4444-4444-4444-444444444444',
+          position: 1,
+          type: 'cabinet',
+          description: 'Unterschrank 60',
+          qty: 1,
+          unit: 'stk',
+          unit_price_net: 500,
+          line_net: 500,
+          tax_rate: 0.19,
+          line_gross: 595,
+          notes: null,
+          show_on_quote: true,
+        },
+      ],
     })
 
     const app = Fastify()
@@ -130,7 +156,27 @@ describe('quoteRoutes', () => {
     })
 
     expect(response.statusCode).toBe(200)
-    expect(response.json().pdf_url).toBe('/api/v1/quotes/44444444-4444-4444-4444-444444444444/pdf/quote-v4.pdf')
+    expect(response.headers['content-type']).toContain('application/pdf')
+    expect(response.headers['content-disposition']).toContain('ang-2026-0004.pdf')
+    expect(response.body.startsWith('%PDF-1.4')).toBe(true)
+    expect(response.body).toContain('ANG-2026-0004')
+    expect(response.body).toContain('Unterschrank 60')
+
+    await app.close()
+  })
+
+  it('returns 404 for pdf export when quote is missing', async () => {
+    prismaMock.quote.findUnique.mockResolvedValue(null)
+
+    const app = Fastify()
+    await app.register(quoteRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/quotes/44444444-4444-4444-4444-444444444444/export-pdf',
+    })
+
+    expect(response.statusCode).toBe(404)
 
     await app.close()
   })

@@ -34,6 +34,9 @@ model Project {
   name        String
   description String?
   status      ProjectStatus @default(active)
+  lead_status LeadStatus @default(new)
+  quote_value Float?
+  close_probability Int?
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
 
@@ -43,6 +46,10 @@ model Project {
   quotes      Quote[]
   render_jobs RenderJob[]
   import_jobs ImportJob[]
+  customer_price_lists CustomerPriceList[]
+  customer_discounts CustomerDiscount[]
+  project_line_items ProjectLineItem[]
+  project_block_evaluations ProjectBlockEvaluation[]
 
   @@map("projects")
 }
@@ -50,6 +57,20 @@ model Project {
 enum ProjectStatus {
   active
   archived
+}
+
+enum LeadStatus {
+  new
+  qualified
+  quoted
+  won
+  lost
+}
+
+enum BlockBasis {
+  purchase_price
+  sell_price
+  points
 }
 
 // ─────────────────────────────────────────
@@ -273,6 +294,137 @@ model QuoteItem {
 // Render-Jobs (Platzhalter für Sprint 15)
 // ─────────────────────────────────────────
 
+model CustomerPriceList {
+  id                   String   @id @default(uuid())
+  project_id           String
+  name                 String
+  price_adjustment_pct Float    @default(0)
+  notes                String?
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  project              Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("customer_price_lists")
+}
+
+model CustomerDiscount {
+  id           String   @id @default(uuid())
+  project_id   String
+  label        String
+  discount_pct Float
+  scope        String   @default("project")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  project      Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("customer_discounts")
+}
+
+model ProjectLineItem {
+  id             String   @id @default(uuid())
+  project_id      String
+  source_type     String   @default("manual")
+  description     String
+  qty             Float
+  unit            String
+  unit_price_net  Float
+  tax_rate        Float
+  line_net        Float
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  project         Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("project_line_items")
+}
+
+model BlockProgram {
+  id                  String                   @id @default(uuid())
+  name                String
+  manufacturer        String?
+  notes               String?
+  is_active           Boolean                  @default(true)
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
+
+  groups              BlockGroup[]
+  definitions         BlockDefinitionRecord[]
+  conditions          BlockCondition[]
+  project_evaluations ProjectBlockEvaluation[]
+
+  @@map("block_programs")
+}
+
+model BlockGroup {
+  id           String                  @id @default(uuid())
+  program_id   String
+  code         String
+  name         String
+  item_selector Json?
+  created_at   DateTime                @default(now())
+  updated_at   DateTime                @updatedAt
+
+  program      BlockProgram            @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  definitions  BlockDefinitionRecord[]
+
+  @@unique([program_id, code])
+  @@map("block_groups")
+}
+
+model BlockDefinitionRecord {
+  id                     String                   @id @default(uuid())
+  program_id             String
+  block_group_id         String?
+  name                   String
+  basis                  BlockBasis
+  tiers                  Json
+  sort_order             Int                      @default(0)
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+
+  program                BlockProgram             @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  group                  BlockGroup?              @relation(fields: [block_group_id], references: [id], onDelete: SetNull)
+  conditions             BlockCondition[]
+  project_evaluations    ProjectBlockEvaluation[] @relation("BestBlockDefinition")
+
+  @@map("block_definitions")
+}
+
+model BlockCondition {
+  id                  String                 @id @default(uuid())
+  program_id          String
+  block_definition_id String?
+  field               String
+  operator            String                 @default("gte")
+  value               Json
+  created_at          DateTime               @default(now())
+  updated_at          DateTime               @updatedAt
+
+  program             BlockProgram           @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  block_definition    BlockDefinitionRecord? @relation(fields: [block_definition_id], references: [id], onDelete: Cascade)
+
+  @@map("block_conditions")
+}
+
+model ProjectBlockEvaluation {
+  id                       String                 @id @default(uuid())
+  project_id               String
+  program_id               String
+  best_block_definition_id String?
+  price_summary            Json
+  evaluations              Json
+  best_block               Json?
+  created_at               DateTime               @default(now())
+
+  project                  Project                @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  program                  BlockProgram           @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  best_block_definition    BlockDefinitionRecord? @relation("BestBlockDefinition", fields: [best_block_definition_id], references: [id], onDelete: SetNull)
+
+  @@map("project_block_evaluations")
+}
+
 model RenderJob {
   id             String          @id @default(uuid())
   project_id     String
@@ -291,12 +443,28 @@ model RenderJob {
   @@map("render_jobs")
 }
 
+model RenderNode {
+  id           String           @id @default(uuid())
+  node_name    String?
+  status       RenderNodeStatus @default(active)
+  last_seen_at DateTime         @default(now())
+  created_at   DateTime         @default(now())
+  updated_at   DateTime         @updatedAt
+
+  @@map("render_nodes")
+}
+
 enum RenderJobStatus {
   queued
   assigned
   running
   done
   failed
+}
+
+enum RenderNodeStatus {
+  active
+  offline
 }
 
 model RenderJobResult {

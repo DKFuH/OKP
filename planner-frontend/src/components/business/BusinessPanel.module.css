@@ -1,0 +1,163 @@
+.panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.meta {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.field input,
+.field select,
+.webhookRow input {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.82rem;
+}
+
+.saveBtn,
+.exportActions button,
+.downloadBtn,
+.webhookRow button {
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.saveBtn {
+  border-color: #6366f1;
+  background: #6366f1;
+  color: #ffffff;
+}
+
+.saveBtn:disabled,
+.exportActions button:disabled,
+.webhookRow button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.listBlock {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  padding: 0.55rem;
+}
+
+.listBlock h4,
+.exportBlock h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.84rem;
+  color: #111827;
+}
+
+.listBlock ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.exportBlock {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  padding: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.exportActions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.jsonPreview {
+  margin: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 0.5rem;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.75rem;
+}
+
+.webhookRow {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.webhookRow input {
+  flex: 1;
+}
+
+.empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+}
+
+.success {
+  margin: 0;
+  color: #166534;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 900px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+
+  .webhookRow {
+    flex-direction: column;
+  }
+}

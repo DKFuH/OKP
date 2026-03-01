@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendNotFound } from '../errors.js'
+import { buildQuotePdf } from '../services/pdfGenerator.js'
 
 const QuoteParamsSchema = z.object({
   id: z.string().uuid(),
@@ -157,10 +158,10 @@ export async function quoteRoutes(app: FastifyInstance) {
 
     const quote = await prisma.quote.findUnique({
       where: { id: parsedParams.data.id },
-      select: {
-        id: true,
-        project_id: true,
-        version: true,
+      include: {
+        items: {
+          orderBy: { position: 'asc' },
+        },
       },
     })
 
@@ -168,7 +169,19 @@ export async function quoteRoutes(app: FastifyInstance) {
       return sendNotFound(reply, 'Quote not found')
     }
 
-    const pdfUrl = `/api/v1/quotes/${quote.id}/pdf/quote-v${quote.version}.pdf`
-    return reply.send({ pdf_url: pdfUrl })
+    const pdf = buildQuotePdf({
+      quote_number: quote.quote_number,
+      version: quote.version,
+      valid_until: quote.valid_until,
+      free_text: quote.free_text,
+      footer_text: quote.footer_text,
+      items: quote.items,
+      price_snapshot: (quote.price_snapshot as { subtotal_net?: number; vat_amount?: number; total_gross?: number } | null | undefined),
+    })
+    const safeQuoteNumber = quote.quote_number.toLowerCase().replace(/[^a-z0-9-]+/g, '-')
+
+    reply.header('content-disposition', `attachment; filename="${safeQuoteNumber || `quote-v${quote.version}`}.pdf"`)
+    reply.type('application/pdf')
+    return reply.send(pdf)
   })
 }
