@@ -69,4 +69,63 @@ describe('bomRoutes', () => {
 
     await app.close()
   })
+
+  it('accepts articlePrices payload and prices CatalogArticle placements', async () => {
+    const app = Fastify()
+    await app.register(bomRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/bom/preview',
+      payload: {
+        project: {
+          id: 'project-22',
+          cabinets: [
+            {
+              id: 'cab-a',
+              catalog_item_id: 'article-77',
+              catalog_article_id: 'article-77',
+              article_variant_id: 'variant-red',
+              tax_group_id: 'tax-de',
+              flags: {
+                requires_customization: false,
+                height_variant: null,
+                labor_surcharge: false,
+                special_trim_needed: false,
+              },
+            },
+          ],
+          appliances: [],
+          accessories: [],
+          articlePrices: [
+            {
+              article_id: 'article-77',
+              article_variant_id: 'variant-red',
+              list_net: 850,
+              dealer_net: 600,
+              tax_group_id: 'tax-reduced',
+            },
+          ],
+          priceListItems: [],
+          taxGroups: [
+            { id: 'tax-de', name: 'DE 19%', tax_rate: 0.19 },
+            { id: 'tax-reduced', name: 'Reduced', tax_rate: 0.07 },
+          ],
+          quoteSettings: {
+            freight_flat_rate: 89,
+            assembly_rate_per_item: 45,
+          },
+        },
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    const cabinetLine = body.lines.find((line: { type: string }) => line.type === 'cabinet')
+    expect(cabinetLine).toBeDefined()
+    expect(cabinetLine.list_price_net).toBe(850)
+    expect(cabinetLine.tax_rate).toBe(0.07)
+
+    await app.close()
+  })
 })

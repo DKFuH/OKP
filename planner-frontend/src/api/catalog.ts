@@ -62,6 +62,16 @@ export interface CatalogArticle {
   }
   options?: ArticleOption[]
   variants?: ArticleVariant[]
+  prices?: Array<{
+    id: string
+    article_id: string
+    price_list_id: string
+    valid_from: string
+    valid_to?: string | null
+    list_net: number
+    dealer_net: number
+    tax_group_id?: string | null
+  }>
 }
 
 export type UnifiedCatalogItem = CatalogItem | CatalogArticle

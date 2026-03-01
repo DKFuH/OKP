@@ -83,16 +83,28 @@ export function RightSidebar({
     const taxRate = 0.19
 
     const placementWithPricing = placements.filter((placement) => placement.list_price_net != null)
-    const priceListItems = placementWithPricing.map((placement) => ({
+    const priceListItems = placementWithPricing
+      .filter((placement) => !placement.catalog_article_id)
+      .map((placement) => ({
       catalog_item_id: placement.catalog_item_id,
       list_price_net: placement.list_price_net ?? 0,
       dealer_price_net: placement.dealer_price_net ?? 0,
     }))
 
+    const articlePrices = placementWithPricing
+      .filter((placement) => placement.catalog_article_id)
+      .map((placement) => ({
+        article_id: placement.catalog_article_id as string,
+        ...(placement.article_variant_id ? { article_variant_id: placement.article_variant_id } : {}),
+        list_net: placement.list_price_net ?? 0,
+        dealer_net: placement.dealer_price_net ?? 0,
+        tax_group_id: placement.tax_group_id ?? taxGroupId,
+      }))
+
     const cabinets: BomPreviewRequest['project']['cabinets'] = placements.map((placement) => ({
       ...placement,
       id: placement.id,
-      tax_group_id: taxGroupId,
+      tax_group_id: placement.tax_group_id ?? taxGroupId,
       qty: 1,
       pricing_group_discount_pct: 0,
       position_discount_pct: 0,
@@ -110,6 +122,7 @@ export function RightSidebar({
         cabinets,
         appliances: [],
         accessories: [],
+        articlePrices,
         priceListItems,
         taxGroups: [{ id: taxGroupId, name: 'Standard', tax_rate: taxRate }],
         quoteSettings: {

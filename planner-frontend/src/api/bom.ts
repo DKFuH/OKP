@@ -5,6 +5,7 @@ export interface BomPlacement {
   id: string
   catalog_item_id: string
   catalog_article_id?: string
+  article_variant_id?: string
   description?: string
   chosen_options?: Record<string, string>
   qty?: number
@@ -29,6 +30,13 @@ export interface BomPreviewRequest {
     cabinets: BomPlacement[]
     appliances: BomPlacement[]
     accessories?: BomPlacement[]
+    articlePrices?: Array<{
+      article_id: string
+      article_variant_id?: string
+      list_net: number
+      dealer_net: number
+      tax_group_id?: string
+    }>
     priceListItems: Array<{
       catalog_item_id: string
       list_price_net: number

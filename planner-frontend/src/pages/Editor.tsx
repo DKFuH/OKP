@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import type { Vertex } from '@shared/types'
 import { projectsApi, type ProjectDetail } from '../api/projects.js'
 import {
-  type UnifiedCatalogItem
+  type CatalogArticle,
+  type UnifiedCatalogItem,
 } from '../api/catalog.js'
 import { placementsApi, type Placement } from '../api/placements.js'
 import { roomsApi, type RoomBoundaryPayload, type RoomPayload } from '../api/rooms.js'
@@ -17,6 +18,34 @@ import { LeftSidebar } from '../components/editor/LeftSidebar.js'
 import { RightSidebar, type CeilingConstraint, type ConfiguredDimensions } from '../components/editor/RightSidebar.js'
 import { StatusBar } from '../components/editor/StatusBar.js'
 import styles from './Editor.module.css'
+
+function resolveArticleVariantId(article: CatalogArticle, chosenOptions: Record<string, string>): string | undefined {
+  if (!article.variants || article.variants.length === 0) {
+    return undefined
+  }
+
+  for (const variant of article.variants) {
+    const values = (variant.variant_values_json ?? {}) as Record<string, unknown>
+    const keys = Object.keys(values)
+    if (keys.length === 0) {
+      continue
+    }
+
+    const matches = keys.every((key) => {
+      const selected = chosenOptions[key]
+      if (selected == null || selected.trim() === '') {
+        return false
+      }
+      return String(values[key]) === selected
+    })
+
+    if (matches) {
+      return variant.id
+    }
+  }
+
+  return undefined
+}
 
 export function Editor() {
   const { id } = useParams<{ id: string }>()
@@ -197,6 +226,8 @@ export function Editor() {
     }
 
     const isArticle = 'base_dims_json' in selectedCatalogItem
+    const article = isArticle ? (selectedCatalogItem as CatalogArticle) : null
+    const latestArticlePrice = article?.prices?.[0]
 
     const itemWidth = isArticle ? selectedCatalogItem.base_dims_json.width_mm : selectedCatalogItem.width_mm
     const itemHeight = isArticle ? selectedCatalogItem.base_dims_json.height_mm : selectedCatalogItem.height_mm
@@ -211,6 +242,7 @@ export function Editor() {
     const cleanedChosenOptions = Object.fromEntries(
       Object.entries(chosenOptions).filter(([, value]) => value.trim() !== ''),
     )
+    const resolvedVariantId = article ? resolveArticleVariantId(article, cleanedChosenOptions) : undefined
 
     const placementWidth = Math.max(1, dims.width_mm)
     const offset = Math.max(0, Math.round((wallLengthMm - placementWidth) / 2))
@@ -218,9 +250,17 @@ export function Editor() {
       id: crypto.randomUUID(),
       catalog_item_id: selectedCatalogItem.id,
       ...(isArticle ? { catalog_article_id: selectedCatalogItem.id } : {}),
+      ...(resolvedVariantId ? { article_variant_id: resolvedVariantId } : {}),
       description: selectedCatalogItem.name,
       ...(isArticle && Object.keys(cleanedChosenOptions).length > 0
         ? { chosen_options: cleanedChosenOptions }
+        : {}),
+      ...(isArticle && latestArticlePrice
+        ? {
+            list_price_net: latestArticlePrice.list_net,
+            dealer_price_net: latestArticlePrice.dealer_net,
+            ...(latestArticlePrice.tax_group_id ? { tax_group_id: latestArticlePrice.tax_group_id } : {}),
+          }
         : {}),
       ...(!isArticle ? { list_price_net: selectedCatalogItem.list_price_net } : {}),
       ...(!isArticle && selectedCatalogItem.dealer_price_net != null

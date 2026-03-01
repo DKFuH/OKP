@@ -12,7 +12,10 @@ function baseProject(): ProjectSnapshot {
       { catalog_item_id: 'cab-60', list_price_net: 500, dealer_price_net: 300 },
       { catalog_item_id: 'stove-1', list_price_net: 1200, dealer_price_net: 800 }
     ],
-    taxGroups: [{ id: 'tax-de', name: 'DE 19%', tax_rate: 0.19 }],
+    taxGroups: [
+      { id: 'tax-de', name: 'DE 19%', tax_rate: 0.19 },
+      { id: 'tax-reduced', name: 'Reduced', tax_rate: 0.07 }
+    ],
     quoteSettings: {
       freight_flat_rate: 89,
       assembly_rate_per_item: 45
@@ -231,5 +234,47 @@ describe('bomCalculator', () => {
     expect(cabinetLine?.description).toContain('Hersteller-Unterschrank 90');
     expect(cabinetLine?.description).toContain('front: Mattweiß');
     expect(cabinetLine?.description).toContain('griff: Stange');
+  });
+
+  it('resolves article_variant_id against ArticlePrice and applies matching tax group', () => {
+    const project = baseProject();
+    project.cabinets = [
+      {
+        id: 'cab-variant-1',
+        catalog_item_id: 'article-901',
+        catalog_article_id: 'article-901',
+        article_variant_id: 'variant-a',
+        description: 'Hersteller-Hochschrank',
+        tax_group_id: 'tax-de',
+        flags: {
+          requires_customization: false,
+          height_variant: null,
+          labor_surcharge: false,
+          special_trim_needed: false,
+        },
+      } as any,
+    ];
+
+    const lines = calculateBOM({
+      ...project,
+      articlePrices: [
+        {
+          article_id: 'article-901',
+          article_variant_id: 'variant-a',
+          list_net: 999,
+          dealer_net: 700,
+          tax_group_id: 'tax-reduced',
+        },
+      ],
+    });
+
+    const cabinetLine = lines.find((line: BOMLine) => line.type === 'cabinet');
+
+    expect(cabinetLine).toBeDefined();
+    expect(cabinetLine?.list_price_net).toBe(999);
+    expect(cabinetLine?.dealer_price_net).toBe(700);
+    expect(cabinetLine?.tax_group_id).toBe('tax-reduced');
+    expect(cabinetLine?.tax_rate).toBe(0.07);
+    expect(cabinetLine?.line_net_after_discounts).toBeGreaterThan(0);
   });
 });

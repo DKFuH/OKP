@@ -8,8 +8,46 @@ import type {
   TaxGroup
 } from '@yakds/shared-schemas';
 
+export interface ArticlePriceInput {
+  article_id: string;
+  article_variant_id?: string;
+  list_net: number;
+  dealer_net: number;
+  tax_group_id?: string;
+}
+
+export interface ProjectSnapshotPricingInput extends ProjectSnapshot {
+  articlePrices?: ArticlePriceInput[];
+}
+
+type CatalogPlacementWithVariant = CatalogPlacementBase & {
+  article_variant_id?: string;
+};
+
 function findPrice(itemId: string, priceListItems: PriceListItem[]): PriceListItem | null {
   return priceListItems.find((item) => item.catalog_item_id === itemId) ?? null;
+}
+
+function findArticlePrice(
+  source: CatalogPlacementWithVariant,
+  articlePrices: ArticlePriceInput[]
+): ArticlePriceInput | null {
+  if (!source.catalog_article_id) {
+    return null;
+  }
+
+  if (source.article_variant_id) {
+    const variantMatch = articlePrices.find(
+      (price) =>
+        price.article_id === source.catalog_article_id &&
+        price.article_variant_id === source.article_variant_id
+    );
+    if (variantMatch) {
+      return variantMatch;
+    }
+  }
+
+  return articlePrices.find((price) => price.article_id === source.catalog_article_id) ?? null;
 }
 
 function findTaxRate(taxGroupId: string, taxGroups: TaxGroup[]): number {
@@ -36,14 +74,16 @@ function placementLabel(source: CatalogPlacementBase): string {
 
 function createCatalogLine(
   projectId: string,
-  source: CatalogPlacementBase,
+  source: CatalogPlacementWithVariant,
   lineType: 'cabinet' | 'appliance' | 'accessory',
   priceListItems: PriceListItem[],
-  taxGroups: TaxGroup[]
+  taxGroups: TaxGroup[],
+  articlePrices: ArticlePriceInput[]
 ): BOMLine {
   const price = findPrice(source.catalog_item_id, priceListItems);
-  const listPrice = source.list_price_net ?? price?.list_price_net ?? 0;
-  const dealerPrice = source.dealer_price_net ?? price?.dealer_price_net ?? 0;
+  const articlePrice = findArticlePrice(source, articlePrices);
+  const listPrice = source.list_price_net ?? articlePrice?.list_net ?? price?.list_price_net ?? 0;
+  const dealerPrice = source.dealer_price_net ?? articlePrice?.dealer_net ?? price?.dealer_price_net ?? 0;
   const qty = source.qty ?? 1;
   const variantSurcharge = source.flags.variant_surcharge ?? 0;
   const objectSurcharges = source.flags.object_surcharges ?? 0;
@@ -51,6 +91,7 @@ function createCatalogLine(
   const groupDiscount = clampPercent(source.pricing_group_discount_pct ?? 0);
   const optionLabel = renderChosenOptions(source);
   const baseLabel = placementLabel(source);
+  const resolvedTaxGroupId = articlePrice?.tax_group_id ?? source.tax_group_id;
 
   const grossLineNet = qty * listPrice + variantSurcharge + objectSurcharges;
   const afterPos = grossLineNet * (1 - posDiscount / 100);
@@ -71,8 +112,8 @@ function createCatalogLine(
     position_discount_pct: posDiscount,
     pricing_group_discount_pct: groupDiscount,
     line_net_after_discounts: afterGroup,
-    tax_group_id: source.tax_group_id,
-    tax_rate: findTaxRate(source.tax_group_id, taxGroups)
+    tax_group_id: resolvedTaxGroupId,
+    tax_rate: findTaxRate(resolvedTaxGroupId, taxGroups)
   };
 }
 
@@ -153,17 +194,20 @@ export interface CalculateBOMOptions {
   generatedItems?: GeneratedItemInput[];
 }
 
-export function calculateBOM(project: ProjectSnapshot, options: CalculateBOMOptions = {}): BOMLine[] {
+export function calculateBOM(project: ProjectSnapshotPricingInput, options: CalculateBOMOptions = {}): BOMLine[] {
   const lines: BOMLine[] = [];
   const defaultTax = defaultTaxGroup(project.taxGroups);
   const specialTrimSurchargeNet = options.specialTrimSurchargeNet ?? 0;
+  const articlePrices = project.articlePrices ?? [];
 
   const cabinets: PlacedCabinet[] = project.cabinets ?? [];
   const appliances: PlacedAppliance[] = project.appliances ?? [];
   const accessories = project.accessories ?? [];
 
   for (const cabinet of cabinets) {
-    lines.push(createCatalogLine(project.id, cabinet, 'cabinet', project.priceListItems, project.taxGroups));
+    lines.push(
+      createCatalogLine(project.id, cabinet, 'cabinet', project.priceListItems, project.taxGroups, articlePrices)
+    );
 
     if (cabinet.flags.special_trim_needed) {
       lines.push(
@@ -193,7 +237,9 @@ export function calculateBOM(project: ProjectSnapshot, options: CalculateBOMOpti
   }
 
   for (const appliance of appliances) {
-    lines.push(createCatalogLine(project.id, appliance, 'appliance', project.priceListItems, project.taxGroups));
+    lines.push(
+      createCatalogLine(project.id, appliance, 'appliance', project.priceListItems, project.taxGroups, articlePrices)
+    );
 
     if (appliance.flags.labor_surcharge) {
       lines.push(
@@ -210,7 +256,9 @@ export function calculateBOM(project: ProjectSnapshot, options: CalculateBOMOpti
   }
 
   for (const accessory of accessories) {
-    lines.push(createCatalogLine(project.id, accessory, 'accessory', project.priceListItems, project.taxGroups));
+    lines.push(
+      createCatalogLine(project.id, accessory, 'accessory', project.priceListItems, project.taxGroups, articlePrices)
+    );
   }
 
   for (const item of options.generatedItems ?? []) {

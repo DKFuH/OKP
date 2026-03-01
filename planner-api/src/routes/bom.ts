@@ -1,8 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import type { ProjectSnapshot } from '@yakds/shared-schemas'
 import { sendBadRequest } from '../errors.js'
-import { calculateBOM, sumBOMLines } from '../services/bomCalculator.js'
+import { calculateBOM, sumBOMLines, type ProjectSnapshotPricingInput } from '../services/bomCalculator.js'
 
 const FlagsSchema = z.object({
   requires_customization: z.boolean(),
@@ -17,6 +16,7 @@ const PlacementBaseSchema = z.object({
   id: z.string().min(1),
   catalog_item_id: z.string().min(1),
   catalog_article_id: z.string().min(1).optional(),
+  article_variant_id: z.string().min(1).optional(),
   description: z.string().optional(),
   chosen_options: z.record(z.string(), z.string()).optional(),
   qty: z.number().positive().optional(),
@@ -33,6 +33,15 @@ const ProjectSnapshotSchema = z.object({
   cabinets: z.array(PlacementBaseSchema),
   appliances: z.array(PlacementBaseSchema),
   accessories: z.array(PlacementBaseSchema).optional(),
+  articlePrices: z.array(
+    z.object({
+      article_id: z.string().min(1),
+      article_variant_id: z.string().min(1).optional(),
+      list_net: z.number().min(0),
+      dealer_net: z.number().min(0),
+      tax_group_id: z.string().min(1).optional(),
+    }),
+  ).optional(),
   priceListItems: z.array(
     z.object({
       catalog_item_id: z.string().min(1),
@@ -60,7 +69,7 @@ const BomPreviewRequestSchema = z.object({
   }).optional(),
 })
 
-function calculateBomPreview(project: ProjectSnapshot, specialTrimSurchargeNet?: number) {
+function calculateBomPreview(project: ProjectSnapshotPricingInput, specialTrimSurchargeNet?: number) {
   const lines = calculateBOM(project, { specialTrimSurchargeNet })
   const totals = sumBOMLines(lines)
   return { lines, totals }
@@ -74,7 +83,7 @@ export async function bomRoutes(app: FastifyInstance) {
     }
 
     return reply.send(
-      calculateBomPreview(parsed.data.project as ProjectSnapshot, parsed.data.options?.specialTrimSurchargeNet),
+      calculateBomPreview(parsed.data.project as ProjectSnapshotPricingInput, parsed.data.options?.specialTrimSurchargeNet),
     )
   }
 
