@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest';
+import type { CadEntity, Opening, WallSegment } from '../types';
+import { detectOpeningsFromCad, validateOpening } from './openingValidator';
+
+const wall: WallSegment = {
+  id: 'wall-1',
+  length_mm: 4000
+};
+
+describe('openingValidator', () => {
+  it('validates an opening inside wall bounds', () => {
+    const opening: Opening = { id: 'opening-1', wall_id: 'wall-1', offset_mm: 500, width_mm: 1000 };
+
+    expect(validateOpening(wall, opening, [])).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects overlapping openings', () => {
+    const opening: Opening = { id: 'opening-1', wall_id: 'wall-1', offset_mm: 500, width_mm: 1000 };
+    const existing: Opening[] = [{ id: 'opening-2', wall_id: 'wall-1', offset_mm: 1200, width_mm: 900 }];
+
+    const result = validateOpening(wall, opening, existing);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((error) => error.includes('overlaps'))).toBe(true);
+  });
+
+  it('rejects openings outside the wall', () => {
+    const opening: Opening = { id: 'opening-1', wall_id: 'wall-1', offset_mm: 3500, width_mm: 700 };
+
+    const result = validateOpening(wall, opening, []);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Opening exceeds wall length.');
+  });
+
+  it('detects gaps between CAD segments as opening candidates', () => {
+    const entities: CadEntity[] = [
+      {
+        id: 'line-1',
+        layer_id: 'layer-1',
+        type: 'line',
+        geometry: {
+          type: 'line',
+          start: { x_mm: 0, y_mm: 0 },
+          end: { x_mm: 1000, y_mm: 0 }
+        }
+      },
+      {
+        id: 'line-2',
+        layer_id: 'layer-1',
+        type: 'line',
+        geometry: {
+          type: 'line',
+          start: { x_mm: 1800, y_mm: 0 },
+          end: { x_mm: 4000, y_mm: 0 }
+        }
+      }
+    ];
+
+    expect(detectOpeningsFromCad(entities, 4000)).toEqual([
+      {
+        offset_mm: 1000,
+        width_mm: 800,
+        confidence: 'high'
+      }
+    ]);
+  });
+});

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { projectsApi, type ProjectDetail } from '../api/projects.js'
+import { roomsApi, type RoomPayload } from '../api/rooms.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { LeftSidebar } from '../components/editor/LeftSidebar.js'
 import { RightSidebar } from '../components/editor/RightSidebar.js'
@@ -26,6 +27,31 @@ export function Editor() {
       .finally(() => setLoading(false))
   }, [id])
 
+  // Raum anlegen
+  const handleAddRoom = useCallback(async () => {
+    if (!project) return
+    const name = prompt('Raumname:')
+    if (!name?.trim()) return
+    const newRoom = await roomsApi.create({
+      project_id: project.id,
+      name: name.trim(),
+      boundary: { vertices: [], wall_segments: [] },
+    })
+    setProject(prev => prev ? { ...prev, rooms: [...prev.rooms, newRoom as unknown as ProjectDetail['rooms'][0]] } : prev)
+    setSelectedRoomId(newRoom.id)
+  }, [project])
+
+  // Raum nach Boundary-Update aktualisieren
+  const handleRoomUpdated = useCallback((updated: RoomPayload) => {
+    setProject(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        rooms: prev.rooms.map(r => r.id === updated.id ? updated as unknown as typeof r : r),
+      }
+    })
+  }, [])
+
   if (loading) return <div className={styles.center}>Lade Projekt…</div>
   if (error) return <div className={styles.center}>{error}</div>
   if (!project) return null
@@ -34,30 +60,27 @@ export function Editor() {
 
   return (
     <div className={styles.shell}>
-      {/* ── Topbar ── */}
       <header className={styles.topbar}>
-        <button className={styles.backBtn} onClick={() => navigate('/')}>← Projekte</button>
+        <button type="button" className={styles.backBtn} onClick={() => navigate('/')}>← Projekte</button>
         <span className={styles.projectName}>{project.name}</span>
         <div className={styles.topbarActions}>
-          <button className={styles.btnSecondary}>Angebot</button>
-          <button className={styles.btnPrimary}>Speichern</button>
+          <button type="button" className={styles.btnSecondary}>Angebot</button>
         </div>
       </header>
 
-      {/* ── Hauptbereich ── */}
       <div className={styles.workspace}>
         <LeftSidebar
           rooms={project.rooms}
           selectedRoomId={selectedRoomId}
           onSelectRoom={setSelectedRoomId}
+          onAddRoom={handleAddRoom}
         />
 
-        <CanvasArea room={selectedRoom} />
+        <CanvasArea room={selectedRoom as unknown as RoomPayload | null} onRoomUpdated={handleRoomUpdated} />
 
         <RightSidebar room={selectedRoom} />
       </div>
 
-      {/* ── Statuszeile ── */}
       <StatusBar project={project} selectedRoom={selectedRoom} />
     </div>
   )

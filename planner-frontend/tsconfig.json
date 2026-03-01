@@ -9,7 +9,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@shared/*": ["../shared-schemas/src/*"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { snapPoint, snapToAngle, snapToGrid } from './snapUtils';
 
 describe('snapUtils', () => {
@@ -25,6 +26,7 @@ describe('snapUtils', () => {
   it('combines grid and angle snapping', () => {
     const snapped = snapPoint({ x_mm: 980, y_mm: 1020 }, { x_mm: 0, y_mm: 0 }, 100, true);
 
-    expect(snapped).toEqual({ x_mm: 1000, y_mm: 1000 });
+    expect(snapped.x_mm).toBeCloseTo(1000, 6);
+    expect(snapped.y_mm).toBeCloseTo(1000, 6);
   });
 });

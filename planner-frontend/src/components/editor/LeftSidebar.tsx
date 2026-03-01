@@ -5,9 +5,10 @@ interface Props {
   rooms: Room[]
   selectedRoomId: string | null
   onSelectRoom: (id: string) => void
+  onAddRoom: () => void
 }
 
-export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom }: Props) {
+export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom }: Props) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.section}>
@@ -27,7 +28,7 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom }: Props) {
             ))}
           </ul>
         )}
-        <button className={styles.addBtn}>+ Raum hinzufügen</button>
+        <button type="button" className={styles.addBtn} onClick={onAddRoom}>+ Raum hinzufügen</button>
       </div>
 
       <div className={styles.section}>

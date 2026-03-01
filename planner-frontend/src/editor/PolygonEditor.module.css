@@ -1,0 +1,88 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.spacer { flex: 1; }
+
+.toolBtn {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #374151;
+}
+.toolBtn:hover { border-color: #6366f1; color: #6366f1; }
+.toolBtnActive { background: #ede9fe; border-color: #6366f1; color: #6366f1; font-weight: 600; }
+
+.closeBtn {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid #6366f1;
+  border-radius: 5px;
+  background: #6366f1;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.resetBtn {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  background: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.resetBtn:hover { border-color: #ef4444; color: #ef4444; }
+
+.saveBtn {
+  padding: 0.3rem 1rem;
+  border: none;
+  border-radius: 5px;
+  background: #10b981;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.saveBtn:hover { background: #059669; }
+
+.errorBadge {
+  font-size: 0.78rem;
+  color: #ef4444;
+  background: #fee2e2;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0.75rem;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.vertexCount { font-weight: 600; color: #6b7280; }
