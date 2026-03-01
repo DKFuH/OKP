@@ -1,18 +1,19 @@
 import Fastify from 'fastify'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const tenantId = '00000000-0000-0000-0000-000000000001'
 const projectId = '11111111-1111-1111-1111-111111111111'
 const importJobId = '22222222-2222-2222-2222-222222222222'
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     project: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     importJob: {
       create: vi.fn(),
       update: vi.fn(),
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }))
@@ -22,6 +23,7 @@ vi.mock('../db.js', () => ({
 }))
 
 import { importRoutes } from './imports.js'
+import { tenantMiddleware } from '../tenantMiddleware.js'
 
 function createMinimalDxf(): string {
   return [
@@ -107,7 +109,7 @@ describe('importRoutes', () => {
     vi.clearAllMocks()
     persistedJob = null
 
-    prismaMock.project.findUnique.mockResolvedValue({ id: projectId })
+    prismaMock.project.findFirst.mockResolvedValue({ id: projectId })
     prismaMock.importJob.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
       persistedJob = createImportJob(data)
       return persistedJob
@@ -122,7 +124,7 @@ describe('importRoutes', () => {
         return persistedJob
       },
     )
-    prismaMock.importJob.findUnique.mockImplementation(async ({ where }: { where: { id: string } }) => {
+    prismaMock.importJob.findFirst.mockImplementation(async ({ where }: { where: { id?: string } }) => {
       if (persistedJob?.id === where.id) {
         return persistedJob
       }
@@ -133,6 +135,7 @@ describe('importRoutes', () => {
 
   it('returns a parsed DXF preview asset', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
@@ -158,6 +161,7 @@ describe('importRoutes', () => {
 
   it('returns a parsed SKP preview model from base64 payloads', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
@@ -180,11 +184,13 @@ describe('importRoutes', () => {
 
   it('creates and stores a processed DXF import job', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/imports/cad',
+      headers: { 'x-tenant-id': tenantId },
       payload: {
         project_id: projectId,
         source_filename: 'room.dxf',
@@ -222,11 +228,13 @@ describe('importRoutes', () => {
 
   it('stores DWG uploads as reviewable import jobs', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/imports/cad',
+      headers: { 'x-tenant-id': tenantId },
       payload: {
         project_id: projectId,
         source_filename: 'room.dwg',
@@ -250,11 +258,13 @@ describe('importRoutes', () => {
 
   it('creates and stores a processed SKP import job with mapping overrides', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/imports/skp',
+      headers: { 'x-tenant-id': tenantId },
       payload: {
         project_id: projectId,
         source_filename: 'reference.skp',
@@ -304,11 +314,13 @@ describe('importRoutes', () => {
     })
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: `/api/v1/imports/${importJobId}`,
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(200)
@@ -351,11 +363,13 @@ describe('importRoutes', () => {
     })
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: `/api/v1/imports/${importJobId}/layers`,
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(200)
@@ -402,11 +416,13 @@ describe('importRoutes', () => {
     })
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: `/api/v1/imports/${importJobId}/mapping-state`,
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(200)
@@ -431,11 +447,13 @@ describe('importRoutes', () => {
     })
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: `/api/v1/imports/${importJobId}/layers`,
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(409)
@@ -455,11 +473,13 @@ describe('importRoutes', () => {
     })
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: `/api/v1/imports/${importJobId}/mapping-state`,
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(409)
@@ -473,11 +493,13 @@ describe('importRoutes', () => {
 
   it('rejects malformed CAD import payloads', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/imports/cad',
+      headers: { 'x-tenant-id': tenantId },
       payload: {
         project_id: projectId,
         source_filename: 'room.dxf',
@@ -491,14 +513,16 @@ describe('importRoutes', () => {
   })
 
   it('returns 404 when the project for an import job does not exist', async () => {
-    prismaMock.project.findUnique.mockResolvedValueOnce(null)
+    prismaMock.project.findFirst.mockResolvedValueOnce(null)
 
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/imports/skp',
+      headers: { 'x-tenant-id': tenantId },
       payload: {
         project_id: projectId,
         source_filename: 'missing-project.skp',
@@ -509,6 +533,7 @@ describe('importRoutes', () => {
     expect(response.statusCode).toBe(404)
     expect(response.json()).toMatchObject({
       error: 'NOT_FOUND',
+      message: 'Project not found in tenant scope',
     })
 
     await app.close()
@@ -516,17 +541,19 @@ describe('importRoutes', () => {
 
   it('returns 404 for unknown import jobs', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/imports/33333333-3333-3333-3333-333333333333',
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(404)
     expect(response.json()).toMatchObject({
       error: 'NOT_FOUND',
-      message: 'Import job not found',
+      message: 'Import job not found in tenant scope',
     })
 
     await app.close()
@@ -534,17 +561,19 @@ describe('importRoutes', () => {
 
   it('returns 404 for unknown import job layers', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/imports/33333333-3333-3333-3333-333333333333/layers',
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(404)
     expect(response.json()).toMatchObject({
       error: 'NOT_FOUND',
-      message: 'Import job not found',
+      message: 'Import job not found in tenant scope',
     })
 
     await app.close()
@@ -552,18 +581,59 @@ describe('importRoutes', () => {
 
   it('returns 404 for unknown import job mapping state', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(importRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'GET',
       url: '/api/v1/imports/33333333-3333-3333-3333-333333333333/mapping-state',
+      headers: { 'x-tenant-id': tenantId },
     })
 
     expect(response.statusCode).toBe(404)
     expect(response.json()).toMatchObject({
       error: 'NOT_FOUND',
-      message: 'Import job not found',
+      message: 'Import job not found in tenant scope',
     })
+
+    await app.close()
+  })
+
+  it('returns 403 when tenant header is missing for CAD imports', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(importRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/imports/cad',
+      payload: {
+        project_id: projectId,
+        source_filename: 'room.dxf',
+        dxf: createMinimalDxf(),
+      },
+    })
+
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toMatchObject({ error: 'FORBIDDEN' })
+
+    await app.close()
+  })
+
+  it('returns 403 when tenant header is missing for import job reads', async () => {
+    persistedJob = createImportJob({ id: importJobId, status: 'done' })
+
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(importRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/imports/${importJobId}`,
+    })
+
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toMatchObject({ error: 'FORBIDDEN' })
 
     await app.close()
   })

@@ -1,10 +1,27 @@
 import Fastify from 'fastify'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const tenantId = '00000000-0000-0000-0000-000000000001'
+const projectId = '11111111-1111-1111-1111-111111111111'
+
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: {
+    project: {
+      findFirst: vi.fn(),
+    },
+  },
+}))
+
+vi.mock('../db.js', () => ({
+  prisma: prismaMock,
+}))
 
 import { exportRoutes } from './exports.js'
+import { tenantMiddleware } from '../tenantMiddleware.js'
 
 function createPayload() {
   return {
+    project_id: projectId,
     filename: 'kitchen-plan',
     payload: {
       room: {
@@ -47,13 +64,20 @@ function createPayload() {
 }
 
 describe('exportRoutes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    prismaMock.project.findFirst.mockResolvedValue({ id: projectId })
+  })
+
   it('returns a DXF document as attachment', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(exportRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/exports/dxf',
+      headers: { 'x-tenant-id': tenantId },
       payload: createPayload(),
     })
 
@@ -68,12 +92,15 @@ describe('exportRoutes', () => {
 
   it('rejects malformed export payloads', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(exportRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/exports/dxf',
+      headers: { 'x-tenant-id': tenantId },
       payload: {
+        project_id: projectId,
         payload: {
           room: { boundary: [] },
           wallSegments: [],
@@ -91,11 +118,13 @@ describe('exportRoutes', () => {
 
   it('returns a clear staging error for native DWG exports by default', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(exportRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/exports/dwg',
+      headers: { 'x-tenant-id': tenantId },
       payload: createPayload(),
     })
 
@@ -110,11 +139,13 @@ describe('exportRoutes', () => {
 
   it('can fall back from DWG export requests to DXF attachments when allowed', async () => {
     const app = Fastify()
+    await app.register(tenantMiddleware)
     await app.register(exportRoutes, { prefix: '/api/v1' })
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/projects/11111111-1111-1111-1111-111111111111/export-dwg',
+      headers: { 'x-tenant-id': tenantId },
       payload: {
         ...createPayload(),
         filename: 'kitchen-plan.dwg',
@@ -127,6 +158,46 @@ describe('exportRoutes', () => {
     expect(response.headers['content-disposition']).toContain('kitchen-plan.dxf')
     expect(response.headers['content-type']).toContain('application/dxf')
     expect(response.body).toContain('YAKDS_WALLS')
+
+    await app.close()
+  })
+
+  it('returns 403 without tenant header', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/exports/dxf',
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toMatchObject({ error: 'FORBIDDEN' })
+
+    await app.close()
+  })
+
+  it('returns 404 when project is outside tenant scope', async () => {
+    prismaMock.project.findFirst.mockResolvedValueOnce(null)
+
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/exports/dxf',
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(404)
+    expect(response.json()).toMatchObject({
+      error: 'NOT_FOUND',
+      message: 'Project not found in tenant scope',
+    })
 
     await app.close()
   })

@@ -2,8 +2,9 @@ import { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import type { ExportPayload } from '@yakds/shared-schemas'
 import { exportToDxf } from '@yakds/dxf-export'
+import { prisma } from '../db.js'
 
-import { sendBadRequest } from '../errors.js'
+import { sendBadRequest, sendForbidden, sendNotFound } from '../errors.js'
 
 const PointSchema = z.object({
   x_mm: z.number(),
@@ -11,6 +12,7 @@ const PointSchema = z.object({
 })
 
 const ExportRequestSchema = z.object({
+  project_id: z.string().uuid().optional(),
   filename: z.string().min(1).max(255).optional(),
   allow_dxf_fallback: z.boolean().optional(),
   payload: z.object({
@@ -57,6 +59,38 @@ const ExportRequestSchema = z.object({
   }),
 })
 
+const ExportProjectParamsSchema = z.object({
+  projectId: z.string().uuid(),
+})
+
+function getTenantId(request: unknown): string | null {
+  const scopedTenantId = (request as { tenantId?: string | null }).tenantId
+  if (scopedTenantId) {
+    return scopedTenantId
+  }
+
+  const header = (request as { headers?: Record<string, string | string[] | undefined> }).headers?.['x-tenant-id']
+  if (!header) {
+    return null
+  }
+
+  return Array.isArray(header) ? (header[0] ?? null) : header
+}
+
+async function assertProjectInTenantScope(reply: FastifyReply, tenantId: string, projectId: string) {
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, tenant_id: tenantId },
+    select: { id: true },
+  })
+
+  if (!project) {
+    sendNotFound(reply, 'Project not found in tenant scope')
+    return null
+  }
+
+  return project
+}
+
 function normalizeFilename(filename?: string): string {
   const trimmed = filename?.trim() || 'yakds-export.dxf'
   return trimmed.toLowerCase().endsWith('.dxf') ? trimmed : `${trimmed}.dxf`
@@ -68,10 +102,36 @@ function normalizeDwgFilename(filename?: string): string {
 }
 
 export async function exportRoutes(app: FastifyInstance) {
-  const dxfHandler = async (request: { body: unknown }, reply: FastifyReply) => {
+  const dxfHandler = async (
+    request: { body: unknown; params?: unknown; tenantId?: string | null },
+    reply: FastifyReply,
+  ) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
     const parsed = ExportRequestSchema.safeParse(request.body)
     if (!parsed.success) {
       return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const params = ExportProjectParamsSchema.safeParse(request.params)
+    const routeProjectId = params.success ? params.data.projectId : null
+    const bodyProjectId = parsed.data.project_id ?? null
+    const projectId = routeProjectId ?? bodyProjectId
+
+    if (!projectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+
+    if (routeProjectId && bodyProjectId && routeProjectId !== bodyProjectId) {
+      return sendBadRequest(reply as never, 'project_id in payload must match route parameter.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, projectId)
+    if (!project) {
+      return reply
     }
 
     const dxf = exportToDxf(parsed.data.payload as ExportPayload)
@@ -82,10 +142,36 @@ export async function exportRoutes(app: FastifyInstance) {
     return reply.send(dxf)
   }
 
-  const dwgHandler = async (request: { body: unknown }, reply: FastifyReply) => {
+  const dwgHandler = async (
+    request: { body: unknown; params?: unknown; tenantId?: string | null },
+    reply: FastifyReply,
+  ) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
     const parsed = ExportRequestSchema.safeParse(request.body)
     if (!parsed.success) {
       return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const params = ExportProjectParamsSchema.safeParse(request.params)
+    const routeProjectId = params.success ? params.data.projectId : null
+    const bodyProjectId = parsed.data.project_id ?? null
+    const projectId = routeProjectId ?? bodyProjectId
+
+    if (!projectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+
+    if (routeProjectId && bodyProjectId && routeProjectId !== bodyProjectId) {
+      return sendBadRequest(reply as never, 'project_id in payload must match route parameter.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, projectId)
+    if (!project) {
+      return reply
     }
 
     if (!parsed.data.allow_dxf_fallback) {

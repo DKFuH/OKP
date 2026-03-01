@@ -6,7 +6,7 @@ import { parseDxf } from '@yakds/dxf-import'
 import { parseSkp } from '@yakds/skp-import'
 import type { CadLayer } from '@yakds/shared-schemas'
 import { prisma } from '../db.js'
-import { sendBadRequest, sendNotFound, sendServerError } from '../errors.js'
+import { sendBadRequest, sendForbidden, sendNotFound, sendServerError } from '../errors.js'
 
 const LegacyImportJobSchema = z.object({
   project_id: z.string().uuid(),
@@ -346,6 +346,38 @@ function getImportAssetMappingState(importAsset: unknown): Record<string, unknow
   return mappingState as Record<string, unknown>
 }
 
+function getTenantId(request: unknown): string | null {
+  const scopedTenantId = (request as { tenantId?: string | null }).tenantId
+  if (scopedTenantId) {
+    return scopedTenantId
+  }
+
+  const header = (request as { headers?: Record<string, string | string[] | undefined> }).headers?.['x-tenant-id']
+  if (!header) {
+    return null
+  }
+
+  return Array.isArray(header) ? (header[0] ?? null) : header
+}
+
+async function findProjectInTenantScope(projectId: string, tenantId: string) {
+  return prisma.project.findFirst({
+    where: { id: projectId, tenant_id: tenantId },
+    select: { id: true },
+  })
+}
+
+async function findImportJobInTenantScope(importJobId: string, tenantId: string) {
+  return prisma.importJob.findFirst({
+    where: {
+      id: importJobId,
+      project: {
+        tenant_id: tenantId,
+      },
+    },
+  })
+}
+
 export async function importRoutes(app: FastifyInstance) {
   app.post('/imports/preview/dxf', async (request, reply) => {
     const parsed = DxfPreviewSchema.safeParse(request.body)
@@ -366,17 +398,19 @@ export async function importRoutes(app: FastifyInstance) {
   })
 
   app.post('/imports/cad', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
     const parsed = CadImportSchema.safeParse(request.body)
     if (!parsed.success) {
       return sendBadRequest(reply, parsed.error.errors[0].message)
     }
 
-    const project = await prisma.project.findUnique({
-      where: { id: parsed.data.project_id },
-      select: { id: true },
-    })
+    const project = await findProjectInTenantScope(parsed.data.project_id, tenantId)
     if (!project) {
-      return sendNotFound(reply, 'Project not found')
+      return sendNotFound(reply, 'Project not found in tenant scope')
     }
 
     const sourceFormat = deriveCadSourceFormat(parsed.data.source_filename, parsed.data.source_format)
@@ -455,17 +489,19 @@ export async function importRoutes(app: FastifyInstance) {
   })
 
   app.post('/imports/skp', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
     const parsed = SkpImportSchema.safeParse(request.body)
     if (!parsed.success) {
       return sendBadRequest(reply, parsed.error.errors[0].message)
     }
 
-    const project = await prisma.project.findUnique({
-      where: { id: parsed.data.project_id },
-      select: { id: true },
-    })
+    const project = await findProjectInTenantScope(parsed.data.project_id, tenantId)
     if (!project) {
-      return sendNotFound(reply, 'Project not found')
+      return sendNotFound(reply, 'Project not found in tenant scope')
     }
 
     const fileBuffer = decodeBase64(parsed.data.file_base64)
@@ -497,32 +533,38 @@ export async function importRoutes(app: FastifyInstance) {
   })
 
   app.get('/imports/:id', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
     const parsed = ImportJobParamsSchema.safeParse(request.params)
     if (!parsed.success) {
       return sendBadRequest(reply, parsed.error.errors[0].message)
     }
 
-    const importJob = await prisma.importJob.findUnique({
-      where: { id: parsed.data.id },
-    })
+    const importJob = await findImportJobInTenantScope(parsed.data.id, tenantId)
     if (!importJob) {
-      return sendNotFound(reply, 'Import job not found')
+      return sendNotFound(reply, 'Import job not found in tenant scope')
     }
 
     return reply.send(importJob)
   })
 
   app.get('/imports/:id/layers', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
     const parsed = ImportJobParamsSchema.safeParse(request.params)
     if (!parsed.success) {
       return sendBadRequest(reply, parsed.error.errors[0].message)
     }
 
-    const importJob = await prisma.importJob.findUnique({
-      where: { id: parsed.data.id },
-    })
+    const importJob = await findImportJobInTenantScope(parsed.data.id, tenantId)
     if (!importJob) {
-      return sendNotFound(reply, 'Import job not found')
+      return sendNotFound(reply, 'Import job not found in tenant scope')
     }
 
     if (!importJob.import_asset) {
@@ -536,16 +578,19 @@ export async function importRoutes(app: FastifyInstance) {
   })
 
   app.get('/imports/:id/mapping-state', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
     const parsed = ImportJobParamsSchema.safeParse(request.params)
     if (!parsed.success) {
       return sendBadRequest(reply, parsed.error.errors[0].message)
     }
 
-    const importJob = await prisma.importJob.findUnique({
-      where: { id: parsed.data.id },
-    })
+    const importJob = await findImportJobInTenantScope(parsed.data.id, tenantId)
     if (!importJob) {
-      return sendNotFound(reply, 'Import job not found')
+      return sendNotFound(reply, 'Import job not found in tenant scope')
     }
 
     if (!importJob.import_asset) {
