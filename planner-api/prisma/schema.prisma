@@ -1068,6 +1068,9 @@ model Alternative {
   name          String
   is_active     Boolean        @default(false)
   sort_order    Int            @default(0)
+  status        String         @default("draft")
+  locked_at     DateTime?
+  locked_by     String?
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
 
@@ -1076,6 +1079,7 @@ model Alternative {
   filler_pieces  FillerPiece[]
   height_zone    HeightZone?
   plinth_option  PlinthOption?
+  quote_positions QuotePosition[]
 
   @@index([area_id])
   @@map("alternatives")
@@ -1170,6 +1174,22 @@ model PlinthOption {
   alternative     Alternative @relation(fields: [alternative_id], references: [id], onDelete: Cascade)
 
   @@map("plinth_options")
+}
+
+model QuotePosition {
+  id              String      @id @default(uuid())
+  alternative_id  String
+  position        Int         @default(0)
+  description     String?
+  sell_price      Float       @default(0)
+  purchase_price  Float?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  alternative     Alternative @relation(fields: [alternative_id], references: [id], onDelete: Cascade)
+
+  @@index([alternative_id])
+  @@map("quote_positions")
 }
 
 // ─────────────────────────────────────────

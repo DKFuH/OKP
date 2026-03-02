@@ -12,6 +12,10 @@ export function sendForbidden(reply: FastifyReply, message = 'Forbidden') {
   return reply.status(403).send({ error: 'FORBIDDEN', message })
 }
 
+export function sendConflict(reply: FastifyReply, message = 'Conflict') {
+  return reply.status(409).send({ error: 'CONFLICT', message })
+}
+
 export function sendServerError(reply: FastifyReply, message = 'Internal server error') {
   return reply.status(500).send({ error: 'SERVER_ERROR', message })
 }
