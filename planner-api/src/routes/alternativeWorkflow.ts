@@ -1,10 +1,4 @@
 import type { FastifyInstance } from 'fastify'
-import {
-  AlternativeBranchResponseSchema,
-  AlternativeLockRequestSchema,
-  PriceBreakdownResponseSchema,
-  QuotePositionPurchasePricePatchSchema,
-} from '@okp/shared-schemas'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendConflict, sendForbidden, sendNotFound } from '../errors.js'
@@ -27,6 +21,26 @@ const QuotePositionParamsSchema = z.object({
   id: z.string().uuid(),
   posId: z.string().uuid(),
 })
+
+const AlternativeLockRequestSchema = z.object({}).strict()
+
+const AlternativeBranchResponseSchema = z.object({
+  id: z.string().uuid(),
+})
+
+const QuotePositionPurchasePricePatchSchema = z.object({
+  purchase_price: z.number().min(0),
+})
+
+const PriceBreakdownResponseSchema = z.array(z.object({
+  id: z.string().uuid(),
+  position: z.number().int().min(0),
+  description: z.string().nullable(),
+  sell_price: z.number(),
+  purchase_price: z.number().nullable(),
+  gross_profit: z.number().nullable(),
+  contribution_margin: z.number().nullable(),
+}))
 
 function headerValue(value: string | string[] | undefined): string | null {
   if (!value) return null

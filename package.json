@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "db:generate": "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder prisma generate --schema=planner-api/prisma/schema.prisma",
+    "db:generate": "node scripts/prisma-generate.mjs",
     "test": "npm run db:generate && vitest run",
     "test:watch": "vitest"
   },
