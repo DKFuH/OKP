@@ -4,7 +4,9 @@ import type Konva from 'konva'
 import type { Point2D } from '@shared/types'
 import type { Opening } from '../api/openings.js'
 import type { Placement } from '../api/placements.js'
+import type { GeoJsonGrid } from '../api/acoustics.js'
 import type { EditorState, EditorTool } from './usePolygonEditor.js'
+import { AcousticOverlay } from '../pages/AcousticOverlay.js'
 import styles from './PolygonEditor.module.css'
 
 // ─── Koordinaten-Umrechnung ───────────────────────────────────────────────────
@@ -79,6 +81,9 @@ interface Props {
   onSelectPlacement?: (id: string | null) => void
   canAddPlacement?: boolean
   onAddPlacement?: (wallId: string, wallLengthMm: number) => void
+  acousticGrid?: GeoJsonGrid | null
+  acousticVisible?: boolean
+  acousticOpacity?: number
 }
 
 export function PolygonEditor({
@@ -88,6 +93,9 @@ export function PolygonEditor({
   onSetTool, onReset, onSave,
   openings = [], selectedOpeningId, onSelectOpening, onAddOpening,
   placements = [], selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement,
+  acousticGrid = null,
+  acousticVisible = false,
+  acousticOpacity = 0.5,
 }: Props) {
   const stageRef = useRef<Konva.Stage>(null)
   const [dragLabel, setDragLabel] = useState<{ x: number; y: number; text: string } | null>(null)
@@ -237,6 +245,13 @@ export function PolygonEditor({
         onDblClick={handleStageDblClick}
         style={{ cursor: state.tool === 'draw' ? 'crosshair' : 'default' }}
       >
+        <AcousticOverlay
+          grid={acousticGrid}
+          opacity={acousticOpacity}
+          visible={acousticVisible}
+          stageScale={SCALE}
+        />
+
         <Layer>
           {/* Polygon-Fläche */}
           {state.closed && pts.length >= 3 && (

@@ -936,6 +936,56 @@ model UserArticleProfile {
 }
 
 // ─────────────────────────────────────────
+// PHASE 7 – Sprint 55: Raumakustik-Plugin
+// ─────────────────────────────────────────
+
+model AcousticGrid {
+  id              String           @id @default(uuid())
+  project_id      String
+  tenant_id       String
+  filename        String
+  variable        AcousticVariable @default(spl_db)
+  resolution_mm   Int              @default(500)
+  origin_x_mm     Float            @default(0)
+  origin_y_mm     Float            @default(0)
+  slice_height_mm Float            @default(1200)
+  grid_cols       Int
+  grid_rows       Int
+  values          Json
+  min_value       Float
+  max_value       Float
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  @@index([project_id])
+  @@map("acoustic_grids")
+}
+
+enum AcousticVariable {
+  spl_db
+  spl_dba
+  t20_s
+  sti
+}
+
+model AcousticLayer {
+  id          String            @id @default(uuid())
+  project_id  String
+  layer_type  AcousticLayerType
+  object_refs Json
+  label       String?
+  created_at  DateTime          @default(now())
+
+  @@index([project_id])
+  @@map("acoustic_layers")
+}
+
+enum AcousticLayerType {
+  source
+  receiver
+}
+
+// ─────────────────────────────────────────
 // PHASE 2 – Sprint 21: Auto-Vervollständigung
 // ─────────────────────────────────────────
 

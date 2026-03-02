@@ -12,6 +12,7 @@ import { areasApi } from '../api/areas.js'
 import { openingsApi, type Opening } from '../api/openings.js'
 import { validateApi, type ValidateResponse } from '../api/validate.js'
 import { autoCompletionApi, type AutoCompleteResult } from '../api/autoCompletion.js'
+import { acousticsApi, type AcousticGridMeta, type GeoJsonGrid } from '../api/acoustics.js'
 import { usePolygonEditor, edgeLengthMm } from '../editor/usePolygonEditor.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { PopoutWindow } from '../components/editor/PopoutWindow.js'
@@ -90,6 +91,15 @@ export function Editor() {
   const [showAreasPanel, setShowAreasPanel] = useState(false)
   const [selectedAlternativeId, setSelectedAlternativeId] = useState<string | null>(null)
   const [gltfExportLoading, setGltfExportLoading] = useState(false)
+  const [acousticEnabled, setAcousticEnabled] = useState(false)
+  const [acousticOpacityPct, setAcousticOpacityPct] = useState(50)
+  const [acousticVariable, setAcousticVariable] = useState<'spl_db' | 'spl_dba' | 't20_s' | 'sti'>('spl_db')
+  const [acousticGrids, setAcousticGrids] = useState<AcousticGridMeta[]>([])
+  const [activeAcousticGridId, setActiveAcousticGridId] = useState<string | null>(null)
+  const [acousticGrid, setAcousticGrid] = useState<GeoJsonGrid | null>(null)
+  const [acousticBusy, setAcousticBusy] = useState(false)
+  const [acousticMin, setAcousticMin] = useState<number | null>(null)
+  const [acousticMax, setAcousticMax] = useState<number | null>(null)
 
   // Editor-State nach oben gehoben, damit RightSidebar darauf zugreifen kann
   const editor = usePolygonEditor()
@@ -111,6 +121,110 @@ export function Editor() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [id])
+
+  const refreshAcousticGrids = useCallback(async () => {
+    if (!id) {
+      return
+    }
+
+    const grids = await acousticsApi.listGrids(id)
+    setAcousticGrids(grids)
+
+    setActiveAcousticGridId((current) => {
+      if (current && grids.some((grid) => grid.id === current)) {
+        return current
+      }
+
+      const variableMatch = grids.find((grid) => grid.variable === acousticVariable)
+      return variableMatch?.id ?? grids[0]?.id ?? null
+    })
+  }, [id, acousticVariable])
+
+  useEffect(() => {
+    if (!id) {
+      return
+    }
+
+    refreshAcousticGrids().catch((error: unknown) => {
+      console.error('Akustik-Grids laden fehlgeschlagen:', error)
+    })
+  }, [id, refreshAcousticGrids])
+
+  useEffect(() => {
+    const match = acousticGrids.find((grid) => grid.id === activeAcousticGridId)
+    if (!match) {
+      return
+    }
+
+    setAcousticVariable(match.variable)
+  }, [activeAcousticGridId, acousticGrids])
+
+  useEffect(() => {
+    if (!activeAcousticGridId || !acousticEnabled) {
+      setAcousticGrid(null)
+      setAcousticMin(null)
+      setAcousticMax(null)
+      return
+    }
+
+    acousticsApi.getTiles(activeAcousticGridId)
+      .then((grid) => {
+        setAcousticGrid(grid)
+        setAcousticMin(grid.min)
+        setAcousticMax(grid.max)
+      })
+      .catch((error: unknown) => {
+        console.error('Akustik-Kacheln laden fehlgeschlagen:', error)
+        setAcousticGrid(null)
+        setAcousticMin(null)
+        setAcousticMax(null)
+      })
+  }, [activeAcousticGridId, acousticEnabled])
+
+  const handleAcousticUpload = useCallback(async (file: File) => {
+    if (!id) {
+      return
+    }
+
+    setAcousticBusy(true)
+    try {
+      const result = await acousticsApi.importCnivg(id, file)
+      await refreshAcousticGrids()
+      setActiveAcousticGridId(result.grid_id)
+      setAcousticEnabled(true)
+    } catch (error) {
+      alert(`Akustik-Import fehlgeschlagen: ${String(error)}`)
+    } finally {
+      setAcousticBusy(false)
+    }
+  }, [id, refreshAcousticGrids])
+
+  const handleDeleteAcousticGrid = useCallback(async (gridId: string) => {
+    if (!id) {
+      return
+    }
+
+    setAcousticBusy(true)
+    try {
+      await acousticsApi.deleteGrid(gridId)
+      if (activeAcousticGridId === gridId) {
+        setActiveAcousticGridId(null)
+      }
+      await refreshAcousticGrids()
+    } catch (error) {
+      alert(`Akustik-Grid löschen fehlgeschlagen: ${String(error)}`)
+    } finally {
+      setAcousticBusy(false)
+    }
+  }, [id, activeAcousticGridId, refreshAcousticGrids])
+
+  const handleSetAcousticVariable = useCallback((variable: 'spl_db' | 'spl_dba' | 't20_s' | 'sti') => {
+    setAcousticVariable(variable)
+    const match = acousticGrids.find((grid) => grid.variable === variable)
+    if (match) {
+      setActiveAcousticGridId(match.id)
+    }
+  }, [acousticGrids])
 
   useEffect(() => {
     if (!id) return
@@ -547,6 +661,9 @@ export function Editor() {
             onSelectPlacement={setSelectedPlacementId}
             canAddPlacement={selectedCatalogItem !== null}
             onAddPlacement={handleAddPlacement}
+            acousticGrid={acousticGrid}
+            acousticVisible={acousticEnabled}
+            acousticOpacity={acousticOpacityPct / 100}
           />
         ) : (
           <Preview3D room={selectedRoom as unknown as RoomPayload | null} />
@@ -580,6 +697,20 @@ export function Editor() {
           onRunValidation={handleRunValidation}
           placements={placements}
           selectedRoomId={selectedRoomId}
+          acousticEnabled={acousticEnabled}
+          acousticOpacityPct={acousticOpacityPct}
+          acousticVariable={acousticVariable}
+          acousticGrids={acousticGrids}
+          activeAcousticGridId={activeAcousticGridId}
+          acousticMin={acousticMin}
+          acousticMax={acousticMax}
+          acousticBusy={acousticBusy}
+          onToggleAcoustics={setAcousticEnabled}
+          onSetAcousticOpacityPct={setAcousticOpacityPct}
+          onSetAcousticVariable={handleSetAcousticVariable}
+          onAcousticUpload={handleAcousticUpload}
+          onSelectAcousticGrid={setActiveAcousticGridId}
+          onDeleteAcousticGrid={handleDeleteAcousticGrid}
         />
       </div>
 

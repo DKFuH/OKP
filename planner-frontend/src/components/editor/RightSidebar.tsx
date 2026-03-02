@@ -3,6 +3,7 @@ import type { Vertex, Point2D } from '@shared/types'
 import type { Opening } from '../../api/openings.js'
 import type { Placement } from '../../api/placements.js'
 import type { Room } from '../../api/projects.js'
+import type { AcousticGridMeta } from '../../api/acoustics.js'
 import type { UnifiedCatalogItem, CatalogArticle } from '../../api/catalog.js'
 import type { ValidateResponse } from '../../api/validate.js'
 import { previewBom, toQuoteBomLines, type BomPreviewRequest } from '../../api/bom.js'
@@ -57,6 +58,20 @@ interface Props {
   onRunValidation: () => void
   placements: Placement[]
   selectedRoomId: string | null
+  acousticEnabled: boolean
+  acousticOpacityPct: number
+  acousticVariable: 'spl_db' | 'spl_dba' | 't20_s' | 'sti'
+  acousticGrids: AcousticGridMeta[]
+  activeAcousticGridId: string | null
+  acousticMin: number | null
+  acousticMax: number | null
+  acousticBusy: boolean
+  onToggleAcoustics: (enabled: boolean) => void
+  onSetAcousticOpacityPct: (value: number) => void
+  onSetAcousticVariable: (value: 'spl_db' | 'spl_dba' | 't20_s' | 'sti') => void
+  onAcousticUpload: (file: File) => void
+  onSelectAcousticGrid: (gridId: string | null) => void
+  onDeleteAcousticGrid: (gridId: string) => void
 }
 
 export function RightSidebar({
@@ -80,6 +95,20 @@ export function RightSidebar({
   validationResult, validationLoading, onRunValidation,
   placements,
   selectedRoomId,
+  acousticEnabled,
+  acousticOpacityPct,
+  acousticVariable,
+  acousticGrids,
+  activeAcousticGridId,
+  acousticMin,
+  acousticMax,
+  acousticBusy,
+  onToggleAcoustics,
+  onSetAcousticOpacityPct,
+  onSetAcousticVariable,
+  onAcousticUpload,
+  onSelectAcousticGrid,
+  onDeleteAcousticGrid,
 }: Props) {
   async function buildQuoteCreatePayload() {
     const taxGroupId = 'tax-default'
@@ -211,6 +240,23 @@ export function RightSidebar({
           )}
         </>
       )}
+
+      <AcousticPanel
+        enabled={acousticEnabled}
+        opacityPct={acousticOpacityPct}
+        variable={acousticVariable}
+        grids={acousticGrids}
+        activeGridId={activeAcousticGridId}
+        min={acousticMin}
+        max={acousticMax}
+        busy={acousticBusy}
+        onToggle={onToggleAcoustics}
+        onSetOpacityPct={onSetAcousticOpacityPct}
+        onSetVariable={onSetAcousticVariable}
+        onUpload={onAcousticUpload}
+        onSelectGrid={onSelectAcousticGrid}
+        onDeleteGrid={onDeleteAcousticGrid}
+      />
 
       <ValidationPanel
         result={validationResult}
@@ -559,6 +605,136 @@ function ValidationPanel({ result, loading, onRun }: {
           {result.violations.length > 10 && (
             <p className={styles.hint}>… und {result.violations.length - 10} weitere</p>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AcousticPanel({
+  enabled,
+  opacityPct,
+  variable,
+  grids,
+  activeGridId,
+  min,
+  max,
+  busy,
+  onToggle,
+  onSetOpacityPct,
+  onSetVariable,
+  onUpload,
+  onSelectGrid,
+  onDeleteGrid,
+}: {
+  enabled: boolean
+  opacityPct: number
+  variable: 'spl_db' | 'spl_dba' | 't20_s' | 'sti'
+  grids: AcousticGridMeta[]
+  activeGridId: string | null
+  min: number | null
+  max: number | null
+  busy: boolean
+  onToggle: (enabled: boolean) => void
+  onSetOpacityPct: (value: number) => void
+  onSetVariable: (value: 'spl_db' | 'spl_dba' | 't20_s' | 'sti') => void
+  onUpload: (file: File) => void
+  onSelectGrid: (gridId: string | null) => void
+  onDeleteGrid: (gridId: string) => void
+}) {
+  return (
+    <div className={styles.section}>
+      <h3 className={styles.sectionTitle}>Akustik</h3>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Overlay aktiv</label>
+        <input
+          aria-label="Akustik-Overlay aktiv"
+          type="checkbox"
+          checked={enabled}
+          onChange={(event) => onToggle(event.target.checked)}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Akustikgröße</label>
+        <select
+          aria-label="Akustikgröße"
+          className={styles.fieldInput}
+          value={variable}
+          onChange={(event) => onSetVariable(event.target.value as 'spl_db' | 'spl_dba' | 't20_s' | 'sti')}
+        >
+          <option value="spl_db">SPL dB</option>
+          <option value="spl_dba">SPL dBA</option>
+          <option value="t20_s">T20</option>
+          <option value="sti">STI</option>
+        </select>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Deckkraft: {opacityPct}%</label>
+        <input
+          aria-label="Akustik Deckkraft"
+          type="range"
+          min={0}
+          max={100}
+          value={opacityPct}
+          onChange={(event) => onSetOpacityPct(Number(event.target.value))}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>CNIVG-Datei</label>
+        <input
+          aria-label="CNIVG Datei hochladen"
+          type="file"
+          accept=".cnivg,.txt,text/plain"
+          disabled={busy}
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) {
+              onUpload(file)
+            }
+            event.currentTarget.value = ''
+          }}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Grid-Auswahl</label>
+        <select
+          aria-label="Akustik-Grid"
+          className={styles.fieldInput}
+          value={activeGridId ?? ''}
+          onChange={(event) => onSelectGrid(event.target.value || null)}
+        >
+          <option value="">Kein Grid</option>
+          {grids.map((grid) => (
+            <option key={grid.id} value={grid.id}>
+              {grid.filename}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {activeGridId && (
+        <button
+          type="button"
+          className={styles.deleteBtn}
+          onClick={() => onDeleteGrid(activeGridId)}
+        >
+          Grid löschen
+        </button>
+      )}
+
+      {min != null && max != null && (
+        <div className={styles.validationResult}>
+          <p className={styles.hint}>Farblegende</p>
+          <div className={styles.hint}>Min: {min.toFixed(2)}</div>
+          <div className={styles.hint}>25%: {(min + (max - min) * 0.25).toFixed(2)}</div>
+          <div className={styles.hint}>50%: {(min + (max - min) * 0.5).toFixed(2)}</div>
+          <div className={styles.hint}>75%: {(min + (max - min) * 0.75).toFixed(2)}</div>
+          <div className={styles.hint}>Max: {max.toFixed(2)}</div>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Opening } from '../../api/openings.js'
 import type { Placement } from '../../api/placements.js'
 import type { RoomPayload } from '../../api/rooms.js'
+import type { GeoJsonGrid } from '../../api/acoustics.js'
 import { roomsApi } from '../../api/rooms.js'
 import { PolygonEditor } from '../../editor/PolygonEditor.js'
 import type { EditorAPI } from '../../editor/usePolygonEditor.js'
@@ -20,9 +21,12 @@ interface Props {
   onSelectPlacement: (id: string | null) => void
   canAddPlacement: boolean
   onAddPlacement: (wallId: string, wallLengthMm: number) => void
+  acousticGrid: GeoJsonGrid | null
+  acousticVisible: boolean
+  acousticOpacity: number
 }
 
-export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement }: Props) {
+export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement, acousticGrid, acousticVisible, acousticOpacity }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
   const [saving, setSaving] = useState(false)
@@ -104,6 +108,9 @@ export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpen
             onSelectPlacement={onSelectPlacement}
             canAddPlacement={canAddPlacement}
             onAddPlacement={onAddPlacement}
+            acousticGrid={acousticGrid}
+            acousticVisible={acousticVisible}
+            acousticOpacity={acousticOpacity}
           />
         </div>
       ) : (

@@ -787,7 +787,7 @@ user_profiles               – (user_id, tenant_id, name, article_id, property_
 
 ### Sprint 55 – Raumakustik-Plugin (Voxel-Grid Import & Visualisierung)
 
-**Meta:** Status: `planned` · Owner: Full-Stack · ETA: Phase 7 · Abhängigkeiten: S54, S14
+**Meta:** Status: `done` · Owner: Full-Stack · ETA: Phase 7 · Abhängigkeiten: S54, S14
 
 **Ziel:** Akustische Planung durch Import externer Akustikberechnungen (CNIVG-Format) und Visualisierung als Voxel-Grid in der 2D/3D-Ansicht.
 
