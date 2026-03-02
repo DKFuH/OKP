@@ -8,6 +8,9 @@ import type { ValidateResponse } from '../../api/validate.js'
 import { previewBom, toQuoteBomLines, type BomPreviewRequest } from '../../api/bom.js'
 import { QuoteExportPanel } from '../quotes/QuoteExportPanel.js'
 import { ProtectPanel } from './ProtectPanel.js'
+import { WallFeaturesPanel } from './WallFeaturesPanel.js'
+import { RoomFeaturesPanel } from './RoomFeaturesPanel.js'
+import { MacrosPanel } from './MacrosPanel.js'
 import styles from './RightSidebar.module.css'
 
 export interface CeilingConstraint {
@@ -220,6 +223,28 @@ export function RightSidebar({
         wallGeom={selectedWallGeom}
         onSave={onSaveCeilingConstraints}
       />
+
+      {/* Wand-Objekte, Installationen & Operationen (Sprints 31-33) */}
+      {selectedWallGeom && selectedRoomId && (
+        <WallFeaturesPanel
+          roomId={selectedRoomId}
+          wallId={selectedWallGeom.id}
+          wallLengthMm={edgeLengthMm ?? 1000}
+        />
+      )}
+
+      {/* Raumgestaltung: Arbeitsflächen, Annotationen, Deko, Beleuchtung (Sprints 36-39) */}
+      {selectedRoomId && room && (
+        <RoomFeaturesPanel roomId={selectedRoomId} />
+      )}
+
+      {/* Makros (Sprint 35) */}
+      {selectedRoomId && (
+        <MacrosPanel
+          projectId={projectId}
+          currentPlacements={placements}
+        />
+      )}
 
       <ProtectPanel
         projectId={projectId}

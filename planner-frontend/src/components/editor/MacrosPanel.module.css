@@ -1,0 +1,130 @@
+.section {
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.collapseHeader {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.collapseHeader:hover {
+  background: var(--surface-hover);
+}
+
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.muted {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0.75rem 0.5rem;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0 0 0.3rem;
+}
+
+.error {
+  font-size: 0.8rem;
+  color: var(--status-danger);
+  margin: 0 0.75rem 0.4rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0 0.75rem 0.5rem;
+}
+
+.listItem {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.listItem strong {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+
+.listItem span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.deleteBtn {
+  align-self: flex-start;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--status-danger-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--status-danger);
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+
+.deleteBtn:hover {
+  background: var(--status-danger-bg);
+}
+
+.saveArea {
+  margin: 0 0.75rem 0.6rem;
+}
+
+.inlineForm {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.inlineInput {
+  flex: 1;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-default);
+}
+
+.inlineInput:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.inlineInput:disabled {
+  opacity: 0.5;
+}
+
+.btnAdd {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--primary-color);
+  border-radius: var(--radius-sm);
+  background: var(--primary-color);
+  color: #fff;
+  cursor: pointer;
+}
+
+.btnAdd:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

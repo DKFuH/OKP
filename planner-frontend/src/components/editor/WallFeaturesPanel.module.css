@@ -1,0 +1,119 @@
+.section {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.sectionTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.muted {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 0.4rem;
+}
+
+.error {
+  font-size: 0.8rem;
+  color: var(--status-danger);
+  margin: 0 0 0.4rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.listItem {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.listItem strong {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.listItem span {
+  color: var(--text-muted);
+}
+
+.inlineRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.inlineRow select {
+  font-size: 0.78rem;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-default);
+}
+
+.addBtn {
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-top: 0.2rem;
+}
+
+.addBtn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.buttonRow {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.btnSmall {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-default);
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.btnSmall:hover {
+  background: var(--surface-hover);
+}
+
+.btnTiny {
+  align-self: flex-start;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.72rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.btnTiny:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}

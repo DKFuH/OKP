@@ -455,7 +455,9 @@ export function Editor() {
           >
             {isPreviewPopoutOpen ? '3D-Fenster schließen' : '3D in Fenster'}
           </button>
-          <button type="button" className={styles.btnSecondary}>Angebot</button>
+          <button type="button" className={styles.btnSecondary} onClick={() => navigate(`/projects/${id}/quote-lines`)}>
+            Angebotspositionen
+          </button>
         </div>
       </header>
 
