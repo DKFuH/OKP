@@ -17,6 +17,7 @@
   "dependencies": {
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^9.4.0",
+    "@jscad/io": "^2.4.14",
     "@okp/dxf-export": "file:../interop-cad/dxf-export",
     "@okp/dxf-import": "file:../interop-cad/dxf-import",
     "@okp/shared-schemas": "file:../shared-schemas",

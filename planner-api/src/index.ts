@@ -54,6 +54,8 @@ import { erpConnectorRoutes } from './routes/erpConnectors.js'
 import { reportRoutes } from './routes/reports.js'
 import { complianceRoutes } from './routes/compliance.js'
 import { ifcInteropRoutes } from './routes/ifcInterop.js'
+import { cadInteropRoutes } from './routes/cadInterop.js'
+import { articleConfiguratorRoutes } from './routes/articleConfigurator.js'
 
 const app = Fastify({ logger: true })
 
@@ -117,6 +119,8 @@ await app.register(erpConnectorRoutes, { prefix: '/api/v1' })
 await app.register(reportRoutes, { prefix: '/api/v1' })
 await app.register(complianceRoutes, { prefix: '/api/v1' })
 await app.register(ifcInteropRoutes, { prefix: '/api/v1' })
+await app.register(cadInteropRoutes, { prefix: '/api/v1' })
+await app.register(articleConfiguratorRoutes, { prefix: '/api/v1' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok' }))

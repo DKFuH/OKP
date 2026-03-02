@@ -826,6 +826,8 @@ model CatalogArticle {
   options         ArticleOption[]
   variants        ArticleVariant[]
   prices          ArticlePrice[]
+  properties      CatalogArticleProperty[]
+  price_tables    CatalogArticlePriceTable[]
   generated_items GeneratedItem[]
 
   @@unique([manufacturer_id, sku])
@@ -884,6 +886,53 @@ model ArticlePrice {
   article      CatalogArticle @relation(fields: [article_id], references: [id], onDelete: Cascade)
 
   @@map("article_prices")
+}
+
+model CatalogArticleProperty {
+  id          String         @id @default(uuid())
+  article_id  String
+  key         String         @db.VarChar(100)
+  label       String         @db.VarChar(200)
+  type        String         @db.VarChar(50)
+  options     Json           @default("[]")
+  depends_on  Json           @default("{}")
+  sort_order  Int            @default(0)
+  created_at  DateTime       @default(now())
+
+  article     CatalogArticle @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@unique([article_id, key])
+  @@index([article_id])
+  @@map("catalog_article_properties")
+}
+
+model CatalogArticlePriceTable {
+  id                   String         @id @default(uuid())
+  article_id           String
+  property_combination Json
+  price_net            Float
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @updatedAt
+
+  article              CatalogArticle @relation(fields: [article_id], references: [id], onDelete: Cascade)
+
+  @@index([article_id])
+  @@map("catalog_article_price_tables")
+}
+
+model UserArticleProfile {
+  id              String   @id @default(uuid())
+  user_id         String
+  tenant_id       String?
+  name            String   @db.VarChar(100)
+  article_id      String
+  property_values Json     @default("{}")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([article_id])
+  @@map("user_article_profiles")
 }
 
 // ─────────────────────────────────────────

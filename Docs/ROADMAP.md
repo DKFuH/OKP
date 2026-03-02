@@ -738,7 +738,7 @@ Vollständige Interop-Dokumentation: [`Docs/INTEROP.md`](./INTEROP.md)
 
 ### Sprint 53 – DWG-Vollimplementierung, SKP-Export & CAD-Parität
 
-**Meta:** Status: `planned` · Owner: Interop-Lead · ETA: Phase 7 · Abhängigkeiten: S52, S19
+**Meta:** Status: `done` · Owner: Interop-Lead · ETA: Phase 7 · Abhängigkeiten: S52, S19
 
 **Ziel:** Bestehende Stubs (DWG, SKP) vollständig implementieren; pCon.planner-Interop-Parität erreichen.
 
@@ -759,7 +759,7 @@ Vollständige Interop-Dokumentation: [`Docs/INTEROP.md`](./INTEROP.md)
 
 ### Sprint 54 – Konfigurierbare Artikel & Abhängigkeitslogik (OFML-Parität)
 
-**Meta:** Status: `planned` · Owner: Backend-Lead · ETA: Phase 7 · Abhängigkeiten: S53, S20
+**Meta:** Status: `done` · Owner: Backend-Lead · ETA: Phase 7 · Abhängigkeiten: S53, S20
 
 **Ziel:** Katalog-Artikel erhalten eine Abhängigkeitslogik zwischen Eigenschaften – ähnlich dem OFML-Standard (Office Furniture Modelling Language). Variante A → Preis und verfügbare Optionen ändern sich automatisch.
 
