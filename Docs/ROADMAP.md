@@ -271,3 +271,284 @@ Sprint-Planung für MVP (Sprints 0-19), Phase 2 (Sprints 20-24) und Phase 3 (Spr
 1. Bereiche/Alternativen müssen konsistent mit bestehender Raum-/Placement-Logik sein.
 2. Onboarding darf bestehende Auth-/User-Flows nicht brechen.
 3. Workspace-Layout-Persistenz muss per User/Tenant isoliert bleiben.
+
+---
+
+## Phase 5 – Sprints 41–45: Winner-Parität (Profi-Workflow)
+
+**Ausgangslage (nach Sprint 40):** Vollständige Studio-Plattform inkl. Makros, Arbeitsplattenschemas, Annotationen, Raumdekoration, Lichtprofile und manuelle Angebotszeilen.
+
+**Ziel:** Funktionslücken zu professionellen Küchenstudio-Systemen (Winner Profi) schließen. Quelle: Schulungsunterlagen Winner Profi Teil 1 & 2 (analysiert 2026-03-02).
+
+---
+
+### Sprint 41 – Planungseffizienz: Passstücke, Höhentypen & Sockeloptionen
+
+**Ziel:** Automatisierte Füllstück-Generierung + farbcodierte Höhenzonierung + flexible Sockeloptionen.
+
+**Features:**
+
+- **Passstücke (Filler pieces):** Verbleibende Wandfläche zwischen Schrankreihe und Wand automatisch mit Passst­ück füllen; Fangpunkt-Korrektur wenn Wandabstand aktiv ist; Passstück-Größe folgt verfügbarer Fläche.
+- **Höhentypen (farbcodiert):** Unterscheidung von Unterschrank / Oberschrank / Hochschrank per farblicher Markierung in Grundriss und Seitenansicht; Sonderhöhe frei definierbar.
+- **Sockeloptionen:** Konfigurierbare Einrückung des Sockels (z. B. 0 mm = bündig zur Korpusvorderkante); gilt gleichzeitig für alle markierten Schränke; Sockeloption pro Alternative persistiert.
+
+**Neues Datenmodell:**
+- `filler_pieces` – generierte Passstücke (wall_id, position, width_mm, height_mm, `generated: true`)
+- `height_zones` – Zonendefinition (label, color, height_range_mm) pro Planung
+- `plinth_options` – Einrückung pro Alternative/Schrank-Gruppe
+
+**Deliverables:** `FillerService`, Höhentypen-Palette in UI, Sockeloption-Dialog, 20 Tests.
+
+**DoD:** Passstück wird bei freier Wandfläche automatisch vorgeschlagen und platziert; Höhentypen sichtbar; Sockel-Einrückung ändert sich sofort in Ansicht.
+
+---
+
+### Sprint 42 – Angebotsworkflow: Schreibschutz, Aufschläge & EK-Nachtrag
+
+**Ziel:** Angebotsversand sperrt Alternative; Negativ-Rabatt-Konvention korrekt implementiert; EK nach Auftragsbestätigung nachtragbar.
+
+**Features:**
+
+- **Schreibschutz nach Angebotsversand:** Erster Ausdruck / erster PDF-Export setzt Alternative auf Status `angebot_gesendet` → schreibgeschützt; nachträgliche Änderungen erzwingen neues Alternativ-Objekt (Branch from locked). UI-Hinweis bei Bearbeitungsversuch.
+- **Negativ-Rabatt = Aufschlag:** Im Rabattfeld gilt: positiver Wert = prozentualer Abzug, negativer Wert = prozentualer Aufschlag. Reihenfolge bleibt: Artikel → Warengruppe → Gesamtsumme. UI-Label und Tooltip explizit dokumentieren.
+- **EK-Preis nach Auftragsbestätigung:** Workflow: Bestellung drucken → AB vom Hersteller abwarten → EK-Preise pro Position nachtragen. Felder initial leer/gesperrt; entsperrbar nach Statuswechsel `bestellt`. Zeigt realen Bruttogewinn und DB nach EK-Eintrag.
+- **Preisberechnung-Anzeige:** Einblendbar: EK, Bruttogewinn (€ + %), Deckungsbeitrag. Toggle pro Angebotsansicht.
+
+**Neues Datenmodell:**
+- `alternatives.status` erweitern: `draft | angebot_gesendet | bestellt | abgeschlossen`
+- `quote_positions.purchase_price` – nullable, befüllbar nach `bestellt`
+- Bestehende Rabattlogik: `discount_value` mit Vorzeichen (negativ = Aufschlag)
+
+**Deliverables:** Status-Machine für Alternative, Lock-Guard in API, EK-Eingabe-UI, 25 Tests.
+
+**DoD:** Alternative nach Versand nicht mehr editierbar ohne Branch; negativer Rabatt addiert Aufschlag korrekt; EK-Felder nach `bestellt` befüllbar; DB wird korrekt angezeigt.
+
+---
+
+### Sprint 43 – UX & Eingabe: Taschenrechner, Favoriten & Vorlagen
+
+**Ziel:** Alltagskomfort im Planer: Rechenketten in Maßfeldern, Favoriten-Filter, Modellvorlagen.
+
+**Features:**
+
+- **Taschenrechnerfunktion in Maßfeldern:** Überall wo Zahlen frei eingegeben werden (Breite, Höhe, Offset, Abstand) können Rechenketten eingegeben werden (z. B. `2500-1632`, `600+150`). Auswertung on-Blur, Fehlerstate bei ungültigem Ausdruck.
+- **Favoriten (Artikel & Modelle):** Artikel und Modelle im Katalog als Favorit markierbar (Stern-Icon). Filter „Nur Favoriten" in Katalog-Sidebar. Favoriten per User persistiert.
+- **Vorlagen (Modell-Schnellzugriff):** Häufig genutzte Modell-/Indexkonfigurationen als Vorlage speichern und benennen. Vorlagen-Dropdown im Modell-/Indexeinstellungs-Dialog (F7). Makros passen sich automatisch an Modelleinstellungen an, wenn Hersteller identisch; individuelle Änderungen via „Modell wechseln" bleiben erhalten.
+- **Planungspfeil-Steuerung:** Planungspfeil rotierbar in 45°-Schritten via Pfeiltasten; Objekte verschieben entlang Blickrichtung des Planungspfeils (wie Achsenbindung).
+
+**Neues Datenmodell:**
+- `user_favorites` – (user_id, entity_type, entity_id)
+- `model_templates` – (user_id, name, model_settings JSON)
+
+**Deliverables:** `ExpressionInputField`-Komponente, Favoriten-API + UI, Vorlagen-CRUD, Planungspfeil-Tastatursteuerung, 20 Tests.
+
+**DoD:** `2500-1632` in Maßfeld ergibt 868; Favorit gespeichert; Vorlage laden befüllt F7-Dialog; Planungspfeil dreht per Pfeiltaste.
+
+---
+
+### Sprint 44 – Druck & Export: Batchdruck, S/W-Modus & befristeter Link
+
+**Ziel:** Druckworkflow professionalisieren: mehrere Formulare auf einmal, Schwarz/Weiß, zeitbegrenzte Freigabelinks.
+
+**Features:**
+
+- **Batchdrucke:** Mehrere Ausdrucksformulare (Grundriss, Ansichten, Angebot, Installationsplan, …) in einem einzigen PDF-Job zusammenführen und drucken/exportieren. Konfigurierbare Batch-Profile (welche Formulare, welche Reihenfolge).
+- **Schwarz/Weiß Druckmodus:** Pro Ansichtsfenster umschaltbar (Rechtsklick → „Schwarz/Weiß anzeigen"). Exportiert Strichzeichnung statt Farbausdruck – ideal für Montageunterlagen.
+- **Zeitlich befristeter Share-Link:** Beim Erstellen eines Freigabe-Links Ablaufdatum in Tagen konfigurierbar. Link nach Ablauf ungültig (HTTP 410); kann verlängert werden.
+- **Ausdrucksformulare anpassen:** UI zum Erstellen, Bearbeiten, Löschen von Formulartemplates (welche Fenster, Maße, Positionsnummern, Installationsplan ein/aus). Einstellung in Allgemeine Einstellungen → Ausdrucke.
+
+**Neues Datenmodell:**
+- `print_batch_profiles` – (name, form_ids[], user_id)
+- `share_links.expires_at` – nullable, timestamp
+
+**Deliverables:** Batch-PDF-Service, S/W-Toggle in Ansicht, Link-Ablauf-Logik, Formular-Template-CRUD, 20 Tests.
+
+**DoD:** Batchdruck erzeugt zusammengeführtes PDF; S/W-Export liefert Strichzeichnung; Share-Link nach Ablauf nicht mehr abrufbar; eigenes Formular-Template anwendbar.
+
+---
+
+### Sprint 45 – Erweiterte Planung: Nischenverkleidung, Abdeckboden & Tiefenkürzung
+
+**Ziel:** Spezielle Schranktypen und Maßanpassungen mit korrekter BOM- und Preiswirkung.
+
+**Features:**
+
+- **Nischenverkleidungen:** Eigener Schranktyp „Nischenverkleidung". Prüfregel: seitlicher Überstand der Arbeitsplatte berücksichtigen (bündig planen). Wenn Nischenverkleidung ein Installationsobjekt überdeckt, wird Wandabstand des Installationsobjekts automatisch so weit erhöht, dass es auf der Verkleidungsfläche sitzt.
+- **Abdeckboden:** Automatisch auf Highboard-Schränken gesetzt (konfigurierbar). Bei Eigenschaften-Änderung (z. B. Regal verhindert automatischen Abdeckboden) wird nach Korrektur der korrekte (ggf. größere) Abdeckboden neu generiert und entsprechend bestellt.
+- **Tiefenkürzung:** Tiefe einzelner Schränke in den Eigenschaften abweichend einstellbar. Löst Mehrpreis-Flag in BOM aus (Kennzeichnung `custom_depth: true`). Unterscheidung: bauseits (Montagekosten) vs. nicht-bauseits (Herstellerkosten bei Arbeitsplatten/Abdeckboden).
+- **Ansichtenschnitt Richtungswechsel:** Rechtsklick auf Ansichtenschnitt-Pfeil → „Richtung wechseln" kehrt Blickrichtung auf andere Seite um.
+
+**Neues Datenmodell:**
+- `cabinet_properties.custom_depth_mm` – nullable, löst `surcharge_flag: true` in BOM
+- `cabinet_properties.cost_type` – enum `bauseits | nicht_bauseits`
+- `cover_panels` – generierte Abdeckböden (auto-rebuild-fähig)
+
+**Deliverables:** Nischenverkleidungs-Typ, Abdeckboden-Service mit Rebuild, Tiefenkürzungs-Eigenschaft + BOM-Flag, Richtungswechsel-Kontextmenü, 25 Tests.
+
+**DoD:** Nischenverkleidung verschiebt Installationsobjekt korrekt; Abdeckboden wird nach Eigenschaftskorrektur neu generiert; Tiefenkürzung erzeugt Mehrpreis-Zeile in BOM; Ansichtenschnitt dreht Richtung.
+
+---
+
+### Meilenstein Phase 5
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 45 | Winner-Profi-Parität: Passstücke, Angebotsworkflow, Taschenrechner, Favoriten, Batchdruck, Nischenverkleidung |
+
+### Risiken Phase 5
+
+1. Schreibschutz-Status-Machine muss atomar sein – kein Race Condition beim gleichzeitigen Drucken.
+2. Taschenrechner-Parser darf keine Sicherheitslücken (eval) einführen – eigene Miniparser-Implementierung.
+3. Batchdruck-PDFs können bei großen Planungen sehr groß werden – Streaming/Pagination nötig.
+4. Nischenverkleidungs-Automatik hängt von stabiler Wandabstand-API ab (Sprint 8 / Sprint 33).
+5. Negativ-Rabatt-Konvention muss in UI klar kommuniziert werden – keine stille Fehlbedienung.
+
+---
+
+## Phase 6 – Sprints 46–50: Vernetzte Branchenlösung (Auftragssteuerung, Mobile, ERP, Compliance)
+
+**Ausgangslage (nach Sprint 45):** Winner-Profi-Parität hergestellt. Studio-Tool deckt den vollständigen Planungs- und Angebotsworkflow ab.
+
+**Ziel:** OKP zur vernetzten Branchenlösung ausbauen: Produktionssteuerung, mobiler Außendienst, ERP-Anbindung, erweitertes Reporting, DSGVO/SSO/RBAC. Quelle: Copilot-Planungsdokument (PR #9, 2026-03-02).
+
+---
+
+### Sprint 46 – Auftragssteuerung & Produktionsübergabe
+
+**Ziel:** Bestätigtes Angebot erzeugt zwei verknüpfte Entitäten: interne `ProductionOrder` (Produktionsauftrag im Studio) und externe `PurchaseOrder` (Bestellung an den Küchenhersteller).
+
+> **Stand:** `PurchaseOrder` + `PurchaseOrderItem` + 6 API-Routen bereits implementiert (PR #10, gemergt 2026-03-02, +12 Tests). `ProductionOrder` + Freeze-Guard noch ausstehend.
+
+**Features:**
+
+- **PurchaseOrder (Herstellerbestellung) ✅ PR #10:**
+  Bestellschein an den Küchenhersteller mit Positionen (SKU, Menge, Preis).
+  Status-Lifecycle: `draft → sent → confirmed → partially_delivered → delivered → cancelled`.
+  6 CRUD-Endpunkte inkl. Status-Workflow-Übergänge + Notification-Trigger.
+
+- **ProductionOrder (interner Produktionsauftrag):**
+  Konvertierung des bestätigten Angebots in einen internen Produktionsauftrag; BOM wird eingefroren (Snapshot).
+  Status-Lifecycle: `draft → confirmed → in_production → ready → delivered → installed`.
+  Statusübergänge mit Zeitstempel und User-Referenz geloggt.
+
+- **Produktionsübersicht:** Listenansicht aller Aufträge mit Filter nach Status, Fälligkeit, Sachbearbeiter; Drill-down auf Positionen.
+
+- **Freeze-Guard:** Änderungen an Planung/BOM nach Konvertierung blockiert; UI-Hinweis mit Option auf neue Alternative.
+
+- **Verknüpfung:** `PurchaseOrder` referenziert `ProductionOrder`; Status-Updates der Herstellerbestellung aktualisieren den Produktionsauftrag.
+
+**Datenmodell:**
+- `purchase_orders` ✅ – (id, status, items[], created_at) – PR #10
+- `purchase_order_items` ✅ – (order_id, position, sku, quantity, unit_price) – PR #10
+- `production_orders` – (quote_id, bom_snapshot JSON, status, created_at) – ausstehend
+- `production_order_events` – Audit-Log (order_id, from_status, to_status, user_id, timestamp) – ausstehend
+
+**Deliverables (ausstehend):** `ProductionOrderService`, Freeze-Guard in API, Produktionsübersicht-UI, Verknüpfung PO↔PurchaseOrder, 15 weitere Tests.
+
+**DoD:** Angebot → Produktionsauftrag konvertiert; BOM-Snapshot unveränderlich; Planungsänderung nach Freeze blockiert; PurchaseOrder mit ProductionOrder verknüpft; Statuswechsel beider Entitäten geloggt.
+
+---
+
+### Sprint 47 – Mobile Aufmaß & Baustellenprotokoll
+
+**Ziel:** Progressive Web App für Außendienst: Aufmaß, Fotos, Installationscheckliste, automatisches Protokoll.
+
+**Features:**
+
+- **Offline-fähige PWA:** Raummaße und Notizen auch ohne Internetverbindung erfassen; Sync beim nächsten Verbindungsaufbau.
+- **Foto-Dokumentation:** Kameraintegration im Browser; Fotos werden Projekt/Raum zugeordnet und in S3-kompatiblem Storage abgelegt.
+- **Installationscheckliste:** Pro Auftrag konfigurierbare Checkliste (Mängel, Abnahmen); Häkchen + Freitext + Foto je Position.
+- **PDF-Protokoll-Generierung:** Abnahmeprotokoll automatisch aus Checkliste + Fotos generieren und als Dokument am Projekt ablegen.
+
+**Neues Datenmodell:**
+- `site_surveys` – (project_id, measurements JSON, photos[], notes, synced_at)
+- `installation_checklists` – (order_id, items[], completed_at)
+- `checklist_items` – (checklist_id, label, checked, photo_url, note)
+
+**Deliverables:** PWA-Manifest + Service Worker, Foto-Upload-Pipeline, Checklisten-CRUD, Protokoll-PDF-Generator, 20 Tests.
+
+**DoD:** Aufmaß offline erfasst und nach Sync am Projekt sichtbar; Protokoll-PDF aus Checkliste generierbar; Fotos abrufbar.
+
+---
+
+### Sprint 48 – ERP-Anbindung & Lieferantenportal
+
+**Ziel:** Bestehende `PurchaseOrder` (Sprint 46) um ERP-Konnektoren erweitern: automatische Übertragung an externe Systeme, Webhook-Rückmeldung, Lieferantenportal.
+
+**Features:**
+
+- **ERP-Konnektor-Framework:** Konfigurierbare Konnektoren (Endpunkt, Auth, Feldmapping); unterstützt REST + Webhook-Push. Überträgt `PurchaseOrder`-Daten automatisch ins ERP des Herstellers.
+- **Artikel-Mapping:** Katalog-Artikelnummer ↔ ERP-Artikelnummer pro Konnektor konfigurierbar.
+- **Lieferantenportal (Light):** Eigene Ansicht für Lieferanten: offene `PurchaseOrders` einsehen, Lieferdatum bestätigen, AB hochladen.
+- **Status-Rückübermittlung:** ERP liefert AB und Lieferstatus als Webhook zurück → aktualisiert `purchase_order.status` und triggert Notification an Studio.
+
+**Neues Datenmodell:**
+- `erp_connectors` – (tenant_id, name, endpoint, auth_config JSON, field_mapping JSON)
+- `purchase_orders.erp_order_ref` – nullable, befüllt nach ERP-Übertragung
+
+**Deliverables:** Konnektor-CRUD, ERP-Push-Service, Lieferantenportal-View, Webhook-Empfänger, 25 Tests.
+
+**DoD:** PurchaseOrder wird via Konnektor ins ERP übertragen; AB-Webhook aktualisiert Status; Lieferant sieht offene Bestellungen im Portal.
+
+---
+
+### Sprint 49 – Erweiterte Analytics & individuelle Reports
+
+**Ziel:** Report-Builder mit Drill-down, Trichteranalyse und geplanter E-Mail-Verteilung.
+
+**Features:**
+
+- **Report-Builder:** Konfigurierbare Dimensionen (Zeitraum, Branch, Verkäufer, Warengruppe) und Metriken (Umsatz, DB, Conversion); Ergebnis als Tabelle oder Chart.
+- **5 Standard-Reports:** Umsatz/Zeitraum, Trichter Lead→Angebot→Auftrag, Durchlaufzeiten, Top-Warengruppen, Verkäufer-Ranking.
+- **Drill-down:** Klick auf Aggregat öffnet Detailliste der zugehörigen Datensätze.
+- **Geplante Verteilung:** Reports per Cron (täglich/wöchentlich/monatlich) als PDF oder Excel per E-Mail versenden.
+
+**Neues Datenmodell:**
+- `report_definitions` – (tenant_id, name, dimensions[], metrics[], filters JSON)
+- `report_schedules` – (report_id, cron_expression, recipients[], format)
+- `report_runs` – (schedule_id, generated_at, file_url)
+
+**Deliverables:** Report-Builder-UI, 5 vordefinierte Report-Templates, Drill-down-Navigation, Schedule-CRUD + Cron-Job, PDF/Excel-Export, 20 Tests.
+
+**DoD:** Custom-Report konfiguriert und gespeichert; Standard-Reports aufrufbar; Drill-down zeigt Einzeldatensätze; Versand per Schedule funktioniert.
+
+---
+
+### Sprint 50 – Compliance, Plattformhärtung & SLA-Management
+
+**Ziel:** DSGVO-Tooling, SSO/SAML 2.0, granulares RBAC, SLA-Monitoring.
+
+**Features:**
+
+- **DSGVO-Workflow:** Datenlöschung auf Anfrage (Right to be forgotten): alle personenbezogenen Daten eines Kontakts/Projekts identifizieren, anonymisieren oder löschen; Nachweis-Log.
+- **Datenexport (Art. 20 DSGVO):** Alle Daten eines Nutzers/Kontakts als strukturiertes JSON exportierbar.
+- **SSO / SAML 2.0:** Konfigurierbare Identity-Provider-Anbindung; Fallback auf lokale Auth falls IdP nicht erreichbar.
+- **Granulares RBAC:** Rollen und Berechtigungen auf Branch-Ebene definierbar (z. B. Verkäufer darf nur eigene Projekte sehen).
+- **SLA-Monitoring:** Uptime-Indikatoren, Antwortzeit-Tracking pro API-Endpunkt, Alert bei SLA-Verletzung; Dashboard-Widget.
+
+**Neues Datenmodell:**
+- `gdpr_deletion_requests` – (contact_id, requested_at, completed_at, performed_by)
+- `sso_providers` – (tenant_id, entity_id, sso_url, certificate)
+- `role_permissions` – (role, resource, action, branch_id nullable)
+- `sla_snapshots` – (endpoint, p50_ms, p95_ms, uptime_pct, recorded_at)
+
+**Deliverables:** DSGVO-Lösch-/Export-Flow, SSO-Konfiguration + Fallback, RBAC-Admin-UI, SLA-Dashboard-Widget, Vollständiges Audit-Log, 30 Tests.
+
+**DoD:** Löschanfrage vollständig anonymisiert Datensätze + Nachweis; SSO-Login mit externem IdP funktioniert; Branch-RBAC greift; SLA-Widget zeigt aktuelle Werte.
+
+---
+
+### Meilenstein Phase 6
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 50 | Vernetzte Branchenlösung: Auftragssteuerung, Mobile Feldarbeit, ERP-Anbindung, erweitertes Reporting, DSGVO/SSO/RBAC |
+
+### Risiken Phase 6
+
+1. ERP-Heterogenität: Jedes ERP hat andere Datenmodelle – Konnektor-Framework muss flexibel genug sein ohne unkontrollierbare Komplexität.
+2. Offline-Sync-Konflikte in der PWA: Gleichzeitige Bearbeitung am Tablet und im Browser muss deterministisch aufgelöst werden.
+3. PDF-Generierung bei großen Reports kann Laufzeit-Probleme erzeugen – asynchrone Job-Queue nötig.
+4. Kaskadierende DSGVO-Löschungen können referenzielle Integrität brechen – Anonymisierungs-Strategie statt Hard-Delete bevorzugen.
+5. SSO-Fallback-Sicherheit: Lokale Auth darf nicht als Backdoor fungieren – MFA-Pflicht für Fallback.
+6. SLA-Snapshot-Datenmenge: Langfristige Retention-Strategie (Aggregation, TTL) für Monitoring-Daten definieren.

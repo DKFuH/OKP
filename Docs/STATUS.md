@@ -1,14 +1,17 @@
 # STATUS.md
 
-Projektstatus per 2026-03-01 - MVP abgeschlossen, Phase 2 umgesetzt, Phase 3 in technischer Umsetzung.
+Projektstatus per 2026-03-02 - MVP, Phase 2, Phase 3 und Phase 4 abgeschlossen. Phase 5 und 6 geplant.
 
 ---
 
-## Gesamtstatus (Stand 2026-03-01)
+## Gesamtstatus (Stand 2026-03-02)
 
 - **Sprints 0-19 (MVP): abgeschlossen**
 - **Sprints 20-24 (Phase 2): abgeschlossen**
-- **Sprints 25-30 (Phase 3): in Umsetzung / große Teile bereits integriert**
+- **Sprints 25-30 (Phase 3): abgeschlossen**
+- **Sprints 31-40 (Phase 4 + Sprints 35-40): abgeschlossen** (PR #8 gemergt 2026-03-02)
+- **Sprints 41-45 (Phase 5 – Winner-Parität): geplant**
+- **Sprints 46-50 (Phase 6 – Vernetzte Branchenlösung): geplant**
 
 Sprint 01 wurde extern bearbeitet. Alle übrigen Sprints lieferten Artefakte in:
 - `shared-schemas` - Polygon, Öffnungen, Decken/Wände, Kollision/Höhe
@@ -79,10 +82,23 @@ Alle Reviews (TASK-3-R01 bis TASK-11-R01) intern ausgeführt. Alle Findings umge
 
 ---
 
+## Phase-4-Abschluss (Sprint 31–40)
+
+- Sprint 31–34 (Projektliste, Bereiche/Alternativen, Onboarding, Workspace-Layout): PR #8 gemergt 2026-03-02.
+- Sprints 35–40 (Makros, Arbeitsplattenschemas, Annotationen, Raumdekoration, Lichtprofile, Angebotszeilen): backend complete, frontend implemented.
+
+## Phase-6-Vorarbeit (Sprint 46 – teilweise)
+
+- `PurchaseOrder` + `PurchaseOrderItem` Prisma-Schema implementiert (PR #10, gemergt 2026-03-02).
+- 6 CRUD-Routen für Bestellwesen + Status-Workflow-Übergänge + Notification-Trigger aktiv.
+- **Aktueller Teststand: 280 Tests grün** (+12 aus PR #10).
+- Ausstehend Sprint 46: `ProductionOrder`, Freeze-Guard, Verknüpfung PO↔PurchaseOrder, Produktionsübersicht-UI.
+
 ## Nächste Schritte
 
-- Phase-3-Funktionen konsolidieren und End-to-End validieren.
-- Offene DoD-Punkte aus Sprint 25-30 über gezielte Integrations- und Lasttests schließen.
-- Dokumentationspflege laufend synchron zur Auslieferung halten.
-- Referenzplanung: `Docs/PHASE_3_DOD_AND_EXECUTION_PLAN.md`
+- Phase 5 (Sprints 41–45) starten: Winner-Profi-Parität (Passstücke, Angebotsworkflow, Taschenrechner, Favoriten, Batchdruck, Nischenverkleidung).
+- Referenzplanung Phase 5: `Docs/PHASE_5_DOD_AND_EXECUTION_PLAN.md`
+- Sprint 46 vervollständigen: `ProductionOrder` + Freeze-Guard + Produktionsübersicht.
+- Phase 6 (Sprints 46–50) folgt nach Phase 5: Auftragssteuerung, Mobile PWA, ERP-Anbindung, Analytics, Compliance.
+- Referenzplanung Phase 6: `Docs/PHASE_6_DOD_AND_EXECUTION_PLAN.md` (noch zu erstellen)
 
