@@ -25,6 +25,8 @@ model User {
   dashboard_configs DashboardConfig[]
   tenant     Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: SetNull)
   branch     Branch?   @relation(fields: [branch_id], references: [id], onDelete: SetNull)
+  favorites  UserFavorite[]   // Phase 5 – Sprint 43
+  model_templates ModelTemplate[]  // Phase 5 – Sprint 43
 
   @@map("users")
 }
@@ -1225,4 +1227,38 @@ model PurchaseOrderItem {
 
   @@index([purchase_order_id])
   @@map("purchase_order_items")
+}
+
+// ─────────────────────────────────────────
+// PHASE 5 – Sprint 43: Favoriten & Vorlagen
+// ─────────────────────────────────────────
+
+model UserFavorite {
+  id          String   @id @default(uuid())
+  user_id     String
+  tenant_id   String?
+  entity_type String   @db.VarChar(50)
+  entity_id   String
+  created_at  DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, entity_type, entity_id])
+  @@index([user_id, entity_type])
+  @@map("user_favorites")
+}
+
+model ModelTemplate {
+  id             String   @id @default(uuid())
+  user_id        String
+  tenant_id      String?
+  name           String   @db.VarChar(100)
+  model_settings Json     @default("{}")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("model_templates")
 }
