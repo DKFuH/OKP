@@ -872,7 +872,7 @@ acoustic_layers – (project_id, layer_type VARCHAR, object_refs JSON)
 
 ### Sprint 57 – Erweiterte Wandobjekte (WallAttachments)
 
-**Meta:** Status: `planned` · Owner: Full-Stack · ETA: Phase 8 · Abhängigkeiten: S56, S5
+**Meta:** Status: `done` · Owner: Full-Stack · ETA: Phase 8 · Abhängigkeiten: S56, S5
 
 **Ziel:** Das `Opening`-Modell zu einem generischen `WallAttachment` ausbauen: Heizkörper, Steckdosen, Schalter, Nischen und generische Wandelemente als eigene Typen mit 2D-Symbolen.
 

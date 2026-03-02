@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
-import { Stage, Layer, Line, Circle, Group, Rect, Text } from 'react-konva'
+import { Stage, Layer, Line, Circle, Group, Rect, Text, Image as KonvaImage } from 'react-konva'
 import type Konva from 'konva'
 import type { Point2D } from '@shared/types'
 import type { Opening } from '../api/openings.js'
@@ -52,6 +52,11 @@ function openingColor(type: Opening['type'], selected: boolean) {
   if (selected) return COLOR.openingSelected
   if (type === 'window') return COLOR.openingWindow
   if (type === 'pass-through') return COLOR.openingPassThrough
+  if (type === 'radiator') return resolveColor('--status-danger', '#e55')
+  if (type === 'socket') return resolveColor('--status-warning', '#fa0')
+  if (type === 'switch') return resolveColor('--status-warning', '#fa0')
+  if (type === 'niche') return resolveColor('--text-muted', '#888')
+  if (type === 'pipe') return resolveColor('--status-info', '#06f')
   return COLOR.openingDoor
 }
 
@@ -84,6 +89,7 @@ interface Props {
   acousticGrid?: GeoJsonGrid | null
   acousticVisible?: boolean
   acousticOpacity?: number
+  onReferenceImageUpdate?: (img: NonNullable<EditorState['referenceImage']>) => void
 }
 
 export function PolygonEditor({
@@ -96,17 +102,49 @@ export function PolygonEditor({
   acousticGrid = null,
   acousticVisible = false,
   acousticOpacity = 0.5,
+  onReferenceImageUpdate,
 }: Props) {
   const stageRef = useRef<Konva.Stage>(null)
   const [dragLabel, setDragLabel] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [referenceImageElement, setReferenceImageElement] = useState<HTMLImageElement | null>(null)
+  const [calibrationPoints, setCalibrationPoints] = useState<Array<{ x: number; y: number }>>([])
+
+  useEffect(() => {
+    const url = state.referenceImage?.url
+    if (!url) {
+      setReferenceImageElement(null)
+      return
+    }
+
+    const image = new window.Image()
+    image.src = url
+    image.onload = () => setReferenceImageElement(image)
+  }, [state.referenceImage?.url])
 
   const handleStageClick = useCallback((_e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (state.tool !== 'draw') return
-    // Child shapes (vertices, edges) set e.cancelBubble = true so they never reach here
     const pos = stageRef.current?.getPointerPosition()
     if (!pos) return
+
+    if (state.tool === 'calibrate' && state.referenceImage) {
+      setCalibrationPoints((prev) => {
+        const next = prev.length === 2 ? [{ x: pos.x, y: pos.y }] : [...prev, { x: pos.x, y: pos.y }]
+        if (next.length !== 2) return next
+
+        const refLengthMm = Number(window.prompt('Referenzlänge in mm eingeben:'))
+        if (!Number.isNaN(refLengthMm) && refLengthMm > 0) {
+          const px = Math.hypot(next[1].x - next[0].x, next[1].y - next[0].y)
+          const newCanvasScale = px / (refLengthMm * SCALE)
+          onReferenceImageUpdate?.({ ...state.referenceImage, scale: newCanvasScale })
+        }
+        return []
+      })
+      return
+    }
+
+    if (state.tool !== 'draw') return
+    // Child shapes (vertices, edges) set e.cancelBubble = true so they never reach here
     onAddVertex({ x_mm: canvasToWorld(pos.x), y_mm: canvasToWorld(pos.y) })
-  }, [state.tool, onAddVertex])
+  }, [state.tool, state.referenceImage, onAddVertex, onReferenceImageUpdate])
 
   const handleStageDblClick = useCallback(() => {
     if (state.tool === 'draw' && state.vertices.length >= 3) onClosePolygon()
@@ -213,6 +251,48 @@ export function PolygonEditor({
       <div className={styles.toolbar}>
         <ToolBtn active={state.tool === 'draw'} onClick={() => onSetTool('draw')}>Zeichnen</ToolBtn>
         <ToolBtn active={state.tool === 'select'} onClick={() => onSetTool('select')}>Auswählen</ToolBtn>
+        <label className={styles.toolBtn} title="Grundriss laden">
+          📷 Laden
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const url = URL.createObjectURL(file)
+              onReferenceImageUpdate?.({
+                url,
+                x: 50,
+                y: 50,
+                rotation: 0,
+                scale: 1,
+                opacity: 0.5,
+              })
+              e.target.value = ''
+            }}
+          />
+        </label>
+        {state.referenceImage && (
+          <ToolBtn active={state.tool === 'calibrate'} onClick={() => onSetTool('calibrate')}>
+            Kalibrieren
+          </ToolBtn>
+        )}
+        {state.referenceImage && (
+          <input
+            type="range"
+            min="0.1"
+            max="1"
+            step="0.05"
+            value={state.referenceImage.opacity}
+            onChange={(e) => onReferenceImageUpdate?.({
+              ...state.referenceImage,
+              opacity: Number(e.target.value),
+            })}
+            title="Transparenz Referenzbild"
+            style={{ width: 80 }}
+          />
+        )}
         {!state.closed && state.vertices.length >= 3 && (
           <button type="button" className={styles.closeBtn} onClick={onClosePolygon}>Polygon schließen</button>
         )}
@@ -243,7 +323,7 @@ export function PolygonEditor({
         height={height}
         onClick={handleStageClick}
         onDblClick={handleStageDblClick}
-        style={{ cursor: state.tool === 'draw' ? 'crosshair' : 'default' }}
+        style={{ cursor: state.tool === 'draw' || state.tool === 'calibrate' ? 'crosshair' : 'default' }}
       >
         <AcousticOverlay
           grid={acousticGrid}
@@ -253,6 +333,26 @@ export function PolygonEditor({
         />
 
         <Layer>
+          {state.referenceImage && referenceImageElement && (
+            <KonvaImage
+              image={referenceImageElement}
+              x={state.referenceImage.x}
+              y={state.referenceImage.y}
+              rotation={state.referenceImage.rotation}
+              scaleX={state.referenceImage.scale}
+              scaleY={state.referenceImage.scale}
+              opacity={state.referenceImage.opacity}
+              draggable
+              onDragEnd={(e) => {
+                onReferenceImageUpdate?.({
+                  ...state.referenceImage,
+                  x: e.target.x(),
+                  y: e.target.y(),
+                })
+              }}
+            />
+          )}
+
           {/* Polygon-Fläche */}
           {state.closed && pts.length >= 3 && (
             <Line
@@ -337,19 +437,50 @@ export function PolygonEditor({
                 const coords = openingCanvasCoords(opening)
                 if (!coords) return null
                 const isSelected = opening.id === selectedOpeningId
+                const dx = coords.x2 - coords.x1
+                const dy = coords.y2 - coords.y1
+                const len = Math.hypot(dx, dy)
+                const normX = len === 0 ? 0 : -dy / len
+                const normY = len === 0 ? 0 : dx / len
                 return (
-                  <Line
-                    key={opening.id}
-                    points={[coords.x1, coords.y1, coords.x2, coords.y2]}
-                    stroke={openingColor(opening.type, isSelected)}
-                    strokeWidth={isSelected ? 6 : 4}
-                    hitStrokeWidth={10}
-                    lineCap="round"
-                    onClick={(e) => {
-                      e.cancelBubble = true
-                      onSelectOpening?.(isSelected ? null : opening.id)
-                    }}
-                  />
+                  <Group key={opening.id}>
+                    <Line
+                      points={[coords.x1, coords.y1, coords.x2, coords.y2]}
+                      stroke={openingColor(opening.type, isSelected)}
+                      strokeWidth={
+                        isSelected ? 6
+                          : opening.type === 'radiator' ? 6
+                            : opening.type === 'niche' ? 8
+                              : 4
+                      }
+                      dash={
+                        opening.type === 'pipe' ? [4, 4]
+                          : opening.type === 'socket' ? [2, 2]
+                            : undefined
+                      }
+                      hitStrokeWidth={10}
+                      lineCap="round"
+                      onClick={(e) => {
+                        e.cancelBubble = true
+                        onSelectOpening?.(isSelected ? null : opening.id)
+                      }}
+                    />
+                    {opening.wall_offset_depth_mm && opening.wall_offset_depth_mm > 0 && (
+                      <Line
+                        key={`${opening.id}-depth`}
+                        points={[
+                          coords.x1 + normX * worldToCanvas(opening.wall_offset_depth_mm),
+                          coords.y1 + normY * worldToCanvas(opening.wall_offset_depth_mm),
+                          coords.x2 + normX * worldToCanvas(opening.wall_offset_depth_mm),
+                          coords.y2 + normY * worldToCanvas(opening.wall_offset_depth_mm),
+                        ]}
+                        stroke={openingColor(opening.type, false)}
+                        strokeWidth={1}
+                        dash={[4, 4]}
+                        opacity={0.5}
+                      />
+                    )}
+                  </Group>
                 )
               })}
             </Group>
@@ -488,6 +619,9 @@ export function PolygonEditor({
         )}
         {state.tool === 'select' && (
           <span>Ziehen: Punkt/Wand verschieben · Doppelklick: löschen · D=Zeichnen · S=Auswählen · Esc=Abwählen</span>
+        )}
+        {state.tool === 'calibrate' && state.referenceImage && (
+          <span>Kalibrieren: Zwei Punkte anklicken, dann Referenzlänge eingeben</span>
         )}
         <span className={styles.vertexCount}>{state.vertices.length} Punkte · {openings.length} Öffnungen</span>
       </div>

@@ -39,6 +39,15 @@ const UpdateRoomSchema = z.object({
   placements: z.array(z.unknown()).optional(),
 })
 
+const ReferenceImageSchema = z.object({
+  url: z.string().url(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  rotation: z.number().min(-360).max(360).optional(),
+  scale: z.number().min(0.01).max(100).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+})
+
 export async function roomRoutes(app: FastifyInstance) {
   // GET /projects/:projectId/rooms
   app.get<{ Params: { projectId: string } }>(
@@ -147,6 +156,33 @@ export async function roomRoutes(app: FastifyInstance) {
     })
 
     return reply.send(room)
+  })
+
+  // PUT /rooms/:id/reference-image
+  app.put<{ Params: { id: string } }>('/rooms/:id/reference-image', async (request, reply) => {
+    const parsed = ReferenceImageSchema.safeParse(request.body)
+    if (!parsed.success) return sendBadRequest(reply, parsed.error.errors[0]?.message ?? 'Invalid')
+
+    const room = await prisma.room.findUnique({ where: { id: request.params.id } })
+    if (!room) return sendNotFound(reply, 'Room not found')
+
+    const updated = await prisma.room.update({
+      where: { id: request.params.id },
+      data: { reference_image: parsed.data },
+    })
+    return reply.send(updated)
+  })
+
+  // DELETE /rooms/:id/reference-image
+  app.delete<{ Params: { id: string } }>('/rooms/:id/reference-image', async (request, reply) => {
+    const room = await prisma.room.findUnique({ where: { id: request.params.id } })
+    if (!room) return sendNotFound(reply, 'Room not found')
+
+    const updated = await prisma.room.update({
+      where: { id: request.params.id },
+      data: { reference_image: null },
+    })
+    return reply.send(updated)
   })
 
   // DELETE /rooms/:id

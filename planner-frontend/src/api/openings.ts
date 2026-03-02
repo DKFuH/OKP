@@ -1,9 +1,12 @@
-import type { Opening } from '@shared/types'
+import type { Opening as SharedOpening } from '@shared/types'
 import { api } from './client.js'
 import { saveOpenings as saveDemoOpenings } from './demoBackend.js'
 import { shouldUseDemoFallback } from './client.js'
 
-export type { Opening }
+export interface Opening extends Omit<SharedOpening, 'type' | 'wall_offset_depth_mm'> {
+  type: 'door' | 'window' | 'pass-through' | 'radiator' | 'socket' | 'switch' | 'niche' | 'pipe' | 'custom'
+  wall_offset_depth_mm?: number | null
+}
 
 export const openingsApi = {
   list: (roomId: string): Promise<Opening[]> =>

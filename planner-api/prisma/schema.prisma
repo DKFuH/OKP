@@ -156,6 +156,7 @@ model Room {
   coloring            Json      @default("{\"surfaces\":[]}")
   deco_objects        Json      @default("[]")
   lighting_profiles   Json      @default("[]")
+  reference_image     Json?     // { url, x, y, rotation, scale, opacity }
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
 

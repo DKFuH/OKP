@@ -6,14 +6,27 @@ import type { CadEntity, Opening as SharedOpening, WallSegment } from '@okp/shar
 import { prisma } from '../db.js'
 import { sendNotFound, sendBadRequest } from '../errors.js'
 
+const openingTypeValues = [
+  'door',
+  'window',
+  'pass-through',
+  'radiator',
+  'socket',
+  'switch',
+  'niche',
+  'pipe',
+  'custom',
+] as const
+
 const OpeningSchema = z.object({
   id: z.string().uuid().default(() => randomUUID()),
   wall_id: z.string().uuid(),
-  type: z.enum(['door', 'window', 'pass-through']).optional(),
+  type: z.enum(openingTypeValues).optional(),
   offset_mm: z.number().min(0),
   width_mm: z.number().positive(),
   height_mm: z.number().positive().optional(),
   sill_height_mm: z.number().min(0).optional(),
+  wall_offset_depth_mm: z.number().int().min(0).max(2000).nullable().optional(),
   source: z.enum(['manual', 'cad_import']).default('manual'),
 })
 
@@ -23,11 +36,12 @@ type BoundaryJson = { wall_segments?: Array<{ id: string; length_mm?: number }> 
 const OpeningDraftSchema = z.object({
   id: z.string().min(1).default(() => randomUUID()),
   wall_id: z.string().min(1),
-  type: z.enum(['door', 'window', 'pass-through']).optional(),
+  type: z.enum(openingTypeValues).optional(),
   offset_mm: z.number().min(0),
   width_mm: z.number().positive(),
   height_mm: z.number().positive().optional(),
   sill_height_mm: z.number().min(0).optional(),
+  wall_offset_depth_mm: z.number().int().min(0).max(2000).nullable().optional(),
   source: z.enum(['manual', 'cad_import']).default('manual'),
 })
 

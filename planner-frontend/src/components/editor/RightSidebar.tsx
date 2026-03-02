@@ -313,6 +313,12 @@ const OPENING_LABELS: Record<string, string> = {
   door: 'Tür',
   window: 'Fenster',
   'pass-through': 'Durchgang',
+  radiator: 'Heizkörper',
+  socket: 'Steckdose',
+  switch: 'Schalter',
+  niche: 'Nische',
+  pipe: 'Rohrleitung',
+  custom: 'Benutzerdefiniert',
 }
 
 function OpeningPanel({ opening, onUpdate, onDelete }: {
@@ -324,12 +330,16 @@ function OpeningPanel({ opening, onUpdate, onDelete }: {
   const [width, setWidth] = useState(String(Math.round(opening.width_mm)))
   const [height, setHeight] = useState(String(opening.height_mm ? Math.round(opening.height_mm) : ''))
   const [sill, setSill] = useState(String(opening.sill_height_mm ? Math.round(opening.sill_height_mm) : '0'))
+  const [wallOffsetDepth, setWallOffsetDepth] = useState(
+    String(opening.wall_offset_depth_mm ? Math.round(opening.wall_offset_depth_mm) : '0'),
+  )
 
   useEffect(() => {
     setOffset(String(Math.round(opening.offset_mm)))
     setWidth(String(Math.round(opening.width_mm)))
     setHeight(String(opening.height_mm ? Math.round(opening.height_mm) : ''))
     setSill(String(opening.sill_height_mm ? Math.round(opening.sill_height_mm) : '0'))
+    setWallOffsetDepth(String(opening.wall_offset_depth_mm ? Math.round(opening.wall_offset_depth_mm) : '0'))
   }, [opening.id])
 
   function commitField(field: keyof Opening, raw: string, min = 0) {
@@ -356,6 +366,12 @@ function OpeningPanel({ opening, onUpdate, onDelete }: {
           <option value="door">Tür</option>
           <option value="window">Fenster</option>
           <option value="pass-through">Durchgang</option>
+          <option value="radiator">Heizkörper</option>
+          <option value="socket">Steckdose</option>
+          <option value="switch">Schalter</option>
+          <option value="niche">Nische</option>
+          <option value="pipe">Rohrleitung</option>
+          <option value="custom">Benutzerdefiniert</option>
         </select>
       </div>
 
@@ -416,6 +432,20 @@ function OpeningPanel({ opening, onUpdate, onDelete }: {
           />
         </div>
       )}
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Tiefenversatz (mm)</label>
+        <input
+          aria-label="Tiefenversatz in mm"
+          className={styles.fieldInput}
+          type="number"
+          min={0}
+          value={wallOffsetDepth}
+          onChange={e => setWallOffsetDepth(e.target.value)}
+          onBlur={() => commitField('wall_offset_depth_mm', wallOffsetDepth)}
+          onKeyDown={e => { if (e.key === 'Enter') commitField('wall_offset_depth_mm', wallOffsetDepth) }}
+        />
+      </div>
 
       <button
         type="button"

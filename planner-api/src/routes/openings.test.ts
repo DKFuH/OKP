@@ -1,9 +1,45 @@
 import Fastify from 'fastify'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const roomId = '33333333-3333-3333-3333-333333333333'
+const wallId = '44444444-4444-4444-4444-444444444444'
+
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: {
+    room: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+  },
+}))
+
+vi.mock('../db.js', () => ({
+  prisma: prismaMock,
+}))
 
 import { openingRoutes } from './openings.js'
 
 describe('openingRoutes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    prismaMock.room.findUnique.mockResolvedValue({
+      id: roomId,
+      openings: [],
+      boundary: {
+        wall_segments: [{ id: wallId, length_mm: 4000 }],
+      },
+    })
+
+    prismaMock.room.update.mockImplementation(async ({ data }: { data: { openings: unknown[] } }) => ({
+      id: roomId,
+      openings: data.openings,
+      boundary: {
+        wall_segments: [{ id: wallId, length_mm: 4000 }],
+      },
+    }))
+  })
+
   it('validates openings against wall bounds and siblings', async () => {
     const app = Fastify()
     await app.register(openingRoutes, { prefix: '/api/v1' })
@@ -85,6 +121,81 @@ describe('openingRoutes', () => {
         },
       ],
     })
+
+    await app.close()
+  })
+
+  it('creates opening with type radiator', async () => {
+    const app = Fastify()
+    await app.register(openingRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/rooms/${roomId}/openings`,
+      payload: {
+        wall_id: wallId,
+        type: 'radiator',
+        offset_mm: 300,
+        width_mm: 900,
+        source: 'manual',
+      },
+    })
+
+    expect(response.statusCode).toBe(201)
+    expect(response.json()).toMatchObject({
+      wall_id: wallId,
+      type: 'radiator',
+      offset_mm: 300,
+      width_mm: 900,
+    })
+
+    await app.close()
+  })
+
+  it('creates opening with type niche and wall_offset_depth_mm', async () => {
+    const app = Fastify()
+    await app.register(openingRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/rooms/${roomId}/openings`,
+      payload: {
+        wall_id: wallId,
+        type: 'niche',
+        offset_mm: 1200,
+        width_mm: 600,
+        wall_offset_depth_mm: 200,
+        source: 'manual',
+      },
+    })
+
+    expect(response.statusCode).toBe(201)
+    expect(response.json()).toMatchObject({
+      wall_id: wallId,
+      type: 'niche',
+      wall_offset_depth_mm: 200,
+    })
+
+    await app.close()
+  })
+
+  it('rejects opening with unknown type', async () => {
+    const app = Fastify()
+    await app.register(openingRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/rooms/${roomId}/openings`,
+      payload: {
+        wall_id: wallId,
+        type: 'unknown_type',
+        offset_mm: 200,
+        width_mm: 700,
+        source: 'manual',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
 
     await app.close()
   })

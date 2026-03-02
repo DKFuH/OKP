@@ -53,11 +53,12 @@ export interface WallSegment2D {
 export interface Opening {
   id: string;
   wall_id: string;
-  type?: 'door' | 'window' | 'pass-through';
+  type?: 'door' | 'window' | 'pass-through' | 'radiator' | 'socket' | 'switch' | 'niche' | 'pipe' | 'custom';
   offset_mm: number;
   width_mm: number;
   height_mm?: number;
   sill_height_mm?: number;
+  wall_offset_depth_mm?: number | null;
   recess_mm?: number;
   source?: 'manual' | 'cad_import';
 }
