@@ -271,3 +271,120 @@ Sprint-Planung für MVP (Sprints 0-19), Phase 2 (Sprints 20-24) und Phase 3 (Spr
 1. Bereiche/Alternativen müssen konsistent mit bestehender Raum-/Placement-Logik sein.
 2. Onboarding darf bestehende Auth-/User-Flows nicht brechen.
 3. Workspace-Layout-Persistenz muss per User/Tenant isoliert bleiben.
+
+---
+
+## Phase 5 – Sprints 35–39: Auftragssteuerung, Mobile & ERP-Integration
+
+**Ausgangslage (nach Sprint 34):** Studio-Plattform mit vollständigem Planungs-/Angebots-/Projektmanagement-Zyklus, Onboarding und anpassbarem Workspace. Jetzt Anbindung an Produktion, Feldarbeit und externe Systeme.
+
+**Ziel:** OKP vom Studio-Tool zur vernetzten Branchenlösung ausbauen – mit Auftragssteuerung, mobiler Aufmaß-/Montage-App, ERP/Lieferantenanbindung, erweiterter Analytik und Compliance-Härtung.
+
+---
+
+### Sprint 35 – Auftragssteuerung & Produktionsübergabe
+
+**Ziel:** Aus einem bestätigten Angebot einen Produktionsauftrag erzeugen und dessen Durchlauf bis zur Lieferung verfolgen.
+
+**Features:**
+
+- Auftrags-Entity (`ProductionOrder`): Auftragsnummer, Status (`draft` | `confirmed` | `in_production` | `shipped` | `installed`), Fertigstellungsdatum, Lieferanten-Referenz.
+- Übergabe-Workflow: Angebot → Auftrag (1-Klick-Promotion), BOM-Snapshot eingefroren.
+- Statusprotokoll: Jede Statusänderung mit Zeitstempel und Benutzer geloggt.
+- `POST /projects/:id/production-orders`, `PATCH /production-orders/:id/status`.
+- Auftragsübersicht: Liste, Filter (Status/Liefertermin/Verkäufer), CSV-Export.
+
+**DoD:** Angebot → Produktionsauftrag anlegen, Statuswechsel protokolliert, BOM-Snapshot unveränderlich, 10 Tests.
+
+---
+
+### Sprint 36 – Mobile Aufmaß & Baustellenprotokoll
+
+**Ziel:** Mobiler Workflow für Aufmaß vor Ort und Abnahmeprotokoll bei Montage.
+
+**Features:**
+
+- Progressive-Web-App-Ausbau (`/mobile`): Offline-fähiger Grundriss-Viewer, Aufmaß-Formular.
+- Aufmaß-Protokoll (`SurveyRecord`): Raummaße, Fotos, Notizen, GPS-Koordinaten.
+- Montage-Checkliste (`InstallationChecklist`): Positionen abhaken, Mängel mit Foto dokumentieren.
+- `POST /projects/:id/survey-records`, `GET /projects/:id/survey-records`.
+- `POST /projects/:id/installation-checklists`, `PATCH /installation-checklists/:id/items/:itemId`.
+- Automatische PDF-Generierung für Aufmaß- und Abnahmeprotokoll.
+
+**DoD:** Aufmaß offline erfassen, Foto hochladen, PDF abrufbar; Montage-Checkliste vollständig abhakbar.
+
+---
+
+### Sprint 37 – ERP-Anbindung & Lieferantenportal
+
+**Ziel:** Bidirektionale Kopplung an ERP-/Warenwirtschaftssysteme und strukturiertes Lieferanten-Bestellportal.
+
+**Neues Datenmodell:**
+
+- DB-Tabellen: `erp_connections`, `erp_sync_logs`, `supplier_orders`, `supplier_order_items`
+- Domain-Typen: `ErpConnection`, `ErpSyncLog`, `SupplierOrder`, `SupplierOrderItem`
+
+**Features:**
+
+- ERP-Connector-Framework: konfigurierbare Endpunkte (REST/Webhook), Feldmapping, Sync-Protokoll.
+- Lieferanten-Bestellauslösung: BOM → Bestellliste → automatischer Versand an Lieferantenportal.
+- `POST /tenants/:id/erp-connections`, `POST /erp-connections/:id/sync`.
+- `POST /production-orders/:id/supplier-order`, `GET /supplier-orders/:id/status`.
+
+**DoD:** 1 ERP-Testsystem synchronisiert Auftragsdaten; Lieferantenbestellung ausgelöst und Status rückgemeldet; Sync-Log abrufbar.
+
+---
+
+### Sprint 38 – Erweiterte Analytics & individuelle Reports
+
+**Ziel:** Über KPI-Cards hinaus: zeitreihenbasierte Auswertungen, individuelle Report-Vorlagen und Daten-Drill-Down.
+
+**Features:**
+
+- Report-Builder: konfigurierbare Datenbasis (Angebote/Aufträge/Umsatz), Spaltenauswahl, Gruppierstufen, gespeicherte Report-Vorlagen.
+- Erweiterte KPI-Widgets: Trichteranalyse (Lead→Auftrag→Montage), Umsatz-Heat-Map pro Monat/Verkäufer/Region.
+- `GET /reports/builder?dimensions=…&metrics=…&period=…`, `POST /reports/templates`, `GET /reports/templates`.
+- Geplanter Report-Versand per E-Mail (Cron-basiert).
+- Export: PDF-Report, Excel-Report (mehrseitig, mit Diagrammen).
+
+**Domain-Typen:** `ReportTemplate`, `ReportResult`, `ReportSchedule`
+
+**DoD:** Report-Builder erzeugt konfigurierbare Tabellen/Diagramme, Vorlagen gespeichert/wiederholbar, PDF/Excel-Export validiert.
+
+---
+
+### Sprint 39 – Compliance, Plattformhärtung & SLA-Management
+
+**Ziel:** DSGVO-Werkzeuge, Single Sign-On (SSO), granulare Berechtigungen und SLA-Monitoring für den Produktivbetrieb.
+
+**Features:**
+
+- DSGVO-Tooling: Datenlösch-Workflow (Right-to-be-Forgotten), Datenexport für Kontakte, Audit-Log viewer.
+- SSO/SAML 2.0: Konfiguration pro Tenant, IdP-Metadaten-Import, Session-Verwaltung.
+- Granulare Rollenkontrolle: `RBAC`-Erweiterung (Ressource × Aktion × Branch), Role-Assignment-UI.
+- SLA-Dashboard: API-Latenz-Heatmap, Fehlerrate, Uptime-Indikator; Schwellenwert-Alerts.
+- `POST /tenants/:id/sso-config`, `GET /tenants/:id/audit-log`, `POST /tenants/:id/gdpr/delete-contact`.
+
+**Domain-Typen:** `SsoConfig`, `AuditEntry`, `RoleAssignment`, `SlaSnapshot`
+
+**DoD:** SSO mit Test-IdP funktioniert, DSGVO-Löschworkflow auditierbar, RBAC regelt Branch-Zugriff, SLA-Werte im Dashboard sichtbar.
+
+---
+
+### Meilenstein Phase 5
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 39 | Vernetzte Branchenlösung: Auftragssteuerung, Mobile Feldarbeit, ERP-Anbindung, erweitertes Reporting, DSGVO/SSO/RBAC |
+
+### Risiken Phase 5
+
+1. ERP-Connector-Komplexität hängt stark vom Zielsystem ab – generischer Adapter muss ausreichend konfigurierbar sein.
+2. Mobile PWA mit Offline-Fähigkeit erfordert robuste Service-Worker-Strategie und Konfliktauflösung.
+3. DSGVO-Lösch-Workflows müssen kaskadierend und auditierbar sein, ohne referenzielle Integrität zu brechen.
+4. SSO-Integration deckt heterogene IdP-Landschaft; Fallback auf lokale Accounts muss sicher bleiben.
+5. Granulares RBAC darf bestehende Tenant-Isolierung nicht aufweichen.
+
+### Referenz
+
+- Detailplanung und DoD: `Docs/PHASE_5_DOD_AND_EXECUTION_PLAN.md`

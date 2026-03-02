@@ -84,5 +84,7 @@ Alle Reviews (TASK-3-R01 bis TASK-11-R01) intern ausgeführt. Alle Findings umge
 - Phase-3-Funktionen konsolidieren und End-to-End validieren.
 - Offene DoD-Punkte aus Sprint 25-30 über gezielte Integrations- und Lasttests schließen.
 - Dokumentationspflege laufend synchron zur Auslieferung halten.
-- Referenzplanung: `Docs/PHASE_3_DOD_AND_EXECUTION_PLAN.md`
+- Referenzplanung Phase 3: `Docs/PHASE_3_DOD_AND_EXECUTION_PLAN.md`
+- Phase-4-Sprints (31–34) implementieren: Projektliste, Bereiche/Alternativen, Onboarding, Workspace-Layout.
+- Referenzplanung Phase 5 (Sprints 35–39): `Docs/PHASE_5_DOD_AND_EXECUTION_PLAN.md`
 
