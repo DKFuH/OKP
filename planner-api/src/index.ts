@@ -41,6 +41,8 @@ import { workspaceLayoutRoutes } from './routes/workspaceLayout.js'
 // Phase 5
 import { fillerPiecesRoutes } from './routes/fillerPieces.js'
 import { purchaseOrderRoutes } from './routes/purchaseOrders.js'
+import { batchPrintRoutes } from './routes/batchPrint.js'
+import { shareLinkRoutes } from './routes/shareLinks.js'
 
 const app = Fastify({ logger: true })
 
@@ -91,6 +93,8 @@ await app.register(workspaceLayoutRoutes, { prefix: '/api/v1' })
 // Phase 5 Routes
 await app.register(fillerPiecesRoutes, { prefix: '/api/v1' })
 await app.register(purchaseOrderRoutes, { prefix: '/api/v1' })
+await app.register(batchPrintRoutes, { prefix: '/api/v1' })
+await app.register(shareLinkRoutes, { prefix: '/api/v1' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok' }))
