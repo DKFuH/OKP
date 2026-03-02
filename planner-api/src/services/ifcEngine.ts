@@ -1,0 +1,224 @@
+import path from 'path'
+import { pathToFileURL } from 'url'
+import * as WebIFC from 'web-ifc'
+
+type IfcEntityWithValue = { value?: unknown }
+type IfcPointLike = Array<IfcEntityWithValue | number>
+
+let ifcApi: WebIFC.IfcAPI | null = null
+
+function getWasmPath(): string {
+  const wasmFsPath = path.join(process.cwd(), 'node_modules', 'web-ifc')
+  return `${pathToFileURL(wasmFsPath).toString()}/`
+}
+
+async function getApi(): Promise<WebIFC.IfcAPI> {
+  if (ifcApi) {
+    return ifcApi
+  }
+
+  const api = new WebIFC.IfcAPI()
+  api.SetWasmPath(getWasmPath())
+  await api.Init()
+  ifcApi = api
+  return api
+}
+
+export interface IfcWallSegment {
+  x0_mm: number
+  y0_mm: number
+  x1_mm: number
+  y1_mm: number
+}
+
+export interface IfcRoom {
+  name: string
+  wall_segments: IfcWallSegment[]
+  ceiling_height_mm: number
+}
+
+type IfcIndexedCollection = {
+  size: () => number
+  get: (index: number) => number
+}
+
+function readIfcNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    const raw = (value as IfcEntityWithValue).value
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return raw
+    }
+  }
+
+  return null
+}
+
+function toMm(value: unknown): number | null {
+  const parsed = readIfcNumber(value)
+  if (parsed === null) {
+    return null
+  }
+  return Math.round(parsed * 1000)
+}
+
+function getCoordinatesFromWallLine(wallLine: unknown): IfcPointLike | null {
+  if (!wallLine || typeof wallLine !== 'object') {
+    return null
+  }
+
+  const line = wallLine as {
+    ObjectPlacement?: {
+      RelativePlacement?: {
+        Location?: {
+          Coordinates?: IfcPointLike
+        }
+      }
+    }
+  }
+
+  const coordinates = line.ObjectPlacement?.RelativePlacement?.Location?.Coordinates
+  if (!Array.isArray(coordinates) || coordinates.length < 2) {
+    return null
+  }
+
+  return coordinates
+}
+
+function buildStepHeader(projectName: string): string[] {
+  return [
+    'ISO-10303-21;',
+    'HEADER;',
+    "FILE_DESCRIPTION(('ViewDefinition [CoordinationView_V2.0]'),'2;1');",
+    `FILE_NAME('${projectName}','${new Date().toISOString()}',('YAKDS'),('YAKDS'),'YAKDS IFC Engine','YAKDS','');`,
+    "FILE_SCHEMA(('IFC4'));",
+    'ENDSEC;',
+    'DATA;',
+  ]
+}
+
+function sanitizeIfcText(value: string): string {
+  return value.replace(/'/g, '')
+}
+
+function buildStepEntities(options: IfcExportOptions): string[] {
+  const entities: string[] = []
+  let lineNo = 1
+
+  const next = (payload: string) => {
+    entities.push(`#${lineNo}=${payload};`)
+    lineNo += 1
+  }
+
+  next(`IFCPROJECT('0','$','${sanitizeIfcText(options.projectName)}',$,$,$,$,$,$)`)
+
+  for (const room of options.rooms) {
+    next(`IFCSPACE('0','$','${sanitizeIfcText(room.name)}',$,$,$,$,$,$,$)`)
+
+    for (const placement of room.placements) {
+      const itemName = sanitizeIfcText(placement.article_name)
+      next(`IFCFURNISHINGELEMENT('0','$','${itemName}',$,$,$,$,$)`)
+    }
+  }
+
+  return entities
+}
+
+export async function parseIfcRooms(buffer: Buffer): Promise<IfcRoom[]> {
+  const api = await getApi()
+  const modelId = api.OpenModel(new Uint8Array(buffer))
+  const rooms: IfcRoom[] = []
+
+  try {
+    const spaces = api.GetLineIDsWithType(modelId, WebIFC.IFCSPACE) as unknown as IfcIndexedCollection
+
+    for (let index = 0; index < spaces.size(); index += 1) {
+      const lineId = spaces.get(index)
+      const space = api.GetLine(modelId, lineId) as { Name?: IfcEntityWithValue } | null
+      const name =
+        typeof space?.Name?.value === 'string' && space.Name.value.trim().length > 0
+          ? space.Name.value
+          : `Raum ${index + 1}`
+
+      rooms.push({
+        name,
+        wall_segments: [],
+        ceiling_height_mm: 2600,
+      })
+    }
+
+    const walls = api.GetLineIDsWithType(modelId, WebIFC.IFCWALL) as unknown as IfcIndexedCollection
+
+    for (let index = 0; index < walls.size(); index += 1) {
+      const lineId = walls.get(index)
+      const wallLine = api.GetLine(modelId, lineId, true)
+      const coordinates = getCoordinatesFromWallLine(wallLine)
+      if (!coordinates) {
+        continue
+      }
+
+      const x = toMm(coordinates[0])
+      const y = toMm(coordinates[1])
+      if (x === null || y === null) {
+        continue
+      }
+
+      if (rooms.length === 0) {
+        rooms.push({
+          name: 'Raum 1',
+          wall_segments: [],
+          ceiling_height_mm: 2600,
+        })
+      }
+
+      rooms[0].wall_segments.push({
+        x0_mm: x,
+        y0_mm: y,
+        x1_mm: x + 1000,
+        y1_mm: y,
+      })
+    }
+  } finally {
+    api.CloseModel(modelId)
+  }
+
+  return rooms
+}
+
+export interface IfcExportPlacement {
+  id: string
+  width_mm: number
+  depth_mm: number
+  height_mm: number
+  article_name: string
+  offset_mm: number
+}
+
+export interface IfcExportRoom {
+  id: string
+  name: string
+  placements: IfcExportPlacement[]
+  boundary: { wall_segments?: IfcWallSegment[] } | null
+}
+
+export interface IfcExportOptions {
+  projectName: string
+  rooms: IfcExportRoom[]
+}
+
+export async function buildIfcBuffer(options: IfcExportOptions): Promise<Buffer> {
+  const header = buildStepHeader(options.projectName)
+  const entities = buildStepEntities(options)
+  const fileBody = [
+    ...header,
+    ...entities,
+    'ENDSEC;',
+    'END-ISO-10303-21;',
+    '',
+  ].join('\n')
+
+  return Buffer.from(fileBody, 'utf8')
+}
