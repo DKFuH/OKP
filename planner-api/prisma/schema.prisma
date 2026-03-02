@@ -1282,3 +1282,35 @@ model ModelTemplate {
   @@index([user_id])
   @@map("model_templates")
 }
+
+// ─────────────────────────────────────────
+// PHASE 5 – Sprint 44: Batchdruck & Share-Links
+// ─────────────────────────────────────────
+
+model PrintBatchProfile {
+  id         String   @id @default(uuid())
+  user_id    String
+  tenant_id  String
+  name       String
+  form_ids   Json     @default("[]")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([tenant_id])
+  @@map("print_batch_profiles")
+}
+
+model ShareLink {
+  id          String    @id @default(uuid())
+  token       String    @unique
+  tenant_id   String
+  entity_type String
+  entity_id   String
+  expires_at  DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@index([tenant_id])
+  @@map("share_links")
+}
