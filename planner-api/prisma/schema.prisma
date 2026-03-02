@@ -1082,6 +1082,7 @@ model Alternative {
   height_zone    HeightZone?
   plinth_option  PlinthOption?
   quote_positions QuotePosition[]
+  cover_panels   CoverPanel[]   // Phase 5 – Sprint 45
 
   @@index([area_id])
   @@map("alternatives")
@@ -1313,4 +1314,34 @@ model ShareLink {
 
   @@index([tenant_id])
   @@map("share_links")
+}
+
+// ─────────────────────────────────────────
+// PHASE 5 – Sprint 45: Nischenverkleidung, Abdeckboden & Tiefenkürzung
+// ─────────────────────────────────────────
+
+model CoverPanel {
+  id              String      @id @default(uuid())
+  alternative_id  String
+  cabinet_id      String
+  width_mm        Int
+  depth_mm        Int
+  generated       Boolean     @default(true)
+  created_at      DateTime    @default(now())
+
+  alternative     Alternative @relation(fields: [alternative_id], references: [id], onDelete: Cascade)
+
+  @@index([alternative_id])
+  @@map("cover_panels")
+}
+
+model CabinetProperties {
+  id              String      @id @default(uuid())
+  placement_id    String      @unique
+  custom_depth_mm Int?
+  cost_type       String      @default("nicht_bauseits") @db.VarChar(20)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  @@map("cabinet_properties")
 }

@@ -16,6 +16,9 @@ const FlagsSchema = z.object({
   special_trim_needed: z.boolean(),
   variant_surcharge: z.number().optional(),
   object_surcharges: z.number().optional(),
+  // Sprint 45 – Tiefenkürzung
+  custom_depth_mm: z.number().int().positive().optional(),
+  cost_type: z.enum(['bauseits', 'nicht_bauseits']).optional(),
 })
 
 const PlacementBaseSchema = z.object({

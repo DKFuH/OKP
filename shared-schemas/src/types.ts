@@ -114,6 +114,9 @@ export interface PlacementFlags {
   special_trim_needed: boolean;
   variant_surcharge?: number;
   object_surcharges?: number;
+  // Sprint 45 – Tiefenkürzung
+  custom_depth_mm?: number;
+  cost_type?: string;
 }
 
 export interface PlacedItem {
@@ -154,6 +157,9 @@ export interface BOMLine {
   line_net_after_discounts: number;
   tax_group_id: string;
   tax_rate: number;
+  // Sprint 45 – Tiefenkürzung
+  surcharge_flag?: boolean;
+  cost_type?: string;
 }
 
 export interface PriceComponent {

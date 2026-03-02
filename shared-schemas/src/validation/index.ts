@@ -6,3 +6,4 @@ export * from './sprint41.js';
 export * from './sprint42.js';
 export * from './sprint43.js';
 export * from './sprint44.js';
+export * from './sprint45.js';

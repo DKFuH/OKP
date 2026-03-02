@@ -45,6 +45,7 @@ import { alternativeWorkflowRoutes } from './routes/alternativeWorkflow.js'
 import { userFavoritesRoutes } from './routes/userFavorites.js'
 import { batchPrintRoutes } from './routes/batchPrint.js'
 import { shareLinkRoutes } from './routes/shareLinks.js'
+import { coverPanelRoutes } from './routes/coverPanels.js'
 
 const app = Fastify({ logger: true })
 
@@ -99,6 +100,7 @@ await app.register(alternativeWorkflowRoutes, { prefix: '/api/v1' })
 await app.register(userFavoritesRoutes, { prefix: '/api/v1' })
 await app.register(batchPrintRoutes, { prefix: '/api/v1' })
 await app.register(shareLinkRoutes, { prefix: '/api/v1' })
+await app.register(coverPanelRoutes, { prefix: '/api/v1' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok' }))

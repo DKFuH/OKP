@@ -123,7 +123,8 @@ function createFlatLine(
   description: string,
   amountNet: number,
   taxGroupId: string,
-  taxRate: number
+  taxRate: number,
+  extra?: { surcharge_flag?: boolean; cost_type?: string }
 ): BOMLine {
   return {
     id: crypto.randomUUID(),
@@ -140,7 +141,8 @@ function createFlatLine(
     pricing_group_discount_pct: 0,
     line_net_after_discounts: amountNet,
     tax_group_id: taxGroupId,
-    tax_rate: taxRate
+    tax_rate: taxRate,
+    ...(extra ? extra : {}),
   };
 }
 
@@ -231,6 +233,20 @@ export function calculateBOM(project: ProjectSnapshotPricingInput, options: Calc
           project.quoteSettings.assembly_rate_per_item,
           cabinet.tax_group_id,
           findTaxRate(cabinet.tax_group_id, project.taxGroups)
+        )
+      );
+    }
+
+    if (cabinet.flags.custom_depth_mm) {
+      lines.push(
+        createFlatLine(
+          project.id,
+          'surcharge',
+          `Tiefenkürzung für ${placementLabel(cabinet)} (${cabinet.flags.custom_depth_mm} mm)`,
+          0,
+          cabinet.tax_group_id,
+          findTaxRate(cabinet.tax_group_id, project.taxGroups),
+          { surcharge_flag: true, cost_type: cabinet.flags.cost_type ?? 'nicht_bauseits' }
         )
       );
     }
