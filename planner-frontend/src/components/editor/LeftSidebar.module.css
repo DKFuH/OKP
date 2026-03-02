@@ -69,6 +69,41 @@
 
 .addBtn:hover { border-color: var(--primary-color); color: var(--primary-color); }
 
+.addRoomForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.addRoomInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--primary-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  background: var(--surface-default);
+  outline: none;
+}
+
+.addRoomActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.cancelBtn:hover { border-color: var(--status-danger); color: var(--status-danger); }
+
 /* ── Katalog ─────────────────────────────────────────────────────────────── */
 
 .catalogSection {

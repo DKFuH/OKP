@@ -132,14 +132,12 @@ export function Editor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRoomId])
 
-  // Raum anlegen
-  const handleAddRoom = useCallback(async () => {
+  // Raum anlegen (Name kommt aus dem Inline-Formular der LeftSidebar)
+  const handleAddRoom = useCallback(async (name: string) => {
     if (!project) return
-    const name = prompt('Raumname:')
-    if (!name?.trim()) return
     const newRoom = await roomsApi.create({
       project_id: project.id,
-      name: name.trim(),
+      name,
       boundary: { vertices: [], wall_segments: [] },
     })
     setProject(prev => prev ? { ...prev, rooms: [...prev.rooms, newRoom as unknown as ProjectDetail['rooms'][0]] } : prev)
@@ -396,11 +394,7 @@ export function Editor() {
     }
   }, [selectedRoom])
 
-  if (loading) return <div className={styles.center}>Lade Projekt…</div>
-  if (error) return <div className={styles.center}>{error}</div>
-  if (!project) return null
-
-  // Auswahl-Info für RightSidebar
+  // Auswahl-Info für RightSidebar – muss VOR den Early-Returns stehen (Rules of Hooks)
   const { state } = editor
   const selectedVertex = state.selectedIndex !== null ? (state.vertices[state.selectedIndex] ?? null) : null
   const selEdgeLen = state.selectedEdgeIndex !== null
@@ -420,6 +414,10 @@ export function Editor() {
   }, [state.selectedEdgeIndex, state.vertices, state.wallIds])
 
   const ceilingConstraints = ((selectedRoom as unknown as RoomPayload | null)?.ceiling_constraints as CeilingConstraint[] | undefined) ?? []
+
+  if (loading) return <div className={styles.center}>Lade Projekt…</div>
+  if (error) return <div className={styles.center}>{error}</div>
+  if (!project) return null
 
   return (
     <div className={styles.shell}>

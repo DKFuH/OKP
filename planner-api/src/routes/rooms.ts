@@ -19,7 +19,7 @@ const WallSegmentSchema = z.object({
 })
 
 const BoundarySchema = z.object({
-  vertices: z.array(VertexSchema).min(3).max(64),
+  vertices: z.array(VertexSchema).max(64),
   wall_segments: z.array(WallSegmentSchema),
 })
 
@@ -27,7 +27,7 @@ const CreateRoomSchema = z.object({
   project_id: z.string().uuid(),
   name: z.string().min(1).max(200),
   ceiling_height_mm: z.number().int().min(1000).max(10000).default(2500),
-  boundary: BoundarySchema,
+  boundary: BoundarySchema.default({ vertices: [], wall_segments: [] }),
 })
 
 const UpdateRoomSchema = z.object({

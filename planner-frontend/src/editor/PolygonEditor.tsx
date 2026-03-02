@@ -91,10 +91,11 @@ export function PolygonEditor({
 }: Props) {
   const stageRef = useRef<Konva.Stage>(null)
 
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleStageClick = useCallback((_e: Konva.KonvaEventObject<MouseEvent>) => {
     if (state.tool !== 'draw') return
-    if (e.target !== stageRef.current) return
-    const pos = stageRef.current!.getPointerPosition()!
+    // Child shapes (vertices, edges) set e.cancelBubble = true so they never reach here
+    const pos = stageRef.current?.getPointerPosition()
+    if (!pos) return
     onAddVertex({ x_mm: canvasToWorld(pos.x), y_mm: canvasToWorld(pos.y) })
   }, [state.tool, onAddVertex])
 

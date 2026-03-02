@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Room } from '../../api/projects.js'
 import {
   catalogApi,
@@ -15,7 +15,7 @@ interface Props {
   rooms: Room[]
   selectedRoomId: string | null
   onSelectRoom: (id: string) => void
-  onAddRoom: () => void
+  onAddRoom: (name: string) => void
   selectedCatalogItem: UnifiedCatalogItem | null
   onSelectCatalogItem: (item: UnifiedCatalogItem | null) => void
 }
@@ -31,6 +31,8 @@ const TYPE_OPTIONS: Array<{ value: '' | CatalogItemType; label: string }> = [
 ]
 
 export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, selectedCatalogItem, onSelectCatalogItem }: Props) {
+  const [addingRoom, setAddingRoom] = useState(false)
+  const [newRoomName, setNewRoomName] = useState('')
   const [catalogMode, setCatalogMode] = useState<'standard' | 'manufacturer'>('standard')
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const [selectedManufacturerId, setSelectedManufacturerId] = useState<string>('')
@@ -132,7 +134,35 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, se
             ))}
           </ul>
         )}
-        <button type="button" className={styles.addBtn} onClick={onAddRoom}>+ Raum hinzufügen</button>
+
+        {addingRoom ? (
+          <form
+            className={styles.addRoomForm}
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault()
+              const name = newRoomName.trim()
+              if (!name) return
+              onAddRoom(name)
+              setNewRoomName('')
+              setAddingRoom(false)
+            }}
+          >
+            <input
+              autoFocus
+              type="text"
+              className={styles.addRoomInput}
+              placeholder="Raumname"
+              value={newRoomName}
+              onChange={e => setNewRoomName(e.target.value)}
+            />
+            <div className={styles.addRoomActions}>
+              <button type="submit" className={styles.addBtn}>Anlegen</button>
+              <button type="button" className={styles.cancelBtn} onClick={() => { setAddingRoom(false); setNewRoomName('') }}>✕</button>
+            </div>
+          </form>
+        ) : (
+          <button type="button" className={styles.addBtn} onClick={() => setAddingRoom(true)}>+ Raum hinzufügen</button>
+        )}
       </div>
 
       <div className={styles.catalogSection}>
