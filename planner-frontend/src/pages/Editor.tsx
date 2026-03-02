@@ -7,13 +7,13 @@ import {
   type UnifiedCatalogItem,
 } from '../api/catalog.js'
 import { placementsApi, type Placement } from '../api/placements.js'
-import { roomsApi, type RoomBoundaryPayload, type RoomPayload } from '../api/rooms.js'
+import { roomsApi, type ReferenceImagePayload, type RoomBoundaryPayload, type RoomPayload } from '../api/rooms.js'
 import { areasApi } from '../api/areas.js'
 import { openingsApi, type Opening } from '../api/openings.js'
 import { validateApi, type ValidateResponse } from '../api/validate.js'
 import { autoCompletionApi, type AutoCompleteResult } from '../api/autoCompletion.js'
 import { acousticsApi, type AcousticGridMeta, type GeoJsonGrid } from '../api/acoustics.js'
-import { usePolygonEditor, edgeLengthMm } from '../editor/usePolygonEditor.js'
+import { usePolygonEditor, edgeLengthMm, type EditorState } from '../editor/usePolygonEditor.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { PopoutWindow } from '../components/editor/PopoutWindow.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
@@ -66,6 +66,21 @@ function resolveArticlePriceForVariant(article: CatalogArticle, variantId?: stri
 
   const defaultPrice = prices.find((price) => !price.article_variant_id)
   return defaultPrice ?? prices[0]
+}
+
+function parseReferenceImage(raw: unknown): NonNullable<EditorState['referenceImage']> | null {
+  if (!raw || typeof raw !== 'object') return null
+  const candidate = raw as Partial<ReferenceImagePayload>
+  if (typeof candidate.url !== 'string' || candidate.url.length === 0) return null
+
+  return {
+    url: candidate.url,
+    x: typeof candidate.x === 'number' ? candidate.x : 50,
+    y: typeof candidate.y === 'number' ? candidate.y : 50,
+    rotation: typeof candidate.rotation === 'number' ? candidate.rotation : 0,
+    scale: typeof candidate.scale === 'number' ? candidate.scale : 1,
+    opacity: typeof candidate.opacity === 'number' ? candidate.opacity : 0.5,
+  }
 }
 
 export function Editor() {
@@ -256,6 +271,7 @@ export function Editor() {
     } else {
       editor.reset()
     }
+    editor.setReferenceImage(parseReferenceImage((room as unknown as RoomPayload | undefined)?.reference_image))
     // Öffnungen aus room.openings laden (JSONB, bereits im room-Objekt)
     setOpenings((room?.openings as unknown as Opening[]) ?? [])
     setPlacements((room?.placements as unknown as Placement[]) ?? [])
@@ -547,6 +563,19 @@ export function Editor() {
     }).catch((e: Error) => console.error('Dachschrägen speichern fehlgeschlagen:', e))
   }, [handleRoomUpdated])
 
+  const handleReferenceImageUpdate = useCallback((img: NonNullable<EditorState['referenceImage']>) => {
+    editor.setReferenceImage(img)
+    if (!selectedRoomRef.current) return
+
+    roomsApi.updateReferenceImage(selectedRoomRef.current.id, img)
+      .then((updated) => {
+        handleRoomUpdated(updated)
+      })
+      .catch((e: Error) => {
+        console.error('Referenzbild speichern fehlgeschlagen:', e)
+      })
+  }, [editor, handleRoomUpdated])
+
   const selectedRoom = project?.rooms.find(r => r.id === selectedRoomId) ?? null
   selectedRoomRef.current = selectedRoom as unknown as RoomPayload | null
 
@@ -664,6 +693,7 @@ export function Editor() {
             acousticGrid={acousticGrid}
             acousticVisible={acousticEnabled}
             acousticOpacity={acousticOpacityPct / 100}
+            onReferenceImageUpdate={handleReferenceImageUpdate}
           />
         ) : (
           <Preview3D room={selectedRoom as unknown as RoomPayload | null} />

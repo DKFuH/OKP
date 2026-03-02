@@ -24,9 +24,10 @@ interface Props {
   acousticGrid: GeoJsonGrid | null
   acousticVisible: boolean
   acousticOpacity: number
+  onReferenceImageUpdate: (img: NonNullable<RoomPayload['reference_image']>) => void
 }
 
-export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement, acousticGrid, acousticVisible, acousticOpacity }: Props) {
+export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement, acousticGrid, acousticVisible, acousticOpacity, onReferenceImageUpdate }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
   const [saving, setSaving] = useState(false)
@@ -83,7 +84,7 @@ export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpen
       {saveError && <div className={styles.errorOverlay}>{saveError}</div>}
 
       {room ? (
-        <div ref={containerRef} style={{ flex: 1, overflow: 'hidden' }}>
+        <div ref={containerRef} className={styles.canvasViewport}>
           <PolygonEditor
             width={canvasSize.width}
             height={canvasSize.height}
@@ -111,6 +112,7 @@ export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpen
             acousticGrid={acousticGrid}
             acousticVisible={acousticVisible}
             acousticOpacity={acousticOpacity}
+            onReferenceImageUpdate={onReferenceImageUpdate}
           />
         </div>
       ) : (

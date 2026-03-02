@@ -5,7 +5,16 @@ import { snapPoint } from './snapUtils.js'
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
-export type EditorTool = 'draw' | 'select' | 'move'
+export type EditorTool = 'draw' | 'select' | 'move' | 'calibrate'
+
+export interface ReferenceImageState {
+  url: string
+  x: number
+  y: number
+  rotation: number
+  scale: number
+  opacity: number
+}
 
 export interface EditorSettings {
   gridSizeMm: number   // 0 = kein Raster
@@ -23,6 +32,7 @@ export interface EditorState {
   selectedEdgeIndex: number | null
   hoverIndex: number | null
   settings: EditorSettings
+  referenceImage: ReferenceImageState | null
   validationErrors: string[]
   isDirty: boolean
 }
@@ -40,6 +50,7 @@ type Action =
   | { type: 'LOAD_VERTICES'; vertices: Vertex[] }
   | { type: 'RESET' }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<EditorSettings> }
+  | { type: 'SET_REFERENCE_IMAGE'; referenceImage: ReferenceImageState | null }
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
@@ -101,6 +112,7 @@ function initialState(): EditorState {
     selectedEdgeIndex: null,
     hoverIndex: null,
     settings: DEFAULT_SETTINGS,
+    referenceImage: null,
     validationErrors: [],
     isDirty: false,
   }
@@ -208,6 +220,9 @@ function reducer(state: EditorState, action: Action): EditorState {
       }
     }
 
+    case 'SET_REFERENCE_IMAGE':
+      return { ...state, referenceImage: action.referenceImage }
+
     default:
       return state
   }
@@ -264,6 +279,9 @@ export function usePolygonEditor(initialVertices?: Vertex[]) {
   const updateSettings = useCallback((settings: Partial<EditorSettings>) =>
     dispatch({ type: 'UPDATE_SETTINGS', settings }), [])
 
+  const setReferenceImage = useCallback((referenceImage: ReferenceImageState | null) =>
+    dispatch({ type: 'SET_REFERENCE_IMAGE', referenceImage }), [])
+
   const isValid = state.closed && state.validationErrors.length === 0
 
   return {
@@ -281,6 +299,7 @@ export function usePolygonEditor(initialVertices?: Vertex[]) {
     loadVertices,
     reset,
     updateSettings,
+    setReferenceImage,
   }
 }
 

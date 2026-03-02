@@ -8,6 +8,15 @@ export interface RoomBoundaryPayload {
   wall_segments: WallSegment[]
 }
 
+export interface ReferenceImagePayload {
+  url: string
+  x: number
+  y: number
+  rotation: number
+  scale: number
+  opacity: number
+}
+
 export interface RoomPayload {
   id: string
   project_id: string
@@ -17,6 +26,7 @@ export interface RoomPayload {
   ceiling_constraints: unknown[]
   openings: unknown[]
   placements: unknown[]
+  reference_image?: ReferenceImagePayload | null
   created_at: string
   updated_at: string
 }
@@ -56,6 +66,12 @@ export const roomsApi = {
   },
 
   delete: (id: string) => api.delete(`/rooms/${id}`),
+
+  updateReferenceImage: (id: string, data: ReferenceImagePayload) =>
+    api.put<RoomPayload>(`/rooms/${id}/reference-image`, data),
+
+  removeReferenceImage: (id: string) =>
+    api.delete(`/rooms/${id}/reference-image`),
 }
 
 // Wall operations

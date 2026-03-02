@@ -17,6 +17,14 @@
 
 .spacer { flex: 1; }
 
+.hiddenFileInput { display: none; }
+
+.referenceOpacitySlider { width: 80px; }
+
+.stageCrosshair { cursor: crosshair; }
+
+.stageDefault { cursor: default; }
+
 .toolBtn {
   padding: 0.3rem 0.75rem;
   border: 1px solid var(--border-subtle);

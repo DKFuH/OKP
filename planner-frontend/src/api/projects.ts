@@ -36,6 +36,7 @@ export interface Room {
   ceiling_constraints: unknown[]
   openings: unknown[]
   placements: unknown[]
+  reference_image?: unknown | null
   created_at: string
   updated_at: string
 }

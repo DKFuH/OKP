@@ -900,7 +900,7 @@ openings.wall_offset_depth_mm: INTEGER nullable
 
 ### Sprint 58 – Grundriss-Nachzeichnen: Bildimport als Canvas-Overlay
 
-**Meta:** Status: `planned` · Owner: Full-Stack · ETA: Phase 8 · Abhängigkeiten: S57, S3.5
+**Meta:** Status: `done` · Owner: Full-Stack · ETA: Phase 8 · Abhängigkeiten: S57, S3.5
 
 **Ziel:** Foto oder Scan eines Grundrisses als halbtransparentes Hintergrundbild in den Canvas laden und darüber den Raum nachzeichnen.
 

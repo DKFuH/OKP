@@ -105,9 +105,9 @@ export function PolygonEditor({
   onReferenceImageUpdate,
 }: Props) {
   const stageRef = useRef<Konva.Stage>(null)
+  const calibrationPointsRef = useRef<Array<{ x: number; y: number }>>([])
   const [dragLabel, setDragLabel] = useState<{ x: number; y: number; text: string } | null>(null)
   const [referenceImageElement, setReferenceImageElement] = useState<HTMLImageElement | null>(null)
-  const [calibrationPoints, setCalibrationPoints] = useState<Array<{ x: number; y: number }>>([])
 
   useEffect(() => {
     const url = state.referenceImage?.url
@@ -126,18 +126,19 @@ export function PolygonEditor({
     if (!pos) return
 
     if (state.tool === 'calibrate' && state.referenceImage) {
-      setCalibrationPoints((prev) => {
-        const next = prev.length === 2 ? [{ x: pos.x, y: pos.y }] : [...prev, { x: pos.x, y: pos.y }]
-        if (next.length !== 2) return next
+      const currentImage = state.referenceImage
+      const prev = calibrationPointsRef.current
+      const next = prev.length === 2 ? [{ x: pos.x, y: pos.y }] : [...prev, { x: pos.x, y: pos.y }]
+      calibrationPointsRef.current = next
+      if (next.length !== 2) return
 
-        const refLengthMm = Number(window.prompt('Referenzlänge in mm eingeben:'))
-        if (!Number.isNaN(refLengthMm) && refLengthMm > 0) {
-          const px = Math.hypot(next[1].x - next[0].x, next[1].y - next[0].y)
-          const newCanvasScale = px / (refLengthMm * SCALE)
-          onReferenceImageUpdate?.({ ...state.referenceImage, scale: newCanvasScale })
-        }
-        return []
-      })
+      const refLengthMm = Number(window.prompt('Referenzlänge in mm eingeben:'))
+      if (!Number.isNaN(refLengthMm) && refLengthMm > 0) {
+        const px = Math.hypot(next[1].x - next[0].x, next[1].y - next[0].y)
+        const newCanvasScale = px / (refLengthMm * SCALE)
+        onReferenceImageUpdate?.({ ...currentImage, scale: newCanvasScale })
+      }
+      calibrationPointsRef.current = []
       return
     }
 
@@ -256,7 +257,7 @@ export function PolygonEditor({
           <input
             type="file"
             accept="image/*"
-            style={{ display: 'none' }}
+            className={styles.hiddenFileInput}
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (!file) return
@@ -280,17 +281,17 @@ export function PolygonEditor({
         )}
         {state.referenceImage && (
           <input
+            className={styles.referenceOpacitySlider}
             type="range"
             min="0.1"
             max="1"
             step="0.05"
             value={state.referenceImage.opacity}
             onChange={(e) => onReferenceImageUpdate?.({
-              ...state.referenceImage,
+              ...state.referenceImage!,
               opacity: Number(e.target.value),
             })}
             title="Transparenz Referenzbild"
-            style={{ width: 80 }}
           />
         )}
         {!state.closed && state.vertices.length >= 3 && (
@@ -323,7 +324,7 @@ export function PolygonEditor({
         height={height}
         onClick={handleStageClick}
         onDblClick={handleStageDblClick}
-        style={{ cursor: state.tool === 'draw' || state.tool === 'calibrate' ? 'crosshair' : 'default' }}
+        className={state.tool === 'draw' || state.tool === 'calibrate' ? styles.stageCrosshair : styles.stageDefault}
       >
         <AcousticOverlay
           grid={acousticGrid}
@@ -345,7 +346,7 @@ export function PolygonEditor({
               draggable
               onDragEnd={(e) => {
                 onReferenceImageUpdate?.({
-                  ...state.referenceImage,
+                  ...state.referenceImage!,
                   x: e.target.x(),
                   y: e.target.y(),
                 })
