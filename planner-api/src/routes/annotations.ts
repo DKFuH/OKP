@@ -28,7 +28,7 @@ const CommentSchema = z.object({
   id: z.string().uuid().default(() => randomUUID()),
   position: PointSchema,
   text: z.string().min(1).max(MAX_TEXT_LENGTH),
-  image_url: z.string().url().optional(),
+  image_url: z.string().url().regex(/^https:\/\//).optional(),
   font_size: z.number().positive().optional(),
   background_color: z.string().optional(),
   show_in_plan: z.boolean().default(true),

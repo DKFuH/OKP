@@ -23,7 +23,7 @@ const DecoObjectSchema = z.object({
   id: z.string().uuid().default(() => randomUUID()),
   catalog_item_id: z.string().min(1),
   position: PointSchema,
-  rotation_deg: z.number().min(0).lt(360),
+  rotation_deg: z.number().min(0).max(360),
   width_mm: z.number().positive().optional(),
   height_mm: z.number().positive().optional(),
   depth_mm: z.number().positive().optional(),

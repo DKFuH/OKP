@@ -90,11 +90,14 @@ const InstallationSchema = z.object({
   symbol_type: z.enum(['installation_symbol', 'installation_object']).default('installation_symbol'),
 })
 
+const MIN_WALL_SHIFT_MM = -50000
+const MAX_WALL_SHIFT_MM = 50000
+
 export async function wallRoutes(app: FastifyInstance) {
   // PATCH /walls/:id/shift – parallel shift by delta_mm
   app.patch<{ Params: { id: string } }>('/walls/:id/shift', async (request, reply) => {
     const { id } = request.params
-    const parsed = z.object({ delta_mm: z.number().min(-50000).max(50000), room_id: z.string().uuid() }).safeParse(request.body)
+    const parsed = z.object({ delta_mm: z.number().min(MIN_WALL_SHIFT_MM).max(MAX_WALL_SHIFT_MM), room_id: z.string().uuid() }).safeParse(request.body)
     if (!parsed.success) return sendBadRequest(reply, parsed.error.errors[0].message)
 
     const room = await prisma.room.findUnique({ where: { id: parsed.data.room_id } })
@@ -175,7 +178,7 @@ export async function wallRoutes(app: FastifyInstance) {
     }
     const newWall2: WallSeg = {
       id: randomUUID(),
-      index: wall.index + 0.5,
+      index: wall.index + 1,
       start_vertex_id: newVertex.id,
       end_vertex_id: wall.end_vertex_id,
       length_mm: len - offset,
