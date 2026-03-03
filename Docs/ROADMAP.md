@@ -1161,3 +1161,51 @@ smarte Bemaßung, Layout-Sheets, Cutlists und pragmatisches CNC-Nesting.
 | 64 | Mehrblatt-Zeichnungen mit Detail- und Schnittansichten |
 | 65 | Werkstatt kann direkte Zuschnittlisten aus dem Planer ziehen |
 | 66 | Rohplatten koennen optimiert belegt und als DXF exportiert werden |
+ 
+---
+ 
+## Phase 12 - Parametrik, Plot-Stile & Praesentation (Sprints 67-70)
+ 
+**Ziel:** Nach Werkstatt- und Dokumentenbasis jetzt die naechste Profischicht:
+massstabsstabile Zeichnungen, einfache parametrische Regeln, begehbare
+Panorama-Touren und standardisierte Werkstatt-/Vertriebspakete.
+ 
+**Aus Benchmarking uebernommen und bewusst priorisiert:**
+ 
+- AutoCAD / pCon: annotative Masse, Dimension Styles, plotting
+- klassische CAD-Systeme: pragmatische Constraints und Driving Dimensions
+- 2020 Design / ProKitchen: Multi-Point-Panoramen fuer Kundenpraesentation
+- ProKitchen / CARAT / KPS: Spezifikationsblaetter und strukturierte Dokumentmappen
+ 
+**Bewusst noch nicht priorisiert:**
+ 
+- gebogene Waende / Arc-Walls: hoher Editor-Aufwand, aktuell geringerer Nutzen als Constraints
+- echte Multi-User-Simultanbearbeitung: mehr Infrastruktur- als Planungsnutzen
+- vollwertiger numerischer CAD-Solver: zu teuer fuer den aktuellen ROI
+ 
+### Sprint-Uebersicht
+ 
+| Sprint | Status | Thema | Deliverables |
+|--------|--------|-------|--------------|
+| 67 | `planned` | Annotative Layout-Styles | Tenant-Style-Presets, scale-aware Masse, plot-stabile Symbole |
+| 68 | `planned` | Constraint-Modus & Driving Dimensions | einfache Geometrie-Constraints, deterministischer Solver, Constraint-Panel |
+| 69 | `planned` | Panorama Multi-Point & Client-Tour | mehrere Viewpoints, Hotspots, Share-Link fuer Touren |
+| 70 | `planned` | Spezifikationsblaetter & Werkstattpaket | strukturierte Paket-Generierung aus Quote, BOM, Cutlist, Sheets, Nesting |
+ 
+### Sprint-Metadaten
+ 
+| Sprint | Owner | ETA | Abhaengigkeiten | DoD-Kurzfassung |
+|--------|-------|-----|----------------|-----------------|
+| 67 | Full-Stack | Phase 12 | S59, S64 | Layout-Styles sind tenantfaehig und scale-aware |
+| 68 | Full-Stack | Phase 12 | S63, S65 | Constraint-Modus kann Waende und Placements deterministisch steuern |
+| 69 | Full-Stack | Phase 12 | S14, S61 | mehrere Panorama-Punkte sind speicher- und teilbar |
+| 70 | Full-Stack | Phase 12 | S44, S61, S65, S66 | Werkstattpaket generiert strukturiertes PDF-/Anlagenpaket |
+ 
+### Meilenstein Phase 12
+ 
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 67 | Zeichnungsblaetter bleiben ueber mehrere Massstaebe hinweg lesbar und konsistent |
+| 68 | Wiederkehrende Geometrie kann ueber einfache Regeln statt Handarbeit stabilisiert werden |
+| 69 | Kunden koennen sich durch mehrere geplante Standpunkte in der Kueche bewegen |
+| 70 | Vertrieb und Werkstatt erhalten standardisierte, projektbezogene Dokumentpakete |

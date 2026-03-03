@@ -1,6 +1,7 @@
 # AGENT_SPRINTS - Sprint-Dokumentation
 
 Sprints `S47` bis `S66` sind implementiert und gemergt.
+`S67` bis `S70` sind als naechster Backlog fuer GitHub-Agents vorbereitet.
 
 Stand: 2026-03-03
 
@@ -41,3 +42,14 @@ Stand: 2026-03-03
 - **Error-Helpers:** `sendBadRequest(reply, msg)`, `sendNotFound(reply, msg)` aus `../errors.js`
 - **Prisma-Client:** `import { prisma } from '../db.js'`
 - **API-Client (Frontend):** `import { api } from './client.js'`
+
+---
+
+## Vorbereiteter Backlog
+
+| Sprint | Datei | Status | Thema |
+|--------|-------|--------|-------|
+| 67 | `S67-annotative-layout-styles.md` | planned | Annotative Layout-Stile, massstabsstabile Masse und Symbole |
+| 68 | `S68-constraint-modus-driving-dimensions.md` | planned | Constraint-Modus und Driving Dimensions fuer Waende und Placements |
+| 69 | `S69-panorama-multipoint-client-tour.md` | planned | Multi-Point-Panorama und oeffentliche Client-Touren |
+| 70 | `S70-spezifikationsblaetter-werkstattpaket.md` | planned | Spezifikationsblaetter und Werkstattpakete aus Quote, BOM, Cutlist und Nesting |
