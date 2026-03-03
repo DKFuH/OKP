@@ -23,6 +23,7 @@ import { RightSidebar, type CeilingConstraint, type ConfiguredDimensions } from 
 import { StatusBar } from '../components/editor/StatusBar.js'
 import { AreasPanel } from '../components/editor/AreasPanel.js'
 import styles from './Editor.module.css'
+import { LayoutSheetTabs } from '../components/editor/LayoutSheetTabs.js'
 
 function resolveArticleVariantId(article: CatalogArticle, chosenOptions: Record<string, string>): string | undefined {
   if (!article.variants || article.variants.length === 0) {
@@ -118,6 +119,7 @@ export function Editor() {
   const [acousticMin, setAcousticMin] = useState<number | null>(null)
   const [acousticMax, setAcousticMax] = useState<number | null>(null)
   const [workflowStep, setWorkflowStep] = useState<'walls' | 'openings' | 'furniture'>('walls')
+  const [activeLayoutSheetId, setActiveLayoutSheetId] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const moreMenuRef = useRef<HTMLDivElement | null>(null)
 
@@ -746,6 +748,14 @@ export function Editor() {
           )
         })}
       </nav>
+
+      {id && (
+        <LayoutSheetTabs
+          projectId={id}
+          activeSheetId={activeLayoutSheetId}
+          onSheetChange={setActiveLayoutSheetId}
+        />
+      )}
 
       <div className={styles.workspace}>
         {showAreasPanel && id && (

@@ -176,11 +176,128 @@ model Dimension {
   points     Json
   style      Json          @default("{}")
   label      String?
+  ref_a_type String?
+  ref_a_id   String?
+  ref_b_type String?
+  ref_b_id   String?
+  auto_update Boolean      @default(false)
   created_at DateTime      @default(now())
   updated_at DateTime      @updatedAt
 
   @@index([room_id])
   @@map("dimensions")
+}
+
+model Centerline {
+  id         String   @id @default(uuid())
+  room_id    String
+  label      String?
+  x0_mm      Float
+  y0_mm      Float
+  x1_mm      Float
+  y1_mm      Float
+  style      Json     @default("{}")
+  ref_type   String?
+  ref_id     String?
+  created_at DateTime @default(now())
+
+  @@index([room_id])
+  @@map("centerlines")
+}
+
+// ─────────────────────────────────────────
+// PHASE 11 – Sprint 64: Layout-Sheets & Detail-Views
+// ─────────────────────────────────────────
+
+model LayoutSheet {
+  id         String          @id @default(uuid())
+  project_id String
+  name       String          @db.VarChar(100)
+  sheet_type LayoutSheetType @default(floorplan)
+  position   Int             @default(0)
+  config     Json            @default("{}")
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+
+  views      LayoutView[]
+
+  @@index([project_id])
+  @@map("layout_sheets")
+}
+
+model LayoutView {
+  id         String      @id @default(uuid())
+  sheet_id   String
+  view_type  ViewType
+  label      String?
+  room_id    String?
+  wall_id    String?
+  clip_x_mm  Float?
+  clip_y_mm  Float?
+  clip_w_mm  Float?
+  clip_h_mm  Float?
+  scale      Float       @default(1.0)
+  x_on_sheet Float       @default(0)
+  y_on_sheet Float       @default(0)
+  created_at DateTime    @default(now())
+
+  sheet      LayoutSheet @relation(fields: [sheet_id], references: [id], onDelete: Cascade)
+
+  @@index([sheet_id])
+  @@map("layout_views")
+}
+
+model Cutlist {
+  id           String   @id @default(uuid())
+  project_id   String
+  room_id      String?
+  generated_at DateTime @default(now())
+  parts        Json
+  summary      Json
+
+  @@index([project_id])
+  @@map("cutlists")
+}
+
+enum NestingJobStatus {
+  draft
+  calculated
+  exported
+}
+
+model NestingJob {
+  id                String           @id @default(uuid())
+  tenant_id         String
+  project_id        String
+  source_cutlist_id String
+  sheet_width_mm    Int
+  sheet_height_mm   Int
+  kerf_mm           Int              @default(4)
+  allow_rotate      Boolean          @default(true)
+  status            NestingJobStatus @default(draft)
+  result_json       Json             @default("{}")
+  created_at        DateTime         @default(now())
+  updated_at        DateTime         @updatedAt
+
+  @@index([tenant_id, project_id])
+  @@index([source_cutlist_id])
+  @@map("nesting_jobs")
+}
+
+enum LayoutSheetType {
+  floorplan
+  elevations
+  installation
+  detail
+  section
+}
+
+enum ViewType {
+  floorplan
+  elevation
+  section
+  detail
+  isometric
 }
 
 enum DimensionType {
@@ -859,6 +976,10 @@ model CatalogArticle {
   usage_count     Int             @default(0)
   article_type    ArticleType     @default(base_cabinet)
   base_dims_json  Json            // { width_mm, height_mm, depth_mm }
+  material_code   String?         @db.VarChar(50)
+  material_label  String?         @db.VarChar(100)
+  grain_direction GrainDir?
+  cutlist_parts   Json?
   meta_json       Json            @default("{}")
   tenant_id       String?
   created_at      DateTime        @default(now())
@@ -923,6 +1044,12 @@ enum ArticleType {
   accessory
   trim
   appliance
+}
+
+enum GrainDir {
+  none
+  length
+  width
 }
 
 model ArticleOption {

@@ -1,0 +1,39 @@
+.tabBar {
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.3rem 1rem;
+  background: var(--editor-bg);
+  border-bottom: 1px solid var(--editor-border);
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: none;
+  color: var(--editor-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: var(--editor-surface-alt);
+  color: var(--editor-text);
+}
+
+.active {
+  background: var(--editor-surface);
+  border-color: var(--editor-border);
+  border-bottom-color: var(--editor-surface);
+  color: var(--editor-text);
+  font-weight: 600;
+}
+
+.icon {
+  font-size: 0.7rem;
+}
