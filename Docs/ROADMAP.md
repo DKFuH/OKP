@@ -1126,3 +1126,36 @@ planner-api/src/plugins/
 |-------------|----------|
 | 61 | Angebot als professionelles PDF mit Firmenbranding versendbar |
 | 62 | Claude kann als vollwertiger Planungsassistent über MCP arbeiten |
+---
+
+## Phase 11 - CAD-Detailtiefe & Produktion (Sprints 63-66)
+
+**Ziel:** Die bestehende Planung in Richtung Ausfuehrungs- und Werkstattqualitaet erweitern:
+smarte Bemaßung, Layout-Sheets, Cutlists und pragmatisches CNC-Nesting.
+
+### Sprint-Uebersicht
+
+| Sprint | Status | Thema | Deliverables |
+|--------|--------|-------|--------------|
+| 63 | `planned` | Smarte Bemaßung & Centerlines | Referenzierte Maße, Quick-Dim, Achslinien |
+| 64 | `planned` | Layout-Sheets & Detail-Views | Zeichnungsblaetter, Detail- und Schnittansichten |
+| 65 | `planned` | Zuschnittliste (Cutlist) | Teilelisten aus Platzierungen, PDF/CSV-Export |
+| 66 | `planned` | CNC-Nesting & DXF-Export | Rohplattenbelegung, Verschnitt-KPIs, DXF fuer Werkstatt |
+
+### Sprint-Metadaten
+
+| Sprint | Owner | ETA | Abhaengigkeiten | DoD-Kurzfassung |
+|--------|-------|-----|----------------|-----------------|
+| 63 | Full-Stack | Phase 11 | S59 | Maße aktualisieren sich bei Geometrieaenderungen automatisch |
+| 64 | Full-Stack | Phase 11 | S59, S63 | Tabs fuer Zeichnungsblaetter und Detail-/Schnittansichten vorhanden |
+| 65 | Backend | Phase 11 | S11, S60 | Cutlist wird aus Platzierungen erzeugt und als PDF/CSV exportiert |
+| 66 | Backend | Phase 11 | S53, S65 | Nesting berechnet Rohplattenbelegung und exportiert DXF |
+
+### Meilenstein Phase 11
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 63 | Praxistaugliche, geometriereferenzierte Maßketten im Editor |
+| 64 | Mehrblatt-Zeichnungen mit Detail- und Schnittansichten |
+| 65 | Werkstatt kann direkte Zuschnittlisten aus dem Planer ziehen |
+| 66 | Rohplatten koennen optimiert belegt und als DXF exportiert werden |
