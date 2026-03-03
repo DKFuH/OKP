@@ -1178,8 +1178,7 @@ Panorama-Touren und standardisierte Werkstatt-/Vertriebspakete.
 - ProKitchen / CARAT / KPS: Spezifikationsblaetter und strukturierte Dokumentmappen
  
 **Bewusst noch nicht priorisiert:**
- 
-- gebogene Waende / Arc-Walls: hoher Editor-Aufwand, aktuell geringerer Nutzen als Constraints
+
 - echte Multi-User-Simultanbearbeitung: mehr Infrastruktur- als Planungsnutzen
 - vollwertiger numerischer CAD-Solver: zu teuer fuer den aktuellen ROI
  
@@ -1209,3 +1208,41 @@ Panorama-Touren und standardisierte Werkstatt-/Vertriebspakete.
 | 68 | Wiederkehrende Geometrie kann ueber einfache Regeln statt Handarbeit stabilisiert werden |
 | 69 | Kunden koennen sich durch mehrere geplante Standpunkte in der Kueche bewegen |
 | 70 | Vertrieb und Werkstatt erhalten standardisierte, projektbezogene Dokumentpakete |
+
+---
+
+## Phase 13 - Gebogene Waende & Bogengeometrie (Sprints 71-73)
+
+**Ziel:** Gebogene Waende als durchgaengige Funktion einfuehren, nicht nur als
+Editor-Spielerei. Die Phase trennt bewusst 2D-Kern, Bemaßung/Layout und
+3D/Interop, damit das Risiko kontrollierbar bleibt.
+
+**Warum als eigene Kette:**
+
+- Arc-Walls betreffen Editor, Flaechenlogik, Oeffnungen, Bemaßung, 3D und Exporte gleichzeitig
+- ein einzelner Sammelsprint wuerde zu viele Regressionen erzeugen
+- V1 arbeitet pragmatisch mit segmentierter Approximation statt perfekter CAD-Geometrie
+
+### Sprint-Uebersicht
+
+| Sprint | Status | Thema | Deliverables |
+|--------|--------|-------|--------------|
+| 71 | `planned` | Gebogene Waende im 2D-Kern | Arc-Wall-Typ, Radius-Handles, Snap-Logik, Oeffnungen auf Boegen |
+| 72 | `planned` | Bogen-Bemaßung & Layout | Radius-, Bogenlaengen- und Sehnenmasse, Arc-Annotations in Sheets |
+| 73 | `planned` | Gebogene Waende in 3D & Interop | segmentierte Extrusion, GLTF-/IFC-/DXF-Unterstuetzung |
+
+### Sprint-Metadaten
+
+| Sprint | Owner | ETA | Abhaengigkeiten | DoD-Kurzfassung |
+|--------|-------|-----|----------------|-----------------|
+| 71 | Full-Stack | Phase 13 | S56, S57, S63 | Arc-Waende funktionieren stabil in 2D inkl. Oeffnungen |
+| 72 | Full-Stack | Phase 13 | S59, S64, S67, S71 | Arc-Waende sind bemaßbar und in Sheets sauber darstellbar |
+| 73 | Full-Stack | Phase 13 | S51, S52, S53, S71, S72 | Arc-Waende erscheinen in 3D und werden im Export sinnvoll approximiert |
+
+### Meilenstein Phase 13
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 71 | Gebogene Waende sind als echter Planungsprimitive im 2D-Kern verfuegbar |
+| 72 | Gebogene Geometrie ist in Zeichnung und Bemaßung professionell nutzbar |
+| 73 | Gebogene Waende funktionieren durchgaengig von 2D ueber 3D bis Interop |

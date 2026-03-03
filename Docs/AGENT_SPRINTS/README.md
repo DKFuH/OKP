@@ -53,3 +53,6 @@ Stand: 2026-03-03
 | 68 | `S68-constraint-modus-driving-dimensions.md` | planned | Constraint-Modus und Driving Dimensions fuer Waende und Placements |
 | 69 | `S69-panorama-multipoint-client-tour.md` | planned | Multi-Point-Panorama und oeffentliche Client-Touren |
 | 70 | `S70-spezifikationsblaetter-werkstattpaket.md` | planned | Spezifikationsblaetter und Werkstattpakete aus Quote, BOM, Cutlist und Nesting |
+| 71 | `S71-gebogene-waende-2d-kern.md` | planned | Gebogene Waende als eigener 2D-Geometrietyp mit Oeffnungen und Snap-Logik |
+| 72 | `S72-bogen-bemassung-layout.md` | planned | Radius-, Bogenlaengen- und Sehnenmasse in Sheets und Detailansichten |
+| 73 | `S73-bogen-3d-interop.md` | planned | Gebogene Waende in 3D, GLTF, IFC und DXF/DWG-Interop |
