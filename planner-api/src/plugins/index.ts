@@ -1,0 +1,13 @@
+import { registerPlugin } from './pluginRegistry.js'
+import { raumakustikPlugin } from './raumakustik.js'
+import { fengshuiPlugin } from './fengshui.js'
+
+/**
+ * Bootstraps alle Branche-Plugins.
+ * Wird einmalig beim Anwendungsstart aufgerufen, bevor die Plugins in
+ * Fastify eingehängt werden.
+ */
+export function bootstrapPlugins(): void {
+  registerPlugin(raumakustikPlugin)
+  registerPlugin(fengshuiPlugin)
+}
