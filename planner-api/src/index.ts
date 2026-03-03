@@ -56,10 +56,11 @@ import { complianceRoutes } from './routes/compliance.js'
 import { ifcInteropRoutes } from './routes/ifcInterop.js'
 import { cadInteropRoutes } from './routes/cadInterop.js'
 import { articleConfiguratorRoutes } from './routes/articleConfigurator.js'
-import { acousticsRoutes } from './routes/acoustics.js'
 import { dimensionRoutes } from './routes/dimensions.js'
 import { kitchenAssistantRoutes } from './routes/kitchenAssistant.js'
-import { fengshuiRoutes } from './routes/fengshui.js'
+// Plugin-System
+import { getPlugins } from './plugins/pluginRegistry.js'
+import { bootstrapPlugins } from './plugins/index.js'
 
 const app = Fastify({ logger: true })
 
@@ -125,10 +126,14 @@ await app.register(complianceRoutes, { prefix: '/api/v1' })
 await app.register(ifcInteropRoutes, { prefix: '/api/v1' })
 await app.register(cadInteropRoutes, { prefix: '/api/v1' })
 await app.register(articleConfiguratorRoutes, { prefix: '/api/v1' })
-await app.register(acousticsRoutes, { prefix: '/api/v1' })
 await app.register(dimensionRoutes, { prefix: '/api/v1' })
 await app.register(kitchenAssistantRoutes, { prefix: '/api/v1' })
-await app.register(fengshuiRoutes, { prefix: '/api/v1' })
+
+// Branche-Plugins bootstrappen und einhängen
+bootstrapPlugins()
+for (const plugin of getPlugins()) {
+  await app.register(plugin.register, { prefix: '/api/v1' })
+}
 
 // Health check
 app.get('/health', async () => ({ status: 'ok' }))
