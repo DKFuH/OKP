@@ -31,6 +31,7 @@ Stand: 2026-03-03
 | 64 | `S64-layout-sheets-detail-views.md` | done | `4ad81e3` | +10 |
 | 65 | `S65-zuschnittliste-cutlist.md` | done | `6b7b81c` | +11 |
 | 66 | `S66-cnc-nesting-dxf-export.md` | done | `24f4cbc` | +16 |
+| 67 | `S67-annotative-layout-styles.md` | done | `local` | +16 |
 
 ---
 
@@ -49,7 +50,7 @@ Stand: 2026-03-03
 
 | Sprint | Datei | Status | Thema |
 |--------|-------|--------|-------|
-| 67 | `S67-annotative-layout-styles.md` | planned | Annotative Layout-Stile, massstabsstabile Masse und Symbole |
+| 67 | `S67-annotative-layout-styles.md` | done | Annotative Layout-Stile, massstabsstabile Masse und Symbole |
 | 68 | `S68-constraint-modus-driving-dimensions.md` | planned | Constraint-Modus und Driving Dimensions fuer Waende und Placements |
 | 69 | `S69-panorama-multipoint-client-tour.md` | planned | Multi-Point-Panorama und oeffentliche Client-Touren |
 | 70 | `S70-spezifikationsblaetter-werkstattpaket.md` | planned | Spezifikationsblaetter und Werkstattpakete aus Quote, BOM, Cutlist und Nesting |

@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-67-annotative-layout-styles`
 **Gruppe:** A (startbar nach S64)
-**Status:** `planned`
+**Status:** `done`
 **Abhaengigkeiten:** S59 (Bemaßung), S64 (Layout-Sheets & Detail-Views)
 
 ---

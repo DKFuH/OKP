@@ -28,6 +28,9 @@ export function SettingsPage() {
           <button type="button" className={styles.btnSecondary} onClick={() => navigate('/settings/plugins')}>
             Plugins
           </button>
+          <button type="button" className={styles.btnSecondary} onClick={() => navigate('/settings/layout-styles')}>
+            Layout-Stile
+          </button>
         </div>
       </section>
     </div>

@@ -25,6 +25,12 @@ const ViewBodySchema = z.object({
   y_on_sheet: z.number().default(0),
 })
 
+const SheetConfigBodySchema = z.object({
+  style_preset_id: z.string().uuid().nullable().optional(),
+  sheet_scale: z.enum(['1:10', '1:20', '1:25', '1:50']).optional(),
+  annotative_mode: z.boolean().optional(),
+})
+
 export async function layoutSheetRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/projects/:id/layout-sheets', async (request, reply) => {
     const project = await prisma.project.findUnique({ where: { id: request.params.id } })
@@ -65,6 +71,32 @@ export async function layoutSheetRoutes(app: FastifyInstance) {
     await prisma.layoutSheet.delete({ where: { id: request.params.id } })
     return reply.status(204).send()
   })
+
+  app.put<{ Params: { id: string }; Body: z.infer<typeof SheetConfigBodySchema> }>(
+    '/layout-sheets/:id/config',
+    async (request, reply) => {
+      const parsed = SheetConfigBodySchema.safeParse(request.body ?? {})
+      if (!parsed.success) return sendBadRequest(reply, parsed.error.errors[0]?.message ?? 'Invalid payload')
+
+      const sheet = await prisma.layoutSheet.findUnique({ where: { id: request.params.id } })
+      if (!sheet) return sendNotFound(reply, 'Layout sheet not found')
+
+      const current = (sheet.config as Record<string, unknown> | null) ?? {}
+      const merged: Record<string, unknown> = {
+        ...current,
+        ...(parsed.data.style_preset_id !== undefined ? { style_preset_id: parsed.data.style_preset_id } : {}),
+        ...(parsed.data.sheet_scale !== undefined ? { sheet_scale: parsed.data.sheet_scale } : {}),
+        ...(parsed.data.annotative_mode !== undefined ? { annotative_mode: parsed.data.annotative_mode } : {}),
+      }
+
+      const updated = await prisma.layoutSheet.update({
+        where: { id: request.params.id },
+        data: { config: merged as Prisma.InputJsonValue },
+      })
+
+      return reply.send(updated)
+    },
+  )
 
   app.post<{ Params: { id: string }; Body: z.infer<typeof ViewBodySchema> }>(
     '/layout-sheets/:id/views',

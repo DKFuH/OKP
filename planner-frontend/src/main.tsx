@@ -17,6 +17,7 @@ import { CompliancePage } from './pages/CompliancePage.js'
 import { TenantSettingsPage } from './pages/TenantSettingsPage.js'
 import { PluginsSettingsPage } from './pages/PluginsSettingsPage.js'
 import { SettingsPage } from './pages/SettingsPage.js'
+import { LayoutStylesPage } from './pages/LayoutStylesPage.js'
 import { McpInfoPage } from './pages/McpInfoPage.js'
 import { CutlistPage } from './pages/CutlistPage'
 import { NestingPage } from './pages/NestingPage'
@@ -117,6 +118,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/company" element={<TenantSettingsPage />} />
         <Route path="/settings/plugins" element={<PluginsSettingsPage />} />
+        <Route path="/settings/layout-styles" element={<LayoutStylesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

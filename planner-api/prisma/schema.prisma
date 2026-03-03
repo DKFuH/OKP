@@ -247,6 +247,24 @@ model LayoutView {
   @@map("layout_views")
 }
 
+model LayoutStylePreset {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  name               String   @db.VarChar(120)
+  text_height_mm     Float    @default(3.5)
+  arrow_size_mm      Float    @default(2.5)
+  line_width_mm      Float    @default(0.25)
+  centerline_dash_mm Float    @default(6)
+  symbol_scale_mm    Float    @default(10)
+  font_family        String?  @db.VarChar(120)
+  config_json        Json     @default("{}")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@index([tenant_id])
+  @@map("layout_style_presets")
+}
+
 model Cutlist {
   id           String   @id @default(uuid())
   project_id   String
