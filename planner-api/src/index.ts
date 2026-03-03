@@ -61,6 +61,7 @@ import { kitchenAssistantRoutes } from './routes/kitchenAssistant.js'
 // Plugin-System
 import { getPlugins } from './plugins/pluginRegistry.js'
 import { bootstrapPlugins } from './plugins/index.js'
+import { mcpRoutes } from './routes/mcp.js'
 
 const app = Fastify({ logger: true })
 
@@ -134,6 +135,7 @@ bootstrapPlugins()
 for (const plugin of getPlugins()) {
   await app.register(plugin.register, { prefix: '/api/v1' })
 }
+await app.register(mcpRoutes, { prefix: '/api/v1' })
 
 // Health check
 app.get('/health', async () => ({ status: 'ok' }))
