@@ -1111,8 +1111,8 @@ planner-api/src/plugins/
 | Sprint | Status | Thema | Deliverables |
 |--------|--------|-------|--------------|
 | 61 | `done` | Angebots-PDF mit Firmenprofil | TenantSetting erweitert, PDF mit Absender/Empfänger/Bank/USt, Frontend-Download, Firmenprofil-Seite |
-| 62 | `planned` | MCP: Claude als Planungsassistent | 10 neue Tools (Read+Write), Räume/Placements/Angebote via MCP, MCP-Info-Seite |
-| 63 | `done` | Smarte Bemaßung & Centerlines | PUT /dimensions/:id, POST /rooms/:id/dimensions/smart (Maßkette), Centerlines im Canvas |
+| 62 | `done` | MCP: Claude als Planungsassistent | 10 neue Tools (Read+Write), Räume/Placements/Angebote via MCP, MCP-Info-Seite |
+| 63 | `done` | Smarte Bemaßung & Centerlines | Auto-Update-Referenzen für Dimensionen, POST /rooms/:id/dimensions/auto-chain, Centerlines-Routen + Canvas-Layer |
 
 ### Sprint-Metadaten
 
@@ -1140,9 +1140,9 @@ smarte Bemaßung, Layout-Sheets, Cutlists und pragmatisches CNC-Nesting.
 | Sprint | Status | Thema | Deliverables |
 |--------|--------|-------|--------------|
 | 63 | `done` | Smarte Bemaßung & Centerlines | Referenzierte Maße, Quick-Dim, Achslinien |
-| 64 | `planned` | Layout-Sheets & Detail-Views | Zeichnungsblaetter, Detail- und Schnittansichten |
-| 65 | `planned` | Zuschnittliste (Cutlist) | Teilelisten aus Platzierungen, PDF/CSV-Export |
-| 66 | `planned` | CNC-Nesting & DXF-Export | Rohplattenbelegung, Verschnitt-KPIs, DXF fuer Werkstatt |
+| 64 | `done` | Layout-Sheets & Detail-Views | Zeichnungsblaetter, Detail- und Schnittansichten |
+| 65 | `done` | Zuschnittliste (Cutlist) | Teilelisten aus Platzierungen, PDF/CSV-Export |
+| 66 | `done` | CNC-Nesting & DXF-Export | Rohplattenbelegung, Verschnitt-KPIs, DXF fuer Werkstatt |
 
 ### Sprint-Metadaten
 

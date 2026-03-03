@@ -1,8 +1,8 @@
 # AGENT_SPRINTS - Sprint-Dokumentation
 
-Sprints S47-S60 implementiert und gemergt. S61-S66 sind als naechste Ausbauphasen geplant.
+Sprints `S47` bis `S66` sind implementiert und gemergt.
 
-Stand: 2026-03-03 · Teststand: **501 Tests gruen** (Stand Phase 8/9)
+Stand: 2026-03-03
 
 ---
 
@@ -24,12 +24,12 @@ Stand: 2026-03-03 · Teststand: **501 Tests gruen** (Stand Phase 8/9)
 | 58 | `S58-bild-nachzeichnen.md` | done | `411028b` | +3 |
 | 59 | `S59-bemassung-frontansicht.md` | done | `299276a` | +10 |
 | 60 | `S60-katalog-kitchen-assistant.md` | done | `299276a` | +15 |
-| 61 | `S61-angebots-pdf-firmenprofil.md` | planned | - | 8 geplant |
-| 62 | `S62-mcp-planungsassistent.md` | planned | - | 12 geplant |
-| 63 | `S63-smarte-bemassung-centerlines.md` | planned | - | 10 geplant |
-| 64 | `S64-layout-sheets-detail-views.md` | planned | - | 12 geplant |
-| 65 | `S65-zuschnittliste-cutlist.md` | planned | - | 10 geplant |
-| 66 | `S66-cnc-nesting-dxf-export.md` | planned | - | 18 geplant |
+| 61 | `S61-angebots-pdf-firmenprofil.md` | done | `584ee9b` | +8 |
+| 62 | `S62-mcp-planungsassistent.md` | done | `8de198f` | +26 |
+| 63 | `S63-smarte-bemassung-centerlines.md` | done | `f396864` | +53 |
+| 64 | `S64-layout-sheets-detail-views.md` | done | `4ad81e3` | +10 |
+| 65 | `S65-zuschnittliste-cutlist.md` | done | `6b7b81c` | +11 |
+| 66 | `S66-cnc-nesting-dxf-export.md` | done | `24f4cbc` | +16 |
 
 ---
 
