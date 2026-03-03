@@ -993,6 +993,23 @@ catalog_macros: id, tenant_id, name, positions JSON (wall_id, offset_mm, article
 
 **Migrations-/Index-Disziplin:** `catalog_articles.family/collection/style_tag` nullable, kein Rewrite bestehender Zeilen. `dimensions`-Tabelle neu mit `tenant_id + room_id`-Index. `opening_type`-Enum-Erweiterung via nicht-brechender Migration.
 
+### Sprint 56-FS – FengShui-Plugin (Westlich + Östlich, Zonen-Overlay & Findings)
+
+**Meta:** Status: `done` · Owner: Full-Stack · ETA: Phase 8 · Abhängigkeiten: S14 (3D-Preview), S55 (Overlay-Pattern / GeoJSON)
+
+**Ziel:** FengShui-Analyse als Plugin im Küchenplanner – östlich (Bagua-Zonen 3×3 als Overlay + elementbasierte Hinweise) und westlich (Wegeführung / Engstellen / Küchen-Arbeitsdreieck als Findings). Ergebnisse werden persistiert (Prisma) und im Editor als Konva-Overlay visualisiert.
+
+**Features:**
+
+- **Prisma-Modell** `FengShuiAnalysis` + `FengShuiMode`-Enum (west/east/both)
+- **Engine** `fengshuiEngine.ts`: Bagua 3×3 (Bounding-Box V1) + West-Findings (Küchen-Arbeitsdreieck)
+- **REST-Endpoints:** POST analyze, GET list/meta/zones/findings, DELETE
+- **Frontend API** `fengshui.ts` + **Konva-Overlay** `FengShuiOverlay.tsx`
+
+**DoD:** 12 Tests grün; POST erzeugt Analyse mit 9 Bagua-Zonen (east/both); Findings korrekt generiert; Overlay rendert Zonen als Konva-Layer.
+
+---
+
 ### Risiken Phase 8
 
 1. Wand-Interaktoren erfordern genaue Konva-Hit-Detection für Handles – Überlappung mit Vertex-Circles bei kurzen Kanten prüfen.

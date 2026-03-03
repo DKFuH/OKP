@@ -1803,3 +1803,37 @@ model SlaSnapshot {
   @@index([endpoint, recorded_at])
   @@map("sla_snapshots")
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHASE 8 – Sprint 56: FengShui-Plugin
+// ─────────────────────────────────────────────────────────────────────────
+
+model FengShuiAnalysis {
+  id           String        @id @default(uuid())
+  project_id   String
+  tenant_id    String
+
+  mode         FengShuiMode  @default(both)
+
+  entry_refs   Json?
+  compass_deg  Float         @default(0)
+  bounds_mm    Json
+  zones_geojson Json
+  findings     Json
+
+  score_total  Int           @default(0)
+  score_west   Int           @default(0)
+  score_east   Int           @default(0)
+
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  @@index([project_id])
+  @@map("fengshui_analyses")
+}
+
+enum FengShuiMode {
+  west
+  east
+  both
+}
