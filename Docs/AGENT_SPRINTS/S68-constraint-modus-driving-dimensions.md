@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-68-constraints-driving-dims`
 **Gruppe:** B (startbar nach S63)
-**Status:** `planned`
+**Status:** `done`
 **Abhaengigkeiten:** S63 (Smarte Bemaßung), S60 (Kitchen Assistant), S65 (Cutlist)
 
 ---

@@ -265,6 +265,32 @@ model LayoutStylePreset {
   @@map("layout_style_presets")
 }
 
+enum ConstraintType {
+  horizontal
+  vertical
+  parallel
+  perpendicular
+  coincident
+  equal_length
+  symmetry_axis
+  driving_dimension
+}
+
+model GeometryConstraint {
+  id          String         @id @default(uuid())
+  tenant_id   String
+  room_id     String
+  type        ConstraintType
+  target_refs Json           @default("[]")
+  value_json  Json           @default("{}")
+  enabled     Boolean        @default(true)
+  created_at  DateTime       @default(now())
+  updated_at  DateTime       @updatedAt
+
+  @@index([tenant_id, room_id])
+  @@map("geometry_constraints")
+}
+
 model Cutlist {
   id           String   @id @default(uuid())
   project_id   String
@@ -321,6 +347,9 @@ enum ViewType {
 enum DimensionType {
   linear
   angular
+  radial
+  arc_length
+  chord
 }
 
 // ─────────────────────────────────────────

@@ -1187,8 +1187,8 @@ Panorama-Touren und standardisierte Werkstatt-/Vertriebspakete.
 | Sprint | Status | Thema | Deliverables |
 |--------|--------|-------|--------------|
 | 67 | `done` | Annotative Layout-Styles | Tenant-Style-Presets, scale-aware Masse, plot-stabile Symbole |
-| 68 | `planned` | Constraint-Modus & Driving Dimensions | einfache Geometrie-Constraints, deterministischer Solver, Constraint-Panel |
-| 69 | `planned` | Panorama Multi-Point & Client-Tour | mehrere Viewpoints, Hotspots, Share-Link fuer Touren |
+| 68 | `done` | Constraint-Modus & Driving Dimensions | einfache Geometrie-Constraints, deterministischer Solver, Constraint-Panel |
+| 69 | `in_progress` | Panorama Multi-Point & Client-Tour | mehrere Viewpoints, Hotspots, Share-Link fuer Touren |
 | 70 | `planned` | Spezifikationsblaetter & Werkstattpaket | strukturierte Paket-Generierung aus Quote, BOM, Cutlist, Sheets, Nesting |
  
 ### Sprint-Metadaten

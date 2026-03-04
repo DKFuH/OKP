@@ -13,6 +13,7 @@ import { WallFeaturesPanel } from './WallFeaturesPanel.js'
 import { RoomFeaturesPanel } from './RoomFeaturesPanel.js'
 import { MacrosPanel } from './MacrosPanel.js'
 import { KitchenAssistantPanel } from '../../pages/KitchenAssistantPanel.js'
+import { ConstraintsPanel } from '../../pages/ConstraintsPanel.js'
 import styles from './RightSidebar.module.css'
 
 export interface CeilingConstraint {
@@ -270,6 +271,10 @@ export function RightSidebar({
         wallGeom={selectedWallGeom}
         onSave={onSaveCeilingConstraints}
       />
+
+      {selectedRoomId && (
+        <ConstraintsPanel roomId={selectedRoomId} />
+      )}
 
       {/* Wand-Objekte, Installationen & Operationen (Sprints 31-33) */}
       {selectedWallGeom && selectedRoomId && (

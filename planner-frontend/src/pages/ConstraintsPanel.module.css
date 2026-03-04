@@ -1,0 +1,38 @@
+.section {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.title {
+  margin: 0 0 8px;
+}
+
+.formGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.solveSection {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.persistLabel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.listSection {
+  margin-top: 12px;
+}
+
+.empty {
+  margin-top: 6px;
+}
+
+.deleteButton {
+  margin-left: 8px;
+}
