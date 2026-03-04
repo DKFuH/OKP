@@ -15,15 +15,19 @@ import { openingsApi, type Opening } from '../api/openings.js'
 import { validateApi, type ValidateResponse } from '../api/validate.js'
 import { autoCompletionApi, type AutoCompleteResult } from '../api/autoCompletion.js'
 import { acousticsApi, type AcousticGridMeta, type GeoJsonGrid } from '../api/acoustics.js'
+import { getTenantPlugins } from '../api/tenantSettings.js'
+import { projectEnvironmentApi } from '../api/projectEnvironment.js'
 import { usePolygonEditor, edgeLengthMm, type EditorState } from '../editor/usePolygonEditor.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { PopoutWindow } from '../components/editor/PopoutWindow.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
+import { DaylightPanel } from '../components/editor/DaylightPanel.js'
 import { LeftSidebar } from '../components/editor/LeftSidebar.js'
 import { RightSidebar, type CeilingConstraint, type ConfiguredDimensions } from '../components/editor/RightSidebar.js'
 import { StatusBar } from '../components/editor/StatusBar.js'
 import { AreasPanel } from '../components/editor/AreasPanel.js'
 import { LayoutSheetTabs } from '../components/editor/LayoutSheetTabs.js'
+import type { ProjectEnvironment, SunPreview } from '../plugins/daylight/index.js'
 import styles from './Editor.module.css'
 import {
   clampNumber,
@@ -149,6 +153,12 @@ export function Editor() {
   const [workflowStep, setWorkflowStep] = useState<'walls' | 'openings' | 'furniture'>('walls')
   const [activeLayoutSheetId, setActiveLayoutSheetId] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [daylightEnabled, setDaylightEnabled] = useState(false)
+  const [daylightPanelOpen, setDaylightPanelOpen] = useState(false)
+  const [projectEnvironment, setProjectEnvironment] = useState<ProjectEnvironment | null>(null)
+  const [sunPreview, setSunPreview] = useState<SunPreview | null>(null)
+  const [daylightSaving, setDaylightSaving] = useState(false)
+  const [sunPreviewLoading, setSunPreviewLoading] = useState(false)
   const moreMenuRef = useRef<HTMLDivElement | null>(null)
   const splitContainerRef = useRef<HTMLDivElement | null>(null)
   const centeredVisitorRoomIdRef = useRef<string | null>(null)
@@ -173,6 +183,117 @@ export function Editor() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    let active = true
+
+    getTenantPlugins()
+      .then((result) => {
+        if (!active) return
+        setDaylightEnabled(result.enabled.includes('daylight'))
+      })
+      .catch(() => {
+        if (!active) return
+        setDaylightEnabled(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const refreshSunPreview = useCallback(async (projectId: string, env: ProjectEnvironment | null) => {
+    if (!env) return
+
+    setSunPreviewLoading(true)
+    try {
+      const preview = await projectEnvironmentApi.sunPreview(projectId, {
+        ...(env.default_datetime ? { datetime: env.default_datetime } : {}),
+        ...(env.latitude != null ? { latitude: env.latitude } : {}),
+        ...(env.longitude != null ? { longitude: env.longitude } : {}),
+        north_angle_deg: env.north_angle_deg,
+      })
+      setSunPreview(preview)
+    } catch {
+      setSunPreview(null)
+    } finally {
+      setSunPreviewLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!id || !daylightEnabled) {
+      setProjectEnvironment(null)
+      setSunPreview(null)
+      setDaylightPanelOpen(false)
+      return
+    }
+
+    let active = true
+
+    projectEnvironmentApi.get(id)
+      .then(async (environment) => {
+        if (!active) return
+        const normalized: ProjectEnvironment = {
+          ...environment,
+          config_json: environment.config_json ?? {},
+        }
+        setProjectEnvironment(normalized)
+        await refreshSunPreview(id, normalized)
+      })
+      .catch(() => {
+        if (!active) return
+        setProjectEnvironment(null)
+        setSunPreview(null)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [daylightEnabled, id, refreshSunPreview])
+
+
+  const handleDaylightPatch = useCallback((patch: Partial<ProjectEnvironment>) => {
+    setProjectEnvironment((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        ...patch,
+      }
+    })
+  }, [])
+
+
+  const handleSaveDaylightEnvironment = useCallback(async () => {
+    if (!id || !projectEnvironment) return
+
+    setDaylightSaving(true)
+    try {
+      const updated = await projectEnvironmentApi.update(id, {
+        north_angle_deg: projectEnvironment.north_angle_deg,
+        latitude: projectEnvironment.latitude,
+        longitude: projectEnvironment.longitude,
+        timezone: projectEnvironment.timezone,
+        default_datetime: projectEnvironment.default_datetime,
+        daylight_enabled: projectEnvironment.daylight_enabled,
+      })
+      const normalized: ProjectEnvironment = {
+        ...updated,
+        config_json: updated.config_json ?? {},
+      }
+      setProjectEnvironment(normalized)
+      await refreshSunPreview(id, normalized)
+    } catch (saveError) {
+      alert(`Tageslicht-Einstellungen konnten nicht gespeichert werden: ${String(saveError)}`)
+    } finally {
+      setDaylightSaving(false)
+    }
+  }, [id, projectEnvironment, refreshSunPreview])
+
+  const handleRefreshSunPreview = useCallback(async () => {
+    if (!id || !projectEnvironment) return
+    await refreshSunPreview(id, projectEnvironment)
+  }, [id, projectEnvironment, refreshSunPreview])
 
   const refreshAcousticGrids = useCallback(async () => {
     if (!id) {
@@ -264,7 +385,7 @@ export function Editor() {
       }
       await refreshAcousticGrids()
     } catch (error) {
-      alert(`Akustik-Grid löschen fehlgeschlagen: ${String(error)}`)
+      alert(`Akustik-Grid lÃ¶schen fehlgeschlagen: ${String(error)}`)
     } finally {
       setAcousticBusy(false)
     }
@@ -386,7 +507,7 @@ export function Editor() {
       })
   }, [id])
 
-  // Editor-Vertices + Öffnungen neu laden wenn Raum wechselt
+  // Editor-Vertices + Ã–ffnungen neu laden wenn Raum wechselt
   useEffect(() => {
     setSelectedOpeningId(null)
     setSelectedPlacementId(null)
@@ -406,7 +527,7 @@ export function Editor() {
       editor.reset()
     }
     editor.setReferenceImage(parseReferenceImage((room as unknown as RoomPayload | undefined)?.reference_image))
-    // Öffnungen aus room.openings laden (JSONB, bereits im room-Objekt)
+    // Ã–ffnungen aus room.openings laden (JSONB, bereits im room-Objekt)
     setOpenings((room?.openings as unknown as Opening[]) ?? [])
     setPlacements((room?.placements as unknown as Placement[]) ?? [])
 
@@ -457,18 +578,18 @@ export function Editor() {
     })
   }, [])
 
-  // Öffnungen speichern
+  // Ã–ffnungen speichern
   const handleSaveOpenings = useCallback(async (newOpenings: Opening[]) => {
     if (!selectedRoomRef.current) return
     try {
       const saved = await openingsApi.save(selectedRoomRef.current.id, newOpenings)
       setOpenings(saved)
     } catch (e) {
-      console.error('Öffnungen speichern fehlgeschlagen:', e)
+      console.error('Ã–ffnungen speichern fehlgeschlagen:', e)
     }
   }, [])
 
-  // Öffnung hinzufügen (wird vom Canvas aufgerufen wenn Wand ausgewählt)
+  // Ã–ffnung hinzufÃ¼gen (wird vom Canvas aufgerufen wenn Wand ausgewÃ¤hlt)
   const handleAddOpening = useCallback((wallId: string, wallLengthMm: number) => {
     const defaultWidth = Math.min(900, wallLengthMm)
     const offset = Math.max(0, Math.round((wallLengthMm - defaultWidth) / 2))
@@ -488,14 +609,14 @@ export function Editor() {
     handleSaveOpenings(updated)
   }, [handleSaveOpenings])
 
-  // Öffnung aktualisieren
+  // Ã–ffnung aktualisieren
   const handleUpdateOpening = useCallback((updated: Opening) => {
     const newOpenings = openingsRef.current.map(o => o.id === updated.id ? updated : o)
     setOpenings(newOpenings)
     handleSaveOpenings(newOpenings)
   }, [handleSaveOpenings])
 
-  // Öffnung löschen
+  // Ã–ffnung lÃ¶schen
   const handleDeleteOpening = useCallback((openingId: string) => {
     const newOpenings = openingsRef.current.filter(o => o.id !== openingId)
     setOpenings(newOpenings)
@@ -541,7 +662,7 @@ export function Editor() {
 
   const handleAddPlacement = useCallback((wallId: string, wallLengthMm: number) => {
     if (!selectedCatalogItem) {
-      console.warn('Kein Katalogartikel ausgewählt')
+      console.warn('Kein Katalogartikel ausgewÃ¤hlt')
       return
     }
 
@@ -614,7 +735,7 @@ export function Editor() {
     handleSavePlacements(nextPlacements)
   }, [handleSavePlacements])
 
-  // Auto-Vervollständigung (Langteile, Sockel, Wangen)
+  // Auto-VervollstÃ¤ndigung (Langteile, Sockel, Wangen)
   const handleAutoComplete = useCallback(async () => {
     if (!id || !selectedRoomRef.current) return
     setAutoCompleteLoading(true)
@@ -622,7 +743,7 @@ export function Editor() {
       const result = await autoCompletionApi.run(id, selectedRoomRef.current.id)
       setAutoCompleteResult(result)
     } catch (e) {
-      console.error('Auto-Vervollständigung fehlgeschlagen:', e)
+      console.error('Auto-VervollstÃ¤ndigung fehlgeschlagen:', e)
     } finally {
       setAutoCompleteLoading(false)
     }
@@ -630,7 +751,7 @@ export function Editor() {
 
   const handleGltfExport = useCallback(async () => {
     if (!selectedAlternativeId) {
-      alert('Keine Alternative ausgewählt')
+      alert('Keine Alternative ausgewÃ¤hlt')
       return
     }
 
@@ -660,7 +781,7 @@ export function Editor() {
     }
   }, [selectedAlternativeId])
 
-  // Geometrieprüfung ausführen
+  // GeometrieprÃ¼fung ausfÃ¼hren
   const handleRunValidation = useCallback(async () => {
     if (!selectedRoomRef.current || !id) return
     const room = selectedRoomRef.current
@@ -708,14 +829,14 @@ export function Editor() {
     }
   }, [id])
 
-  // Dachschrägen speichern
+  // DachschrÃ¤gen speichern
   const handleSaveCeilingConstraints = useCallback((constraints: CeilingConstraint[]) => {
     if (!selectedRoomRef.current) return
     roomsApi.update(selectedRoomRef.current.id, {
       ceiling_constraints: constraints as unknown[],
     }).then(updated => {
       handleRoomUpdated(updated)
-    }).catch((e: Error) => console.error('Dachschrägen speichern fehlgeschlagen:', e))
+    }).catch((e: Error) => console.error('DachschrÃ¤gen speichern fehlgeschlagen:', e))
   }, [handleRoomUpdated])
 
   const handleReferenceImageUpdate = useCallback((img: NonNullable<EditorState['referenceImage']>) => {
@@ -797,7 +918,7 @@ export function Editor() {
     }
   }, [selectedRoom])
 
-  // Auswahl-Info für RightSidebar – muss VOR den Early-Returns stehen (Rules of Hooks)
+  // Auswahl-Info fÃ¼r RightSidebar â€“ muss VOR den Early-Returns stehen (Rules of Hooks)
   const { state } = editor
   const selectedVertex = state.selectedIndex !== null ? (state.vertices[state.selectedIndex] ?? null) : null
   const selEdgeLen = state.selectedEdgeIndex !== null
@@ -806,7 +927,7 @@ export function Editor() {
   const selectedOpening = openings.find(o => o.id === selectedOpeningId) ?? null
   const selectedPlacement = placements.find(p => p.id === selectedPlacementId) ?? null
 
-  // Wandgeometrie für Dachschrägen-Panel
+  // Wandgeometrie fÃ¼r DachschrÃ¤gen-Panel
   const selectedWallGeom = useMemo(() => {
     const i = state.selectedEdgeIndex
     if (i === null || !state.wallIds[i]) return null
@@ -838,6 +959,8 @@ export function Editor() {
       acousticVisible={acousticEnabled}
       acousticOpacity={acousticOpacityPct / 100}
       onReferenceImageUpdate={handleReferenceImageUpdate}
+      showCompass={daylightEnabled}
+      northAngleDeg={projectEnvironment?.north_angle_deg ?? 0}
       virtualVisitor={{
         x_mm: cameraState.x_mm,
         y_mm: cameraState.y_mm,
@@ -853,22 +976,23 @@ export function Editor() {
       room={selectedRoom as unknown as RoomPayload | null}
       cameraState={cameraState}
       onCameraStateChange={handleCameraStateChange}
+      sunlight={daylightEnabled ? sunPreview : null}
     />
   )
 
-  if (loading) return <div className={styles.center}>Lade Projekt…</div>
+  if (loading) return <div className={styles.center}>Lade Projektâ€¦</div>
   if (error) return <div className={styles.center}>{error}</div>
   if (!project) return null
 
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
-        <button type="button" className={styles.backBtn} onClick={() => navigate('/')}>← Projekte</button>
+        <button type="button" className={styles.backBtn} onClick={() => navigate('/')}>â† Projekte</button>
         <span className={styles.projectName}>{project.name}</span>
         <div className={styles.topbarActions}>
           {autoCompleteResult && (
             <span className={styles.autoCompleteHint}>
-              ✓ {autoCompleteResult.created} Langteile generiert
+              âœ“ {autoCompleteResult.created} Langteile generiert
             </span>
           )}
           <div className={styles.modeSwitch} aria-label="Ansichtsmodus">
@@ -883,7 +1007,7 @@ export function Editor() {
               type="button"
               className={`${styles.modeBtn} ${viewMode === 'split' ? styles.modeBtnActive : ''}`}
               onClick={() => setViewMode('split')}
-              title={compactLayout ? 'Split auf kleinen Displays nicht verfügbar' : '2D und 3D parallel'}
+              title={compactLayout ? 'Split auf kleinen Displays nicht verfÃ¼gbar' : '2D und 3D parallel'}
               disabled={compactLayout}
             >
               Split
@@ -905,7 +1029,7 @@ export function Editor() {
             Besucher
           </label>
           <label className={styles.heightControl}>
-            Höhe {cameraHeightMm} mm
+            HÃ¶he {cameraHeightMm} mm
             <input
               type="range"
               min={900}
@@ -922,7 +1046,7 @@ export function Editor() {
               aria-haspopup="true"
               onClick={() => setMoreMenuOpen((prev) => !prev)}
             >
-              Mehr ▾
+              Mehr â–¾
             </button>
             {moreMenuOpen && (
               <div className={styles.moreMenu} role="menu">
@@ -934,7 +1058,7 @@ export function Editor() {
                   disabled={autoCompleteLoading || !selectedRoomId}
                   title="Arbeitsplatten, Sockel und Wangen automatisch generieren"
                 >
-                  {autoCompleteLoading ? 'Generiere…' : 'Auto vervollständigen'}
+                  {autoCompleteLoading ? 'Generiereâ€¦' : 'Auto vervollstÃ¤ndigen'}
                 </button>
                 <button
                   role="menuitem"
@@ -942,9 +1066,9 @@ export function Editor() {
                   className={styles.moreMenuItem}
                   onClick={() => { setMoreMenuOpen(false); setIsPreviewPopoutOpen((prev) => !prev) }}
                   disabled={!selectedRoom}
-                  title="3D-Ansicht in separatem Fenster öffnen"
+                  title="3D-Ansicht in separatem Fenster Ã¶ffnen"
                 >
-                  {isPreviewPopoutOpen ? '3D-Fenster schließen' : '3D in Fenster'}
+                  {isPreviewPopoutOpen ? '3D-Fenster schlieÃŸen' : '3D in Fenster'}
                 </button>
                 <button
                   role="menuitem"
@@ -962,6 +1086,16 @@ export function Editor() {
                 >
                   Panorama-Touren
                 </button>
+                {daylightEnabled && (
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className={styles.moreMenuItem}
+                    onClick={() => { setMoreMenuOpen(false); setDaylightPanelOpen((prev) => !prev) }}
+                  >
+                    {daylightPanelOpen ? 'Tageslichtpanel schlieÃŸen' : 'Tageslichtpanel'}
+                  </button>
+                )}
                 <button
                   role="menuitem"
                   type="button"
@@ -977,7 +1111,7 @@ export function Editor() {
                   onClick={() => { setMoreMenuOpen(false); void handleGltfExport() }}
                   disabled={gltfExportLoading || !selectedAlternativeId}
                 >
-                  {gltfExportLoading ? 'GLB exportiere…' : 'GLB exportieren'}
+                  {gltfExportLoading ? 'GLB exportiereâ€¦' : 'GLB exportieren'}
                 </button>
                 <button
                   role="menuitem"
@@ -996,7 +1130,7 @@ export function Editor() {
       {/* Workflow step tabs */}
       <nav className={styles.stepBar} aria-label="Arbeitsschritte">
         {(['walls', 'openings', 'furniture'] as const).map((step, idx) => {
-          const labels = ['1 · Wände', '2 · Öffnungen', '3 · Möbelierung'] as const
+          const labels = ['1 Â· WÃ¤nde', '2 Â· Ã–ffnungen', '3 Â· MÃ¶belierung'] as const
           const isActive = workflowStep === step
           return (
             <button
@@ -1022,8 +1156,28 @@ export function Editor() {
           projectId={id}
           activeSheetId={activeLayoutSheetId}
           onSheetChange={setActiveLayoutSheetId}
+          showDaylightOptions={daylightEnabled}
         />
       )}
+
+      {daylightEnabled && daylightPanelOpen && projectEnvironment && (
+        <div className={styles.daylightDock}>
+          <DaylightPanel
+            environment={projectEnvironment}
+            preview={sunPreview}
+            loadingPreview={sunPreviewLoading}
+            savingEnvironment={daylightSaving}
+            onChange={handleDaylightPatch}
+            onSave={() => {
+              void handleSaveDaylightEnvironment()
+            }}
+            onRefreshPreview={() => {
+              void handleRefreshSunPreview()
+            }}
+          />
+        </div>
+      )}
+
 
       <div className={styles.workspace}>
         {showAreasPanel && id && (
@@ -1120,6 +1274,7 @@ export function Editor() {
             room={selectedRoom as unknown as RoomPayload | null}
             cameraState={cameraState}
             onCameraStateChange={handleCameraStateChange}
+            sunlight={daylightEnabled ? sunPreview : null}
           />
         </PopoutWindow>
       )}

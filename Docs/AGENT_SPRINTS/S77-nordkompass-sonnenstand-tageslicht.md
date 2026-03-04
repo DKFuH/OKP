@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-77-daylight-plugin`
 **Gruppe:** A (startbar nach S74)
-**Status:** `in_progress`
+**Status:** `done`
 **Abhaengigkeiten:** S14 (3D-Preview), S67 (Layout-Styles), S76 (Praesentationsmodus)
 
 ---

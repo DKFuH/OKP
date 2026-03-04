@@ -12,6 +12,7 @@ export interface LayoutSheet {
     style_preset_id?: string | null
     sheet_scale?: '1:10' | '1:20' | '1:25' | '1:50'
     annotative_mode?: boolean
+    show_north_arrow?: boolean
   }
 }
 
@@ -19,6 +20,7 @@ interface Props {
   projectId: string
   activeSheetId: string | null
   onSheetChange: (sheetId: string) => void
+  showDaylightOptions?: boolean
 }
 
 const SHEET_LABELS: Record<string, string> = {
@@ -29,7 +31,7 @@ const SHEET_LABELS: Record<string, string> = {
   section: 'SC',
 }
 
-export function LayoutSheetTabs({ projectId, activeSheetId, onSheetChange }: Props) {
+export function LayoutSheetTabs({ projectId, activeSheetId, onSheetChange, showDaylightOptions = false }: Props) {
   const [sheets, setSheets] = useState<LayoutSheet[]>([])
   const [presets, setPresets] = useState<LayoutStylePreset[]>([])
 
@@ -141,6 +143,21 @@ export function LayoutSheetTabs({ projectId, activeSheetId, onSheetChange }: Pro
               ))}
             </select>
           </label>
+
+          {showDaylightOptions && (
+            <label className={styles.tab}>
+              <input
+                type='checkbox'
+                checked={Boolean(activeSheet.config?.show_north_arrow)}
+                onChange={(event) => {
+                  void updateActiveSheetConfig({
+                    show_north_arrow: event.target.checked,
+                  })
+                }}
+              />
+              Nordpfeil
+            </label>
+          )}
         </div>
       )}
     </>

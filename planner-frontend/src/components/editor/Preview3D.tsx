@@ -22,6 +22,18 @@ type WallSegmentResolved = {
   end: { x_mm: number; y_mm: number }
 }
 
+type SunlightPreview = {
+  azimuth_deg: number
+  elevation_deg: number
+  intensity: number
+  daylight_enabled: boolean
+  sun_direction: {
+    x: number
+    y: number
+    z: number
+  }
+}
+
 interface Props {
   room: RoomPayload | null
   cameraState?: {
@@ -38,6 +50,7 @@ interface Props {
     pitch_rad: number
     camera_height_mm: number
   }) => void
+  sunlight?: SunlightPreview | null
 }
 
 const MM_TO_M = 0.001
@@ -87,11 +100,37 @@ function angleDelta(a: number, b: number): number {
   return Math.atan2(Math.sin(raw), Math.cos(raw))
 }
 
-export function Preview3D({ room, cameraState = null, onCameraStateChange }: Props) {
+function applySunlight(
+  ambient: THREE.AmbientLight,
+  directional: THREE.DirectionalLight,
+  sunlight: SunlightPreview | null | undefined,
+) {
+  if (!sunlight || !sunlight.daylight_enabled) {
+    ambient.intensity = 0.58
+    directional.intensity = 0.22
+    directional.position.set(3, 6, 3)
+    return
+  }
+
+  const intensity = Math.max(0, Math.min(1, sunlight.intensity))
+  ambient.intensity = 0.3 + intensity * 0.4
+  directional.intensity = 0.25 + intensity * 1.05
+
+  const y = Math.max(0.25, sunlight.sun_direction.y + 0.35)
+  directional.position.set(
+    sunlight.sun_direction.x * 8,
+    y * 8,
+    sunlight.sun_direction.z * 8,
+  )
+}
+
+export function Preview3D({ room, cameraState = null, onCameraStateChange, sunlight = null }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const groupRef = useRef<THREE.Group | null>(null)
+  const ambientLightRef = useRef<THREE.AmbientLight | null>(null)
+  const directionalLightRef = useRef<THREE.DirectionalLight | null>(null)
   const cameraStateRef = useRef<Props['cameraState']>(cameraState)
   const onCameraStateChangeRef = useRef<Props['onCameraStateChange']>(onCameraStateChange)
   const lastEmittedRef = useRef<{
@@ -155,10 +194,13 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange }: Pro
     controls.target.set(0, 0.7, 0)
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.6)
+    ambientLightRef.current = ambient
     scene.add(ambient)
     const directional = new THREE.DirectionalLight(0xffffff, 1)
+    directionalLightRef.current = directional
     directional.position.set(3, 6, 3)
     scene.add(directional)
+    applySunlight(ambient, directional, sunlight)
 
     const group = new THREE.Group()
     groupRef.current = group
@@ -364,6 +406,8 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange }: Pro
       if (controlsRef.current === controls) controlsRef.current = null
       if (cameraRef.current === camera) cameraRef.current = null
       if (groupRef.current === group) groupRef.current = null
+      if (ambientLightRef.current === ambient) ambientLightRef.current = null
+      if (directionalLightRef.current === directional) directionalLightRef.current = null
       renderer.dispose()
       mount.removeChild(renderer.domElement)
     }
@@ -389,6 +433,13 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange }: Pro
     controls.target.copy(position.clone().add(direction.multiplyScalar(1.2)))
     controls.update()
   }, [cameraState])
+
+  useEffect(() => {
+    const ambient = ambientLightRef.current
+    const directional = directionalLightRef.current
+    if (!ambient || !directional) return
+    applySunlight(ambient, directional, sunlight)
+  }, [sunlight])
 
   if (!geometryInput) {
     return (

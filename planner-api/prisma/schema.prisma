@@ -2077,3 +2077,25 @@ model AssetLibraryItem {
   @@index([tenant_id, category])
   @@map("asset_library_items")
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHASE 15 – Sprint 77: Daylight-Plugin
+// ─────────────────────────────────────────────────────────────────────────
+
+model ProjectEnvironment {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  project_id       String   @unique
+  north_angle_deg  Float    @default(0)
+  latitude         Float?
+  longitude        Float?
+  timezone         String?  @db.VarChar(60)
+  default_datetime DateTime?
+  daylight_enabled Boolean  @default(true)
+  config_json      Json     @default("{}")
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([tenant_id, project_id])
+  @@map("project_environments")
+}

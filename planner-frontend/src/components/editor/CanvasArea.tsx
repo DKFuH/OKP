@@ -8,6 +8,7 @@ import type { GeoJsonGrid } from '../../api/acoustics.js'
 import { roomsApi } from '../../api/rooms.js'
 import { PolygonEditor } from '../../editor/PolygonEditor.js'
 import type { EditorAPI } from '../../editor/usePolygonEditor.js'
+import { CompassOverlay } from './CompassOverlay.js'
 import styles from './CanvasArea.module.css'
 
 interface Props {
@@ -29,6 +30,8 @@ interface Props {
   acousticVisible: boolean
   acousticOpacity: number
   onReferenceImageUpdate: (img: NonNullable<RoomPayload['reference_image']>) => void
+  showCompass?: boolean
+  northAngleDeg?: number
   virtualVisitor?: {
     x_mm: number
     y_mm: number
@@ -38,7 +41,7 @@ interface Props {
   onRepositionVisitor?: (point: { x_mm: number; y_mm: number }) => void
 }
 
-export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, dimensions, centerlines, selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement, acousticGrid, acousticVisible, acousticOpacity, onReferenceImageUpdate, virtualVisitor = null, onRepositionVisitor }: Props) {
+export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, dimensions, centerlines, selectedPlacementId, onSelectPlacement, canAddPlacement, onAddPlacement, acousticGrid, acousticVisible, acousticOpacity, onReferenceImageUpdate, showCompass = false, northAngleDeg = 0, virtualVisitor = null, onRepositionVisitor }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
   const [saving, setSaving] = useState(false)
@@ -132,6 +135,7 @@ export function CanvasArea({ room, onRoomUpdated, editor, openings, selectedOpen
             virtualVisitor={virtualVisitor}
             onRepositionVisitor={onRepositionVisitor}
           />
+          {showCompass && <CompassOverlay northAngleDeg={northAngleDeg} />}
         </div>
       ) : (
         <div className={styles.placeholder}>

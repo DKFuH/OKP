@@ -1,0 +1,49 @@
+.wrap {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-default);
+  box-shadow: var(--shadow-sm);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ring {
+  fill: transparent;
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
+.arrowLine {
+  stroke: var(--text-primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.arrowHead {
+  fill: var(--text-primary);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text-primary);
+}
+
+.deg {
+  position: absolute;
+  bottom: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text-muted);
+}

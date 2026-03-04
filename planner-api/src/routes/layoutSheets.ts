@@ -31,6 +31,7 @@ const SheetConfigBodySchema = z.object({
   annotative_mode: z.boolean().optional(),
   show_arc_annotations: z.boolean().optional(),
   arc_dimension_style: z.enum(['radius-first', 'length-first']).optional(),
+  show_north_arrow: z.boolean().optional(),
 })
 
 export async function layoutSheetRoutes(app: FastifyInstance) {
@@ -91,6 +92,7 @@ export async function layoutSheetRoutes(app: FastifyInstance) {
         ...(parsed.data.annotative_mode !== undefined ? { annotative_mode: parsed.data.annotative_mode } : {}),
         ...(parsed.data.show_arc_annotations !== undefined ? { show_arc_annotations: parsed.data.show_arc_annotations } : {}),
         ...(parsed.data.arc_dimension_style !== undefined ? { arc_dimension_style: parsed.data.arc_dimension_style } : {}),
+        ...(parsed.data.show_north_arrow !== undefined ? { show_north_arrow: parsed.data.show_north_arrow } : {}),
       }
 
       const updated = await prisma.layoutSheet.update({
@@ -132,8 +134,25 @@ export async function layoutSheetRoutes(app: FastifyInstance) {
 
     const config = ((sheet.config as Record<string, unknown> | null) ?? {})
     const showArc = Boolean(config.show_arc_annotations)
+    const showNorthArrow = Boolean(config.show_north_arrow)
     const arcStyle = String(config.arc_dimension_style ?? 'radius-first')
     const arcLabel = arcStyle === 'length-first' ? 'L=1571 mm' : 'R=1000 mm'
+
+    const environment = showNorthArrow
+      ? await prisma.projectEnvironment.findUnique({
+          where: { project_id: sheet.project_id },
+          select: { north_angle_deg: true },
+        })
+      : null
+    const northAngle = environment?.north_angle_deg ?? 0
+
+    const northArrowSvg = showNorthArrow
+      ? `<g transform="translate(730 92) rotate(${northAngle})">
+  <line x1="0" y1="20" x2="0" y2="-18" stroke="#0f172a" stroke-width="2" />
+  <polygon points="0,-28 -7,-14 7,-14" fill="#0f172a" />
+  <text x="0" y="-34" text-anchor="middle" font-size="14" font-family="Arial">N</text>
+</g>`
+      : ''
 
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
@@ -141,6 +160,7 @@ export async function layoutSheetRoutes(app: FastifyInstance) {
   <text x="40" y="40" font-size="20" font-family="Arial">${sheet.name}</text>
   <path d="M 200 300 A 120 120 0 0 1 440 300" stroke="#1f2937" fill="none" stroke-width="2" />
   ${showArc ? `<text x="300" y="250" font-size="14" font-family="Arial">${arcLabel}</text>` : ''}
+  ${northArrowSvg}
 </svg>`
 
     reply.type('image/svg+xml')
