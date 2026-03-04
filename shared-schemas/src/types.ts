@@ -596,3 +596,48 @@ export interface BWASummary {
   contribution_margin: number;
   markup_pct: number;
 }
+
+// Sprint 96 – MwSt-, Skonto- & Zusatzartikel-Profile
+
+export interface TaxProfile {
+  id: string;
+  tenant_id: string | null;
+  name: string;
+  description: string | null;
+  tax_rate: number;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscountProfile {
+  id: string;
+  tenant_id: string | null;
+  name: string;
+  description: string | null;
+  skonto_pct: number;
+  payment_days: number;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecalculatedFinancialLine {
+  item_id: string;
+  line_net: number;
+  tax_rate: number;
+  tax_amount: number;
+  line_gross: number;
+}
+
+export interface RecalculatedFinancials {
+  quote_id: string;
+  calculated_at: string;
+  line_breakdown: RecalculatedFinancialLine[];
+  subtotal_net: number;
+  vat_amount: number;
+  total_gross: number;
+  skonto_pct: number;
+  skonto_amount: number;
+  total_gross_after_skonto: number;
+}

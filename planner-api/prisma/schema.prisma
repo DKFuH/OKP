@@ -579,20 +579,24 @@ enum ExtraCostType {
 // ─────────────────────────────────────────
 
 model Quote {
-  id           String      @id @default(uuid())
-  project_id   String
-  version      Int         @default(1)
-  quote_number String
-  status       QuoteStatus @default(draft)
-  locale_code  String?     @db.VarChar(10)
-  valid_until  DateTime
-  free_text    String?
-  footer_text  String?
-  price_snapshot Json?
-  created_at   DateTime    @default(now())
+  id                  String           @id @default(uuid())
+  project_id          String
+  version             Int              @default(1)
+  quote_number        String
+  status              QuoteStatus      @default(draft)
+  locale_code         String?          @db.VarChar(10)
+  valid_until         DateTime
+  free_text           String?
+  footer_text         String?
+  price_snapshot      Json?
+  tax_profile_id      String?
+  discount_profile_id String?
+  created_at          DateTime         @default(now())
 
-  project      Project     @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  items        QuoteItem[]
+  project             Project          @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  items               QuoteItem[]
+  tax_profile         TaxProfile?      @relation(fields: [tax_profile_id], references: [id], onDelete: SetNull)
+  discount_profile    DiscountProfile? @relation(fields: [discount_profile_id], references: [id], onDelete: SetNull)
 
   @@map("quotes")
 }
@@ -2300,4 +2304,39 @@ model DrawingGroup {
 
   @@index([tenant_id, project_id, kind])
   @@map("drawing_groups")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHASE 18 – Sprint 96: MwSt-, Skonto- & Zusatzartikel-Profile
+// ─────────────────────────────────────────────────────────────────────────
+
+model TaxProfile {
+  id          String   @id @default(uuid())
+  tenant_id   String?
+  name        String
+  description String?
+  tax_rate    Float
+  is_default  Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  quotes      Quote[]
+
+  @@map("tax_profiles")
+}
+
+model DiscountProfile {
+  id           String   @id @default(uuid())
+  tenant_id    String?
+  name         String
+  description  String?
+  skonto_pct   Float
+  payment_days Int
+  is_default   Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  quotes       Quote[]
+
+  @@map("discount_profiles")
 }

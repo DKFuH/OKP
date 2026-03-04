@@ -432,4 +432,64 @@ export async function pricingRoutes(app: FastifyInstance) {
   app.post('/pricing/block-preview', blockHandler)
   app.post('/projects/:projectId/calculate-pricing', projectPricingHandler)
   app.post('/projects/:projectId/evaluate-blocks', projectBlockHandler)
+
+  // ── Sprint 96: MwSt- & Skonto-Profile ──────────────────────────────────
+
+  const TaxProfileUpdateSchema = z.object({
+    name: z.string().min(1).max(200).optional(),
+    description: z.string().max(500).nullable().optional(),
+    tax_rate: z.number().min(0).max(1).optional(),
+    is_default: z.boolean().optional(),
+  })
+
+  app.get('/pricing/tax-profiles', async (request: { tenantId?: string | null }, reply) => {
+    const tenantId = getTenantId(request)
+
+    const profiles = await prisma.taxProfile.findMany({
+      where: tenantId ? { OR: [{ tenant_id: tenantId }, { tenant_id: null }] } : {},
+      orderBy: [{ is_default: 'desc' }, { created_at: 'asc' }],
+    })
+
+    return reply.send(profiles)
+  })
+
+  app.put<{ Params: { id: string } }>('/pricing/tax-profiles/:id', async (request, reply) => {
+    const parsed = z.object({ id: z.string().uuid() }).safeParse(request.params)
+    if (!parsed.success) {
+      return sendBadRequest(reply, parsed.error.errors[0].message)
+    }
+
+    const parsedBody = TaxProfileUpdateSchema.safeParse(request.body)
+    if (!parsedBody.success) {
+      return sendBadRequest(reply, parsedBody.error.errors[0].message)
+    }
+
+    const existing = await prisma.taxProfile.findUnique({ where: { id: parsed.data.id } })
+    if (!existing) {
+      return sendNotFound(reply, 'Tax profile not found')
+    }
+
+    const { name, description, tax_rate, is_default } = parsedBody.data
+    const patchData = Object.fromEntries(
+      Object.entries({ name, description, tax_rate, is_default }).filter(([, v]) => v !== undefined),
+    )
+
+    const updated = await prisma.taxProfile.update({
+      where: { id: parsed.data.id },
+      data: patchData,
+    })
+
+    return reply.send(updated)
+  })
+
+  app.get('/pricing/discount-profiles', async (request: { tenantId?: string | null }, reply) => {
+    const tenantId = getTenantId(request)
+
+    const profiles = await prisma.discountProfile.findMany({
+      where: tenantId ? { OR: [{ tenant_id: tenantId }, { tenant_id: null }] } : {},
+      orderBy: [{ is_default: 'desc' }, { created_at: 'asc' }],
+    })
+
+    return reply.send(profiles)
+  })
 }

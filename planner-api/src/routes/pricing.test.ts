@@ -9,6 +9,8 @@ const { prismaMock } = vi.hoisted(() => ({
     catalogIndex: { findMany: vi.fn() },
     blockProgram: { findUnique: vi.fn() },
     projectBlockEvaluation: { create: vi.fn() },
+    taxProfile: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    discountProfile: { findMany: vi.fn() },
   },
 }))
 
@@ -79,6 +81,10 @@ describe('pricingRoutes', () => {
     prismaMock.catalogIndex.findMany.mockResolvedValue([])
     prismaMock.blockProgram.findUnique.mockResolvedValue(null)
     prismaMock.projectBlockEvaluation.create.mockResolvedValue({ id: 'eval-1' })
+    prismaMock.taxProfile.findMany.mockResolvedValue([])
+    prismaMock.taxProfile.findUnique.mockResolvedValue(null)
+    prismaMock.taxProfile.update.mockResolvedValue(null)
+    prismaMock.discountProfile.findMany.mockResolvedValue([])
   })
 
   it('applies catalog indices in /projects/:projectId/calculate-pricing responses', async () => {
@@ -418,6 +424,123 @@ describe('pricingRoutes', () => {
     })
 
     expect(response.statusCode).toBe(400)
+
+    await app.close()
+  })
+
+  // ── Sprint 96: Tax- & Discount-Profile endpoints ─────────────────────
+
+  it('GET /pricing/tax-profiles returns the list of tax profiles', async () => {
+    prismaMock.taxProfile.findMany.mockResolvedValue([
+      {
+        id: 'tp-001',
+        tenant_id: null,
+        name: 'Standard DE 19%',
+        description: null,
+        tax_rate: 0.19,
+        is_default: true,
+        created_at: new Date('2026-03-01T00:00:00.000Z'),
+        updated_at: new Date('2026-03-01T00:00:00.000Z'),
+      },
+    ])
+
+    const app = Fastify()
+    await app.register(pricingRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/pricing/tax-profiles',
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    expect(body).toHaveLength(1)
+    expect(body[0].name).toBe('Standard DE 19%')
+    expect(body[0].tax_rate).toBe(0.19)
+
+    await app.close()
+  })
+
+  it('PUT /pricing/tax-profiles/:id updates a tax profile', async () => {
+    prismaMock.taxProfile.findUnique.mockResolvedValue({
+      id: 'tp-001',
+      name: 'Old Name',
+      tax_rate: 0.19,
+      is_default: false,
+    })
+    prismaMock.taxProfile.update.mockResolvedValue({
+      id: 'tp-001',
+      tenant_id: null,
+      name: 'Updated Name',
+      description: null,
+      tax_rate: 0.07,
+      is_default: false,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+
+    const app = Fastify()
+    await app.register(pricingRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/pricing/tax-profiles/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      payload: { name: 'Updated Name', tax_rate: 0.07 },
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    expect(body.name).toBe('Updated Name')
+    expect(body.tax_rate).toBe(0.07)
+
+    await app.close()
+  })
+
+  it('PUT /pricing/tax-profiles/:id returns 404 for unknown profile', async () => {
+    prismaMock.taxProfile.findUnique.mockResolvedValue(null)
+
+    const app = Fastify()
+    await app.register(pricingRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/pricing/tax-profiles/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      payload: { name: 'X' },
+    })
+
+    expect(response.statusCode).toBe(404)
+
+    await app.close()
+  })
+
+  it('GET /pricing/discount-profiles returns the list of discount profiles', async () => {
+    prismaMock.discountProfile.findMany.mockResolvedValue([
+      {
+        id: 'dp-001',
+        tenant_id: null,
+        name: '2% Skonto bei 10 Tagen',
+        description: null,
+        skonto_pct: 2,
+        payment_days: 10,
+        is_default: true,
+        created_at: new Date('2026-03-01T00:00:00.000Z'),
+        updated_at: new Date('2026-03-01T00:00:00.000Z'),
+      },
+    ])
+
+    const app = Fastify()
+    await app.register(pricingRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/pricing/discount-profiles',
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    expect(body).toHaveLength(1)
+    expect(body[0].skonto_pct).toBe(2)
+    expect(body[0].payment_days).toBe(10)
 
     await app.close()
   })

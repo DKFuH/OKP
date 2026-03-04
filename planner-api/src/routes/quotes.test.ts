@@ -9,6 +9,8 @@ const { prismaMock } = vi.hoisted(() => {
     quoteSettings: { findUnique: vi.fn() },
     tenantSetting: { findUnique: vi.fn() },
     lead: { findFirst: vi.fn() },
+    taxProfile: { findUnique: vi.fn() },
+    discountProfile: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   }
   mock.$transaction.mockImplementation(async (cb: (tx: typeof mock) => Promise<unknown>) => cb(mock))
@@ -414,6 +416,148 @@ describe('quoteRoutes', () => {
       where: { id: '44444444-4444-4444-4444-444444444444' },
       data: { locale_code: 'en' },
     })
+
+    await app.close()
+  })
+
+  // ── Sprint 96: recalculate-financials ─────────────────────────────────
+
+  function makeQuoteWithItems(overrides: Record<string, unknown> = {}) {
+    return {
+      id: '55555555-5555-5555-5555-555555555555',
+      project_id: '11111111-1111-1111-1111-111111111111',
+      version: 1,
+      quote_number: 'ANG-2026-0001',
+      status: 'draft',
+      tax_profile_id: null,
+      discount_profile_id: null,
+      tax_profile: null,
+      discount_profile: null,
+      items: [
+        {
+          id: 'qi-001',
+          position: 1,
+          type: 'cabinet',
+          description: 'Unterschrank',
+          qty: 1,
+          unit: 'stk',
+          unit_price_net: 1000,
+          line_net: 1000,
+          tax_rate: 0.19,
+          line_gross: 1190,
+          notes: null,
+          show_on_quote: true,
+        },
+      ],
+      ...overrides,
+    }
+  }
+
+  it('recalculate-financials returns correct Brutto/Netto/MwSt breakdown', async () => {
+    prismaMock.quote.findUnique.mockResolvedValue(makeQuoteWithItems())
+    prismaMock.taxProfile.findUnique.mockResolvedValue(null)
+    prismaMock.discountProfile.findUnique.mockResolvedValue(null)
+
+    const app = Fastify()
+    await app.register(quoteRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/quotes/55555555-5555-5555-5555-555555555555/recalculate-financials',
+      payload: {},
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    expect(body.quote_id).toBe('55555555-5555-5555-5555-555555555555')
+    expect(body.subtotal_net).toBe(1000)
+    expect(body.vat_amount).toBe(190)
+    expect(body.total_gross).toBe(1190)
+    expect(body.skonto_pct).toBe(0)
+    expect(body.skonto_amount).toBe(0)
+    expect(body.total_gross_after_skonto).toBe(1190)
+
+    await app.close()
+  })
+
+  it('recalculate-financials applies a TaxProfile override', async () => {
+    prismaMock.quote.findUnique.mockResolvedValue(makeQuoteWithItems())
+    prismaMock.taxProfile.findUnique.mockResolvedValue({
+      id: 'tp-001',
+      tenant_id: null,
+      name: 'Reduzierter Satz',
+      description: null,
+      tax_rate: 0.07,
+      is_default: false,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    prismaMock.discountProfile.findUnique.mockResolvedValue(null)
+
+    const app = Fastify()
+    await app.register(quoteRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/quotes/55555555-5555-5555-5555-555555555555/recalculate-financials',
+      payload: { tax_profile_id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' },
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    // tax overridden to 7%: 1000 * 0.07 = 70
+    expect(body.vat_amount).toBe(70)
+    expect(body.total_gross).toBe(1070)
+
+    await app.close()
+  })
+
+  it('recalculate-financials applies a DiscountProfile (Skonto)', async () => {
+    prismaMock.quote.findUnique.mockResolvedValue(makeQuoteWithItems())
+    prismaMock.taxProfile.findUnique.mockResolvedValue(null)
+    prismaMock.discountProfile.findUnique.mockResolvedValue({
+      id: 'dp-001',
+      tenant_id: null,
+      name: '2% Skonto',
+      description: null,
+      skonto_pct: 2,
+      payment_days: 10,
+      is_default: false,
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+
+    const app = Fastify()
+    await app.register(quoteRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/quotes/55555555-5555-5555-5555-555555555555/recalculate-financials',
+      payload: { discount_profile_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc' },
+    })
+
+    expect(response.statusCode).toBe(200)
+    const body = response.json()
+    expect(body.skonto_pct).toBe(2)
+    expect(body.skonto_amount).toBe(23.8)  // 1190 * 2%
+    expect(body.total_gross_after_skonto).toBe(1166.2)
+
+    await app.close()
+  })
+
+  it('recalculate-financials returns 404 when quote not found', async () => {
+    prismaMock.quote.findUnique.mockResolvedValue(null)
+
+    const app = Fastify()
+    await app.register(quoteRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/quotes/55555555-5555-5555-5555-555555555555/recalculate-financials',
+      payload: {},
+    })
+
+    expect(response.statusCode).toBe(404)
 
     await app.close()
   })
