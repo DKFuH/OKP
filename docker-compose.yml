@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: yakds
-      POSTGRES_PASSWORD: yakds_dev
-      POSTGRES_DB: yakds
+      POSTGRES_USER: okp
+      POSTGRES_PASSWORD: okp_dev
+      POSTGRES_DB: okp
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U yakds"]
+      test: ["CMD-SHELL", "pg_isready -U okp"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -20,7 +20,7 @@ services:
       context: ./planner-api
       dockerfile: Dockerfile.dev
     environment:
-      DATABASE_URL: postgresql://yakds:yakds_dev@postgres:5432/yakds
+      DATABASE_URL: postgresql://okp:okp_dev@postgres:5432/okp
       PORT: 3000
       HOST: 0.0.0.0
       FRONTEND_URL: http://localhost:5173

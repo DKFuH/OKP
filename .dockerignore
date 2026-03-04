@@ -1,0 +1,13 @@
+.git
+.github
+.vscode
+.agent-*
+Docs
+archive
+tests
+render-worker
+planner-frontend
+
+**/node_modules
+**/dist
+**/*.log
