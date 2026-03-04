@@ -9,6 +9,7 @@ import { materialsPlugin } from './materials.js'
 import { surveyImportPlugin } from './surveyImport.js'
 import { viewerExportPlugin } from './viewerExport.js'
 import { stairsPlugin } from './stairs.js'
+import { multilevelDocsPlugin } from './multilevelDocs.js'
 
 /**
  * Bootstraps alle Branche-Plugins.
@@ -25,6 +26,7 @@ export function bootstrapPlugins(): void {
   registerPlugin(surveyImportPlugin)
   registerPlugin(viewerExportPlugin)
   registerPlugin(stairsPlugin)
+  registerPlugin(multilevelDocsPlugin)
 
   const tischlerEnabled = (process.env.ENABLE_TISCHLER_PLUGIN ?? 'true').toLowerCase() !== 'false'
   if (tischlerEnabled) {

@@ -5,6 +5,7 @@ const projectId = '11111111-1111-1111-1111-111111111111'
 const missingProjectId = '99999999-9999-9999-9999-999999999999'
 const sheetId = '22222222-2222-2222-2222-222222222222'
 const viewId = '33333333-3333-3333-3333-333333333333'
+const levelId = '44444444-4444-4444-4444-444444444444'
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -16,11 +17,15 @@ const { prismaMock } = vi.hoisted(() => ({
       create: vi.fn(),
       findUnique: vi.fn(),
       delete: vi.fn(),
+      update: vi.fn(),
     },
     layoutView: {
       create: vi.fn(),
       findUnique: vi.fn(),
       delete: vi.fn(),
+    },
+    buildingLevel: {
+      findFirst: vi.fn(),
     },
   },
 }))
@@ -105,7 +110,18 @@ describe('layoutSheetRoutes', () => {
     })
 
     prismaMock.layoutSheet.delete.mockResolvedValue({ id: sheetId })
+    prismaMock.layoutSheet.update.mockImplementation(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => ({
+      ...createSheetFixture(),
+      id: where.id,
+      ...data,
+    }))
     prismaMock.layoutView.delete.mockResolvedValue({ id: viewId })
+    prismaMock.buildingLevel.findFirst.mockImplementation(async ({ where }: { where: { id: string; project_id: string } }) => {
+      if (where.id === levelId && where.project_id === projectId) {
+        return { id: levelId }
+      }
+      return null
+    })
   })
 
   it('POST /projects/:id/layout-sheets returns 201', async () => {
@@ -152,6 +168,24 @@ describe('layoutSheetRoutes', () => {
     await app.close()
   })
 
+  it('GET /projects/:id/layout-sheets with level filter applies level scope', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/layout-sheets?level_id=${levelId}`,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(prismaMock.layoutSheet.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        project_id: projectId,
+        OR: [{ level_id: levelId }, { level_id: null }],
+      }),
+    }))
+    await app.close()
+  })
+
   it('DELETE /layout-sheets/:id returns 204', async () => {
     const app = await createApp()
 
@@ -161,6 +195,45 @@ describe('layoutSheetRoutes', () => {
     })
 
     expect(response.statusCode).toBe(204)
+    await app.close()
+  })
+
+  it('POST /projects/:id/layout-sheets rejects level_id outside project scope', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/layout-sheets`,
+      payload: {
+        name: 'Level Scoped Sheet',
+        level_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toMatchObject({ error: 'BAD_REQUEST' })
+    await app.close()
+  })
+
+  it('PUT /layout-sheets/:id/config updates relational level_id', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/layout-sheets/${sheetId}/config`,
+      payload: {
+        level_id: levelId,
+        show_north_arrow: true,
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(prismaMock.layoutSheet.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: sheetId },
+      data: expect.objectContaining({
+        level_id: levelId,
+      }),
+    }))
     await app.close()
   })
 

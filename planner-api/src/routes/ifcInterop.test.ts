@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const projectId = '11111111-1111-1111-1111-111111111111'
 const alternativeId = '22222222-2222-2222-2222-222222222222'
+const levelId = '33333333-3333-3333-3333-333333333333'
+const sectionLineId = '44444444-4444-4444-4444-444444444444'
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -15,6 +17,9 @@ const { prismaMock } = vi.hoisted(() => ({
     room: {
       findMany: vi.fn(),
       create: vi.fn(),
+    },
+    buildingLevel: {
+      findFirst: vi.fn(),
     },
     ifcImportJob: {
       create: vi.fn(),
@@ -40,6 +45,7 @@ vi.mock('../services/ifcEngine.js', () => ({
 }))
 
 import { ifcInteropRoutes } from './ifcInterop.js'
+import { buildIfcBuffer } from '../services/ifcEngine.js'
 
 const IFC_HEADER = Buffer.from('ISO-10303-21;\nDATA;\nENDSEC;\n')
 
@@ -75,10 +81,28 @@ describe('ifcInteropRoutes', () => {
       {
         id: 'room-1',
         name: 'Küche',
+        level_id: levelId,
         boundary: { wall_segments: [{ x0_mm: 0, y0_mm: 0, x1_mm: 4000, y1_mm: 0 }] },
         placements: [{ id: 'pl-1', width_mm: 600, depth_mm: 560, article_id: 'ART-1', offset_mm: 50 }],
+        section_lines: [
+          {
+            id: sectionLineId,
+            start: { x_mm: 500, y_mm: 200 },
+            end: { x_mm: 3200, y_mm: 200 },
+            label: 'S-A',
+            level_scope: 'single_level',
+            level_id: levelId,
+          },
+        ],
       },
     ])
+
+    prismaMock.buildingLevel.findFirst.mockImplementation(async ({ where }: { where: { id: string; project_id: string } }) => {
+      if (where.id === levelId && where.project_id === projectId) {
+        return { id: levelId, name: 'EG' }
+      }
+      return null
+    })
     prismaMock.room.create.mockResolvedValue({ id: 'created-room' })
 
     prismaMock.ifcImportJob.create.mockResolvedValue({ id: 'job-1' })
@@ -179,6 +203,74 @@ describe('ifcInteropRoutes', () => {
     expect(response.statusCode).toBe(200)
     expect(response.body.length).toBeGreaterThan(0)
     expect(response.body.includes('ISO-10303')).toBe(true)
+
+    await app.close()
+  })
+
+  it('exports IFC with scoped metadata passed to builder', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/alternatives/${alternativeId}/export/ifc`,
+      payload: {
+        level_id: levelId,
+        section_line_id: sectionLineId,
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(prismaMock.room.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        project_id: projectId,
+        level_id: levelId,
+      }),
+    }))
+    expect(buildIfcBuffer).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({
+        level_id: levelId,
+        level_name: 'EG',
+        section_line: expect.objectContaining({
+          id: sectionLineId,
+          label: 'S-A',
+        }),
+      }),
+    }))
+
+    await app.close()
+  })
+
+  it('rejects IFC export when level_id is outside project scope', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/alternatives/${alternativeId}/export/ifc`,
+      payload: {
+        level_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toMatchObject({ error: 'BAD_REQUEST' })
+
+    await app.close()
+  })
+
+  it('rejects IFC export when scoped section_line_id is unknown', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/alternatives/${alternativeId}/export/ifc`,
+      payload: {
+        level_id: levelId,
+        section_line_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toMatchObject({ error: 'BAD_REQUEST' })
 
     await app.close()
   })

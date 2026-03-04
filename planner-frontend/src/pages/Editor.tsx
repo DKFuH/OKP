@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import type { Vertex } from '@shared/types'
+import type { SectionLine, Vertex } from '@shared/types'
 import { projectsApi, type ProjectDetail } from '../api/projects.js'
 import {
   type CatalogArticle,
@@ -9,7 +9,7 @@ import {
 import { placementsApi, type Placement } from '../api/placements.js'
 import { dimensionsApi, type Dimension } from '../api/dimensions.js'
 import { centerlinesApi, type Centerline } from '../api/centerlines.js'
-import { roomsApi, type ReferenceImagePayload, type RoomBoundaryPayload, type RoomPayload } from '../api/rooms.js'
+import { annotationsApi, roomsApi, type ReferenceImagePayload, type RoomBoundaryPayload, type RoomPayload } from '../api/rooms.js'
 import { areasApi } from '../api/areas.js'
 import { openingsApi, type Opening } from '../api/openings.js'
 import { validateApi, type ValidateResponse } from '../api/validate.js'
@@ -28,6 +28,7 @@ import { MaterialPanel } from '../components/editor/MaterialPanel.js'
 import { LeftSidebar } from '../components/editor/LeftSidebar.js'
 import { LevelsPanel } from '../components/editor/LevelsPanel.js'
 import { StairsPanel } from '../components/editor/StairsPanel.js'
+import { SectionPanel } from '../components/editor/SectionPanel.js'
 import { RightSidebar, type CeilingConstraint, type ConfiguredDimensions } from '../components/editor/RightSidebar.js'
 import { StatusBar } from '../components/editor/StatusBar.js'
 import { AreasPanel } from '../components/editor/AreasPanel.js'
@@ -171,6 +172,30 @@ function extractVerticalConnectionRoomId(connection: VerticalConnection): string
   return normalized.length > 0 ? normalized : null
 }
 
+function buildDefaultSectionLine(room: RoomPayload) {
+  const vertices = extractRoomVertices(room.boundary)
+
+  if (vertices.length < 2) {
+    return {
+      start: { x_mm: 0, y_mm: 0 },
+      end: { x_mm: 2000, y_mm: 0 },
+    }
+  }
+
+  const xs = vertices.map((vertex) => vertex.x_mm)
+  const ys = vertices.map((vertex) => vertex.y_mm)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  const centerY = (minY + maxY) * 0.5
+
+  return {
+    start: { x_mm: minX, y_mm: centerY },
+    end: { x_mm: maxX, y_mm: centerY },
+  }
+}
+
 interface SyncedCameraState {
   x_mm: number
   y_mm: number
@@ -236,7 +261,10 @@ export function Editor() {
   const [materialsEnabled, setMaterialsEnabled] = useState(false)
   const [materialPanelOpen, setMaterialPanelOpen] = useState(false)
   const [stairsEnabled, setStairsEnabled] = useState(false)
+  const [multilevelDocsEnabled, setMultilevelDocsEnabled] = useState(false)
   const [verticalConnections, setVerticalConnections] = useState<VerticalConnection[]>([])
+  const [sectionLines, setSectionLines] = useState<SectionLine[]>([])
+  const [selectedSectionLineId, setSelectedSectionLineId] = useState<string | null>(null)
   const [projectEnvironment, setProjectEnvironment] = useState<ProjectEnvironment | null>(null)
   const [sunPreview, setSunPreview] = useState<SunPreview | null>(null)
   const [daylightSaving, setDaylightSaving] = useState(false)
@@ -322,6 +350,7 @@ export function Editor() {
         setDaylightEnabled(result.enabled.includes('daylight'))
         setMaterialsEnabled(result.enabled.includes('materials'))
         setStairsEnabled(result.enabled.includes('stairs'))
+        setMultilevelDocsEnabled(result.enabled.includes('multilevel-docs'))
       })
       .catch(() => {
         if (!active) return
@@ -329,6 +358,7 @@ export function Editor() {
         setDaylightEnabled(false)
         setMaterialsEnabled(false)
         setStairsEnabled(false)
+        setMultilevelDocsEnabled(false)
       })
 
     return () => {
@@ -357,6 +387,35 @@ export function Editor() {
       active = false
     }
   }, [id, stairsEnabled])
+
+  useEffect(() => {
+    if (!selectedRoomId || !multilevelDocsEnabled) {
+      setSectionLines([])
+      setSelectedSectionLineId(null)
+      return
+    }
+
+    let active = true
+    annotationsApi.listSectionLines(selectedRoomId)
+      .then((items) => {
+        if (!active) return
+        setSectionLines(items)
+        setSelectedSectionLineId((previous) => (
+          previous && items.some((entry) => entry.id === previous)
+            ? previous
+            : null
+        ))
+      })
+      .catch(() => {
+        if (!active) return
+        setSectionLines([])
+        setSelectedSectionLineId(null)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedRoomId, multilevelDocsEnabled])
 
   const refreshSunPreview = useCallback(async (projectId: string, env: ProjectEnvironment | null) => {
     if (!env) return
@@ -813,6 +872,109 @@ export function Editor() {
     await verticalConnectionsApi.remove(connectionId)
     setVerticalConnections((previous) => previous.filter((entry) => entry.id !== connectionId))
   }, [])
+
+  const handleCreateSectionLine = useCallback(async (payload: {
+    label?: string
+    depth_mm?: number
+    direction: 'left' | 'right' | 'both'
+    level_scope: 'room_level' | 'single_level' | 'range' | 'all_levels'
+    sheet_visibility: 'all' | 'sheet_only' | 'hidden'
+  }) => {
+    if (!selectedRoomId || !project) {
+      throw new Error('Bitte zuerst einen Raum auswählen')
+    }
+
+    const room = project.rooms.find((entry) => entry.id === selectedRoomId)
+    if (!room) {
+      throw new Error('Ausgewählter Raum nicht gefunden')
+    }
+
+    const line = buildDefaultSectionLine(room as unknown as RoomPayload)
+    const requestPayload: Record<string, unknown> = {
+      ...line,
+      ...(payload.label ? { label: payload.label } : {}),
+      ...(typeof payload.depth_mm === 'number' ? { depth_mm: payload.depth_mm } : {}),
+      direction: payload.direction,
+      level_scope: payload.level_scope,
+      sheet_visibility: payload.sheet_visibility,
+    }
+
+    if (payload.level_scope === 'single_level') {
+      if (!activeLevelId) {
+        throw new Error('Aktive Ebene fehlt für single_level')
+      }
+      requestPayload.level_id = activeLevelId
+    }
+
+    if (payload.level_scope === 'range') {
+      const ordered = [...levels].sort((left, right) => left.order_index - right.order_index)
+      const from = ordered[0]?.id
+      const to = ordered[ordered.length - 1]?.id
+      if (!from || !to || from === to) {
+        throw new Error('Für level_scope=range sind mindestens zwei Ebenen erforderlich')
+      }
+      requestPayload.from_level_id = from
+      requestPayload.to_level_id = to
+    }
+
+    const created = await annotationsApi.createSectionLine(selectedRoomId, requestPayload as Omit<SectionLine, 'id' | 'room_id'>)
+    setSectionLines((previous) => [...previous, created])
+    setSelectedSectionLineId(created.id)
+  }, [activeLevelId, levels, project, selectedRoomId])
+
+  const handleUpdateSectionLine = useCallback(async (sectionId: string, patch: {
+    label?: string
+    depth_mm?: number
+    direction: 'left' | 'right' | 'both'
+    level_scope: 'room_level' | 'single_level' | 'range' | 'all_levels'
+    sheet_visibility: 'all' | 'sheet_only' | 'hidden'
+  }) => {
+    if (!selectedRoomId) {
+      throw new Error('Bitte zuerst einen Raum auswählen')
+    }
+
+    const requestPatch: Record<string, unknown> = {
+      ...(patch.label ? { label: patch.label } : { label: '' }),
+      ...(typeof patch.depth_mm === 'number' ? { depth_mm: patch.depth_mm } : {}),
+      direction: patch.direction,
+      level_scope: patch.level_scope,
+      sheet_visibility: patch.sheet_visibility,
+      level_id: null,
+      from_level_id: null,
+      to_level_id: null,
+    }
+
+    if (patch.level_scope === 'single_level') {
+      if (!activeLevelId) {
+        throw new Error('Aktive Ebene fehlt für single_level')
+      }
+      requestPatch.level_id = activeLevelId
+    }
+
+    if (patch.level_scope === 'range') {
+      const ordered = [...levels].sort((left, right) => left.order_index - right.order_index)
+      const from = ordered[0]?.id
+      const to = ordered[ordered.length - 1]?.id
+      if (!from || !to || from === to) {
+        throw new Error('Für level_scope=range sind mindestens zwei Ebenen erforderlich')
+      }
+      requestPatch.from_level_id = from
+      requestPatch.to_level_id = to
+    }
+
+    const updated = await annotationsApi.updateSectionLine(selectedRoomId, sectionId, requestPatch as Partial<Omit<SectionLine, 'id' | 'room_id'>>)
+    setSectionLines((previous) => previous.map((entry) => (entry.id === updated.id ? updated : entry)))
+  }, [activeLevelId, levels, selectedRoomId])
+
+  const handleDeleteSectionLine = useCallback(async (sectionId: string) => {
+    if (!selectedRoomId) {
+      throw new Error('Bitte zuerst einen Raum auswählen')
+    }
+
+    await annotationsApi.deleteSectionLine(selectedRoomId, sectionId)
+    setSectionLines((previous) => previous.filter((entry) => entry.id !== sectionId))
+    setSelectedSectionLineId((previous) => (previous === sectionId ? null : previous))
+  }, [selectedRoomId])
 
   // Raum anlegen (Name kommt aus dem Inline-Formular der LeftSidebar)
   const handleAddRoom = useCallback(async (name: string) => {
@@ -1466,6 +1628,7 @@ export function Editor() {
       {id && (
         <LayoutSheetTabs
           projectId={id}
+          activeLevelId={activeLevelId}
           activeSheetId={activeLayoutSheetId}
           onSheetChange={setActiveLayoutSheetId}
           showDaylightOptions={daylightEnabled}
@@ -1524,6 +1687,20 @@ export function Editor() {
               onCreate={handleCreateVerticalConnection}
               onUpdate={handleUpdateVerticalConnection}
               onDelete={handleDeleteVerticalConnection}
+            />
+          )}
+          sectionsPanel={(
+            <SectionPanel
+              enabled={multilevelDocsEnabled}
+              hasSelectedRoom={Boolean(selectedRoomId)}
+              activeLevelId={activeLevelId}
+              levels={levels}
+              sections={sectionLines}
+              selectedSectionId={selectedSectionLineId}
+              onSelect={setSelectedSectionLineId}
+              onCreate={handleCreateSectionLine}
+              onUpdate={handleUpdateSectionLine}
+              onDelete={handleDeleteSectionLine}
             />
           )}
           rooms={roomsOnActiveLevel}

@@ -72,12 +72,51 @@ export function exportHtmlViewer(projectId: string): Promise<Blob> {
   return fetchExportBlob(`/projects/${id}/export/html-viewer`)
 }
 
-export function exportPlanSvg(projectId: string): Promise<Blob> {
-  const id = formatPathParameter(projectId, 'projectId')
-  return fetchExportBlob(`/projects/${id}/export/plan-svg`)
+type SvgExportScope = {
+  level_id?: string
+  section_line_id?: string
 }
 
-export function exportLayoutSheetSvg(sheetId: string): Promise<Blob> {
+async function fetchScopedSvgBlob(path: string, scope?: SvgExportScope): Promise<Blob> {
+  const payload = {
+    ...(scope?.level_id ? { level_id: scope.level_id } : {}),
+    ...(scope?.section_line_id ? { section_line_id: scope.section_line_id } : {}),
+  }
+
+  let response: Response
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Tenant-Id': TENANT_ID_PLACEHOLDER,
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch (error) {
+    const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
+    throw new Error(`Export konnte nicht gestartet werden${detail}`)
+  }
+
+  if (!response.ok) {
+    const detail = await extractErrorMessage(response)
+    throw new Error(`Export fehlgeschlagen (${response.status}): ${detail}`)
+  }
+
+  const blob = await response.blob()
+  if (blob.size === 0) {
+    throw new Error('Export fehlgeschlagen: Leere Datei erhalten')
+  }
+
+  return blob
+}
+
+export function exportPlanSvg(projectId: string, scope?: SvgExportScope): Promise<Blob> {
+  const id = formatPathParameter(projectId, 'projectId')
+  return fetchScopedSvgBlob(`/projects/${id}/export/plan-svg`, scope)
+}
+
+export function exportLayoutSheetSvg(sheetId: string, scope?: SvgExportScope): Promise<Blob> {
   const id = formatPathParameter(sheetId, 'sheetId')
-  return fetchExportBlob(`/layout-sheets/${id}/export/svg`)
+  return fetchScopedSvgBlob(`/layout-sheets/${id}/export/svg`, scope)
 }

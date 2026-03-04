@@ -270,13 +270,39 @@ export interface IfcExportRoom {
 export interface IfcExportOptions {
   projectName: string
   rooms: IfcExportRoom[]
+  metadata?: {
+    level_id: string | null
+    level_name: string | null
+    section_line: {
+      id: string
+      label: string | null
+      direction: string | null
+      depth_mm: number | null
+      level_scope: string | null
+      level_id: string | null
+      sheet_visibility: string | null
+      start: { x_mm: number; y_mm: number }
+      end: { x_mm: number; y_mm: number }
+    } | null
+  }
+}
+
+function sanitizeIfcComment(value: string): string {
+  return value
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\*\//g, '* /')
+    .trim()
 }
 
 export async function buildIfcBuffer(options: IfcExportOptions): Promise<Buffer> {
   const header = buildStepHeader(options.projectName)
   const entities = buildStepEntities(options)
+  const metadataComment = options.metadata
+    ? `/* ${sanitizeIfcComment(`OKP_METADATA ${JSON.stringify(options.metadata)}`)} */`
+    : null
   const fileBody = [
     ...header,
+    ...(metadataComment ? [metadataComment] : []),
     ...entities,
     'ENDSEC;',
     'END-ISO-10303-21;',

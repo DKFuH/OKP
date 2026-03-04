@@ -18,6 +18,19 @@ type PlanSvgInput = {
   projectName: string
   roomName?: string | null
   vertices: NumericPoint[]
+  levelId?: string | null
+  levelName?: string | null
+  sectionLine?: {
+    id: string
+    label?: string
+    start: { x_mm: number; y_mm: number }
+    end: { x_mm: number; y_mm: number }
+    direction?: string
+    depth_mm?: number
+    level_scope?: string
+    level_id?: string
+    sheet_visibility?: string
+  } | null
 }
 
 type LayoutSheetSvgInput = {
@@ -26,6 +39,10 @@ type LayoutSheetSvgInput = {
   arcLabel?: string
   showNorthArrow: boolean
   northAngleDeg: number
+  levelId?: string | null
+  levelName?: string | null
+  sectionLineId?: string | null
+  sectionLabel?: string | null
 }
 
 type HtmlViewerInput = {
@@ -146,10 +163,28 @@ export function extractBoundaryVertices(boundary: unknown): NumericPoint[] {
 
 export function renderPlanSvg(input: PlanSvgInput): string {
   const normalized = normalizePlanVertices(input.vertices)
+  const metadataPayload = {
+    level_id: input.levelId ?? null,
+    level_name: input.levelName ?? null,
+    section_line: input.sectionLine
+      ? {
+          id: input.sectionLine.id,
+          label: input.sectionLine.label ?? null,
+          direction: input.sectionLine.direction ?? null,
+          depth_mm: input.sectionLine.depth_mm ?? null,
+          level_scope: input.sectionLine.level_scope ?? null,
+          level_id: input.sectionLine.level_id ?? null,
+          sheet_visibility: input.sectionLine.sheet_visibility ?? null,
+          start: input.sectionLine.start,
+          end: input.sectionLine.end,
+        }
+      : null,
+  }
 
   if (normalized.length < 3) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+  <metadata id="okp-metadata">${escapeXml(JSON.stringify(metadataPayload))}</metadata>
   <rect x="0" y="0" width="900" height="600" fill="#ffffff" />
   <text x="40" y="60" font-size="24" font-family="Arial">${escapeXml(input.projectName)}</text>
   <text x="40" y="100" font-size="16" font-family="Arial">No valid room geometry available</text>
@@ -157,12 +192,39 @@ export function renderPlanSvg(input: PlanSvgInput): string {
   }
 
   const roomLabel = input.roomName ? ` \u2014 ${input.roomName}` : ''
+  const levelLabel = input.levelName ? ` · ${input.levelName}` : ''
+
+  const minX = Math.min(...input.vertices.map((point) => point.x))
+  const maxX = Math.max(...input.vertices.map((point) => point.x))
+  const minY = Math.min(...input.vertices.map((point) => point.y))
+  const maxY = Math.max(...input.vertices.map((point) => point.y))
+  const width = maxX - minX
+  const height = maxY - minY
+  const margin = 40
+  const scale = width > 0 && height > 0
+    ? Math.min((800 - margin * 2) / width, (500 - margin * 2) / height)
+    : 1
+
+  const sectionOverlay = input.sectionLine
+    ? `<line
+      x1="${(margin + (input.sectionLine.start.x_mm - minX) * scale).toFixed(2)}"
+      y1="${(margin + (input.sectionLine.start.y_mm - minY) * scale).toFixed(2)}"
+      x2="${(margin + (input.sectionLine.end.x_mm - minX) * scale).toFixed(2)}"
+      y2="${(margin + (input.sectionLine.end.y_mm - minY) * scale).toFixed(2)}"
+      stroke="#0ea5e9"
+      stroke-width="2"
+      stroke-dasharray="8 4"
+    />
+    <text x="40" y="68" font-size="13" font-family="Arial" fill="#0369a1">Schnitt: ${escapeXml(input.sectionLine.label ?? input.sectionLine.id)}</text>`
+    : ''
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+  <metadata id="okp-metadata">${escapeXml(JSON.stringify(metadataPayload))}</metadata>
   <rect x="0" y="0" width="900" height="600" fill="#ffffff" />
-  <text x="40" y="40" font-size="20" font-family="Arial">${escapeXml(input.projectName + roomLabel)}</text>
+  <text x="40" y="40" font-size="20" font-family="Arial">${escapeXml(input.projectName + roomLabel + levelLabel)}</text>
   <polygon points="${toSvgPoints(normalized)}" fill="#e2e8f0" stroke="#0f172a" stroke-width="2" />
+  ${sectionOverlay}
 </svg>`
 }
 
@@ -179,10 +241,24 @@ export function renderLayoutSheetSvg(input: LayoutSheetSvgInput): string {
     ? `<text x="300" y="250" font-size="14" font-family="Arial">${escapeXml(input.arcLabel ?? 'R=1000 mm')}</text>`
     : ''
 
+  const metadataPayload = {
+    level_id: input.levelId ?? null,
+    level_name: input.levelName ?? null,
+    section_line_id: input.sectionLineId ?? null,
+    section_label: input.sectionLabel ?? null,
+  }
+
+  const scopeText = [
+    input.levelName ? `Ebene: ${input.levelName}` : null,
+    input.sectionLabel ? `Schnitt: ${input.sectionLabel}` : null,
+  ].filter((entry): entry is string => Boolean(entry)).join(' · ')
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+  <metadata id="okp-metadata">${escapeXml(JSON.stringify(metadataPayload))}</metadata>
   <rect x="0" y="0" width="900" height="600" fill="#ffffff" />
   <text x="40" y="40" font-size="20" font-family="Arial">${escapeXml(input.sheetName)}</text>
+  ${scopeText ? `<text x="40" y="64" font-size="13" font-family="Arial" fill="#475569">${escapeXml(scopeText)}</text>` : ''}
   <path d="M 200 300 A 120 120 0 0 1 440 300" stroke="#1f2937" fill="none" stroke-width="2" />
   ${arcText}
   ${northArrowSvg}

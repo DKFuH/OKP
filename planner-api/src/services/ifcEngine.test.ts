@@ -26,10 +26,27 @@ describe('ifcEngine', () => {
           },
         },
       ],
+      metadata: {
+        level_id: '33333333-3333-3333-3333-333333333333',
+        level_name: 'EG',
+        section_line: {
+          id: '44444444-4444-4444-4444-444444444444',
+          label: 'S-A',
+          direction: 'both',
+          depth_mm: 1800,
+          level_scope: 'single_level',
+          level_id: '33333333-3333-3333-3333-333333333333',
+          sheet_visibility: 'all',
+          start: { x_mm: 500, y_mm: 200 },
+          end: { x_mm: 3200, y_mm: 200 },
+        },
+      },
     })
 
     const step = buffer.toString('utf8')
     expect(step.includes('ISO-10303-21')).toBe(true)
+    expect(step.includes('OKP_METADATA')).toBe(true)
+    expect(step.includes('44444444-4444-4444-4444-444444444444')).toBe(true)
     expect(step.match(/IFCWALL\(/g)?.length ?? 0).toBeGreaterThan(2)
     expect(step.includes('WALL|0|0|2000|0')).toBe(true)
   })

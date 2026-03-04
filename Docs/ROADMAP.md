@@ -1376,7 +1376,7 @@ levelfaehige Layout-/Exportpfade.
 |--------|--------|-------|--------------|
 | 81 | `done` | Mehr-Ebenen-Projektmodell | `BuildingLevel`, Level-CRUD, level-spezifische Raumlogik |
 | 82 | `done` | Plugin `stairs`: Treppen & vertikale Verbindungen | Treppengeometrie, Vertikalverbindungen, Deckenaussparungen |
-| 83 | `planned` | Plugin `multilevel-docs`: Mehr-Ebenen-Layout, Sektionen & Interop | Vertikalschnitte, level-aware Sheets und Exportpfade |
+| 83 | `done` | Plugin `multilevel-docs`: Mehr-Ebenen-Layout, Sektionen & Interop | Vertikalschnitte, level-aware Sheets und Exportpfade |
 
 ### Plugin-Matrix
 

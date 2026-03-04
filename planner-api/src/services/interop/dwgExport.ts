@@ -18,6 +18,25 @@ export interface DwgExportOptions {
     thickness_mm?: number
   }>
   placements: Array<{ offset_mm: number; width_mm: number; depth_mm: number; wall_id: string }>
+  metadata?: {
+    level_id: string | null
+    level_name: string | null
+    section_line: {
+      id: string
+      label: string | null
+      direction: string | null
+      depth_mm: number | null
+      level_scope: string | null
+      level_id: string | null
+      sheet_visibility: string | null
+      start: { x_mm: number; y_mm: number }
+      end: { x_mm: number; y_mm: number }
+    } | null
+  }
+}
+
+function sanitizeDxfComment(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').trim()
 }
 
 /**
@@ -25,6 +44,10 @@ export interface DwgExportOptions {
  * Native DWG binary generation is intentionally out of scope.
  */
 export function buildDwgBuffer(options: DwgExportOptions): Buffer {
+  const metadataComment = options.metadata
+    ? sanitizeDxfComment(`OKP_METADATA ${JSON.stringify(options.metadata)}`)
+    : null
+
   const lines: string[] = [
     '0\nSECTION',
     '2\nHEADER',
@@ -32,6 +55,7 @@ export function buildDwgBuffer(options: DwgExportOptions): Buffer {
     '1\nAC1015',
     '9\n$INSUNITS',
     '70\n4',
+    ...(metadataComment ? [`999\n${metadataComment}`] : []),
     '0\nENDSEC',
     '0\nSECTION',
     '2\nENTITIES',

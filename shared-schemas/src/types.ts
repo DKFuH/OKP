@@ -494,6 +494,15 @@ export interface SectionLine {
   start: Point2D;
   end: Point2D;
   label?: string;
+  depth_mm?: number;
+  direction?: 'left' | 'right' | 'both';
+  level_scope?: 'room_level' | 'single_level' | 'range' | 'all_levels';
+  level_id?: string;
+  from_level_id?: string;
+  to_level_id?: string;
+  sheet_visibility?: 'all' | 'sheet_only' | 'hidden';
+  show_marker?: boolean;
+  marker_style?: 'arrow' | 'triangle' | 'none';
 }
 
 export interface Comment {

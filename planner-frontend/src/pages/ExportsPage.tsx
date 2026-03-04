@@ -32,6 +32,8 @@ export function ExportsPage() {
   const navigate = useNavigate()
   const { id: projectId } = useParams<{ id: string }>()
   const [sheetId, setSheetId] = useState('')
+  const [levelId, setLevelId] = useState('')
+  const [sectionLineId, setSectionLineId] = useState('')
   const [loadingKind, setLoadingKind] = useState<ViewerExportArtifactKind | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -48,6 +50,11 @@ export function ExportsPage() {
   const projectSlug = sanitizeFilePart(requiredProjectId)
   const sheetSlug = sanitizeFilePart(sheetId || 'sheet')
 
+  const scopedPayload = {
+    ...(levelId.trim() ? { level_id: levelId.trim() } : {}),
+    ...(sectionLineId.trim() ? { section_line_id: sectionLineId.trim() } : {}),
+  }
+
   async function runExport(kind: ViewerExportArtifactKind) {
     setLoadingKind(kind)
     setError(null)
@@ -58,14 +65,14 @@ export function ExportsPage() {
         const blob = await exportHtmlViewer(requiredProjectId)
         triggerDownload(blob, `project-${projectSlug}-viewer.html`)
       } else if (kind === 'plan-svg') {
-        const blob = await exportPlanSvg(requiredProjectId)
+        const blob = await exportPlanSvg(requiredProjectId, scopedPayload)
         triggerDownload(blob, `project-${projectSlug}-grundriss.svg`)
       } else {
         const normalizedSheetId = sheetId.trim()
         if (!normalizedSheetId) {
           throw new Error('Bitte eine Layout-Sheet-ID eingeben')
         }
-        const blob = await exportLayoutSheetSvg(normalizedSheetId)
+        const blob = await exportLayoutSheetSvg(normalizedSheetId, scopedPayload)
         triggerDownload(blob, `layout-sheet-${sheetSlug}.svg`)
       }
 
@@ -122,6 +129,22 @@ export function ExportsPage() {
                 value={sheetId}
                 onChange={(event) => setSheetId(event.target.value)}
                 placeholder="sheet-id"
+              />
+            </label>
+            <label className={styles.field}>
+              <span>Level-ID (optional)</span>
+              <input
+                value={levelId}
+                onChange={(event) => setLevelId(event.target.value)}
+                placeholder="level-id"
+              />
+            </label>
+            <label className={styles.field}>
+              <span>Section-Line-ID (optional)</span>
+              <input
+                value={sectionLineId}
+                onChange={(event) => setSectionLineId(event.target.value)}
+                placeholder="section-line-id"
               />
             </label>
             <button

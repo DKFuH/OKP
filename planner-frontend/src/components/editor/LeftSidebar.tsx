@@ -24,6 +24,7 @@ import styles from './LeftSidebar.module.css'
 interface Props {
   levelsPanel?: ReactNode
   stairsPanel?: ReactNode
+  sectionsPanel?: ReactNode
   rooms: Room[]
   selectedRoomId: string | null
   onSelectRoom: (id: string) => void
@@ -43,7 +44,7 @@ const TYPE_OPTIONS: Array<{ value: '' | CatalogItemType; label: string }> = [
   { value: 'accessory', label: 'Zubehör' },
 ]
 
-export function LeftSidebar({ levelsPanel, stairsPanel, rooms, selectedRoomId, onSelectRoom, onAddRoom, selectedCatalogItem, onSelectCatalogItem, workflowStep }: Props) {
+export function LeftSidebar({ levelsPanel, stairsPanel, sectionsPanel, rooms, selectedRoomId, onSelectRoom, onAddRoom, selectedCatalogItem, onSelectCatalogItem, workflowStep }: Props) {
   const [addingRoom, setAddingRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
   const [catalogMode, setCatalogMode] = useState<'standard' | 'manufacturer' | 'assets'>('standard')
@@ -205,6 +206,7 @@ export function LeftSidebar({ levelsPanel, stairsPanel, rooms, selectedRoomId, o
     <aside className={styles.sidebar}>
       {levelsPanel}
       {stairsPanel}
+      {sectionsPanel}
 
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Räume</h3>

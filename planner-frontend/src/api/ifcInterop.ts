@@ -15,6 +15,11 @@ export interface IfcJob {
   updated_at: string
 }
 
+export interface IfcExportScope {
+  level_id?: string
+  section_line_id?: string
+}
+
 export const ifcInteropApi = {
   importIfc: async (projectId: string, file: File): Promise<IfcImportResponse> => {
     const buffer = await file.arrayBuffer()
@@ -31,8 +36,17 @@ export const ifcInteropApi = {
     return response.json() as Promise<IfcImportResponse>
   },
 
-  exportIfc: async (alternativeId: string): Promise<void> => {
-    const response = await fetch(`/api/v1/alternatives/${alternativeId}/export/ifc`, { method: 'POST' })
+  exportIfc: async (alternativeId: string, scope?: IfcExportScope): Promise<void> => {
+    const payload = {
+      ...(scope?.level_id ? { level_id: scope.level_id } : {}),
+      ...(scope?.section_line_id ? { section_line_id: scope.section_line_id } : {}),
+    }
+
+    const response = await fetch(`/api/v1/alternatives/${alternativeId}/export/ifc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
     if (!response.ok) {
       throw new Error(await response.text())
     }

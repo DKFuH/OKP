@@ -5,6 +5,8 @@ const tenantId = '00000000-0000-0000-0000-000000000001'
 const projectId = '11111111-1111-1111-1111-111111111111'
 const otherProjectId = '99999999-9999-9999-9999-999999999999'
 const sheetId = '22222222-2222-2222-2222-222222222222'
+const levelId = '33333333-3333-3333-3333-333333333333'
+const sectionLineId = '44444444-4444-4444-4444-444444444444'
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -17,6 +19,9 @@ const { prismaMock } = vi.hoisted(() => ({
     },
     layoutSheet: {
       findUnique: vi.fn(),
+    },
+    buildingLevel: {
+      findFirst: vi.fn(),
     },
     projectEnvironment: {
       findUnique: vi.fn(),
@@ -31,10 +36,11 @@ vi.mock('../db.js', () => ({
 import { viewerExportsRoutes } from './viewerExports.js'
 import { tenantMiddleware } from '../tenantMiddleware.js'
 
-function createRoom(boundary: unknown) {
+function createRoom(boundary: unknown, overrides: Record<string, unknown> = {}) {
   return {
     name: 'Kitchen',
     boundary,
+    ...overrides,
   }
 }
 
@@ -66,13 +72,29 @@ describe('viewerExportsRoutes', () => {
       name: 'Project Alpha',
     })
     prismaMock.project.findFirst.mockResolvedValue({ id: projectId })
-    prismaMock.room.findMany.mockResolvedValue([createRoom(validBoundary())])
+    prismaMock.room.findMany.mockResolvedValue([
+      createRoom(validBoundary(), {
+        level_id: levelId,
+        level: { id: levelId, name: 'EG' },
+        section_lines: [
+          {
+            id: sectionLineId,
+            start: { x_mm: 400, y_mm: 200 },
+            end: { x_mm: 3200, y_mm: 200 },
+            label: 'S-A',
+            level_scope: 'single_level',
+            level_id: levelId,
+          },
+        ],
+      }),
+    ])
     prismaMock.layoutSheet.findUnique.mockResolvedValue({
       id: sheetId,
       project_id: projectId,
       name: 'Layout Sheet A',
       config: {},
     })
+    prismaMock.buildingLevel.findFirst.mockResolvedValue({ id: levelId, name: 'EG' })
     prismaMock.projectEnvironment.findUnique.mockResolvedValue({ north_angle_deg: 0 })
   })
 
@@ -143,6 +165,26 @@ describe('viewerExportsRoutes', () => {
     expect(response.headers['content-type']).toContain('image/svg+xml')
     expect(response.body).toContain('<svg')
     expect(response.body).toContain('<polygon')
+    await app.close()
+  })
+
+  it('plan-svg includes metadata and section overlay when scoped by level and section id', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/export/plan-svg`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: {
+        level_id: levelId,
+        section_line_id: sectionLineId,
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain('okp-metadata')
+    expect(response.body).toContain(sectionLineId)
+    expect(response.body).toContain('Schnitt: S-A')
     await app.close()
   })
 
@@ -223,6 +265,33 @@ describe('viewerExportsRoutes', () => {
     expect(response.headers['content-type']).toContain('image/svg+xml')
     expect(response.body).toContain('>N<')
     expect(response.body).toContain('rotate(35)')
+    await app.close()
+  })
+
+  it('layout-sheet export includes level and section metadata in svg', async () => {
+    prismaMock.layoutSheet.findUnique.mockResolvedValueOnce({
+      id: sheetId,
+      project_id: projectId,
+      name: 'Layout Scope Test',
+      config: {
+        level_id: levelId,
+        section_line_id: sectionLineId,
+      },
+    })
+
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/layout-sheets/${sheetId}/export/svg`,
+      headers: { 'x-tenant-id': tenantId },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain('okp-metadata')
+    expect(response.body).toContain(sectionLineId)
+    expect(response.body).toContain('Ebene: EG')
+    expect(response.body).toContain('Schnitt: S-A')
     await app.close()
   })
 })

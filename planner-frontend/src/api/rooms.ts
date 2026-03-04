@@ -167,6 +167,12 @@ export const annotationsApi = {
   createSectionLine: (roomId: string, line: Omit<SectionLine, 'id' | 'room_id'>) =>
     api.post<SectionLine>(`/rooms/${roomId}/section-lines`, line),
 
+  updateSectionLine: (roomId: string, lineId: string, patch: Partial<Omit<SectionLine, 'id' | 'room_id'>>) =>
+    api.patch<SectionLine>(`/rooms/${roomId}/section-lines/${lineId}`, patch),
+
+  deleteSectionLine: (roomId: string, lineId: string) =>
+    api.delete(`/rooms/${roomId}/section-lines/${lineId}`),
+
   listComments: (roomId: string) =>
     api.get<Comment[]>(`/rooms/${roomId}/comments`),
 

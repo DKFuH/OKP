@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const projectId = '11111111-1111-1111-1111-111111111111'
 const alternativeId = '22222222-2222-2222-2222-222222222222'
+const levelId = '33333333-3333-3333-3333-333333333333'
+const sectionLineId = '44444444-4444-4444-4444-444444444444'
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -15,6 +17,9 @@ const { prismaMock } = vi.hoisted(() => ({
     room: {
       findMany: vi.fn(),
       create: vi.fn(),
+    },
+    buildingLevel: {
+      findFirst: vi.fn(),
     },
   },
 }))
@@ -174,13 +179,31 @@ describe('cadInteropRoutes', () => {
       {
         id: 'room-1',
         name: 'Küche',
+        level_id: levelId,
         ceiling_height_mm: 2600,
         boundary: {
           wall_segments: [{ id: 'wall-1', x0_mm: 0, y0_mm: 0, x1_mm: 4000, y1_mm: 0 }],
         },
         placements: [{ wall_id: 'wall-1', offset_mm: 200, width_mm: 600, depth_mm: 560 }],
+        section_lines: [
+          {
+            id: sectionLineId,
+            start: { x_mm: 500, y_mm: 200 },
+            end: { x_mm: 3200, y_mm: 200 },
+            label: 'S-A',
+            level_scope: 'single_level',
+            level_id: levelId,
+          },
+        ],
       },
     ])
+
+    prismaMock.buildingLevel.findFirst.mockImplementation(async ({ where }: { where: { id: string; project_id: string } }) => {
+      if (where.id === levelId && where.project_id === projectId) {
+        return { id: levelId, name: 'EG' }
+      }
+      return null
+    })
   })
 
   it('imports DXF buffer and creates room', async () => {
@@ -293,6 +316,66 @@ describe('cadInteropRoutes', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.headers['content-type']).toContain('application/dxf')
+
+    await app.close()
+  })
+
+  it('exports DWG with scoped metadata comment', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/alternatives/${alternativeId}/export/dwg`,
+      payload: {
+        level_id: levelId,
+        section_line_id: sectionLineId,
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.includes('OKP_METADATA')).toBe(true)
+    expect(response.body.includes(sectionLineId)).toBe(true)
+    expect(prismaMock.room.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        project_id: projectId,
+        level_id: levelId,
+      }),
+    }))
+
+    await app.close()
+  })
+
+  it('rejects DWG export when scoped section_line_id is unknown', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/alternatives/${alternativeId}/export/dwg`,
+      payload: {
+        level_id: levelId,
+        section_line_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toMatchObject({ error: 'BAD_REQUEST' })
+
+    await app.close()
+  })
+
+  it('rejects DXF export when level_id is outside project scope', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/alternatives/${alternativeId}/export/dxf`,
+      payload: {
+        level_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toMatchObject({ error: 'BAD_REQUEST' })
 
     await app.close()
   })

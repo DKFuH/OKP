@@ -8,7 +8,12 @@ const SheetBodySchema = z.object({
   name: z.string().min(1).max(100),
   sheet_type: z.enum(['floorplan', 'elevations', 'installation', 'detail', 'section']).default('floorplan'),
   position: z.number().int().default(0),
+  level_id: z.string().uuid().nullable().optional(),
   config: z.record(z.unknown()).default({}),
+})
+
+const SheetListQuerySchema = z.object({
+  level_id: z.string().uuid().optional(),
 })
 
 const ViewBodySchema = z.object({
@@ -32,15 +37,41 @@ const SheetConfigBodySchema = z.object({
   show_arc_annotations: z.boolean().optional(),
   arc_dimension_style: z.enum(['radius-first', 'length-first']).optional(),
   show_north_arrow: z.boolean().optional(),
+  level_id: z.string().uuid().nullable().optional(),
 })
 
+async function isLevelInProject(levelId: string, projectId: string): Promise<boolean> {
+  const level = await prisma.buildingLevel.findFirst({
+    where: {
+      id: levelId,
+      project_id: projectId,
+    },
+    select: { id: true },
+  })
+
+  return Boolean(level)
+}
+
 export async function layoutSheetRoutes(app: FastifyInstance) {
-  app.get<{ Params: { id: string } }>('/projects/:id/layout-sheets', async (request, reply) => {
+  app.get<{ Params: { id: string }; Querystring: z.infer<typeof SheetListQuerySchema> }>('/projects/:id/layout-sheets', async (request, reply) => {
     const project = await prisma.project.findUnique({ where: { id: request.params.id } })
     if (!project) return sendNotFound(reply, 'Project not found')
 
+    const parsedQuery = SheetListQuerySchema.safeParse(request.query ?? {})
+    if (!parsedQuery.success) return sendBadRequest(reply, parsedQuery.error.errors[0]?.message ?? 'Invalid query')
+
     const sheets = await prisma.layoutSheet.findMany({
-      where: { project_id: request.params.id },
+      where: {
+        project_id: request.params.id,
+        ...(parsedQuery.data.level_id
+          ? {
+              OR: [
+                { level_id: parsedQuery.data.level_id },
+                { level_id: null },
+              ],
+            }
+          : {}),
+      },
       include: { views: true },
       orderBy: { position: 'asc' },
     })
@@ -56,10 +87,16 @@ export async function layoutSheetRoutes(app: FastifyInstance) {
       const parsed = SheetBodySchema.safeParse(request.body)
       if (!parsed.success) return sendBadRequest(reply, parsed.error.errors[0]?.message ?? 'Invalid payload')
 
+      if (parsed.data.level_id) {
+        const validLevel = await isLevelInProject(parsed.data.level_id, request.params.id)
+        if (!validLevel) return sendBadRequest(reply, 'level_id must reference a level in project scope')
+      }
+
       const sheet = await prisma.layoutSheet.create({
         data: {
           project_id: request.params.id,
           ...parsed.data,
+          level_id: parsed.data.level_id ?? null,
           config: parsed.data.config as unknown as Prisma.InputJsonValue,
         },
       })
@@ -84,6 +121,11 @@ export async function layoutSheetRoutes(app: FastifyInstance) {
       const sheet = await prisma.layoutSheet.findUnique({ where: { id: request.params.id } })
       if (!sheet) return sendNotFound(reply, 'Layout sheet not found')
 
+      if (parsed.data.level_id !== undefined && parsed.data.level_id !== null) {
+        const validLevel = await isLevelInProject(parsed.data.level_id, sheet.project_id)
+        if (!validLevel) return sendBadRequest(reply, 'level_id must reference a level in project scope')
+      }
+
       const current = (sheet.config as Record<string, unknown> | null) ?? {}
       const merged: Record<string, unknown> = {
         ...current,
@@ -97,7 +139,10 @@ export async function layoutSheetRoutes(app: FastifyInstance) {
 
       const updated = await prisma.layoutSheet.update({
         where: { id: request.params.id },
-        data: { config: merged as Prisma.InputJsonValue },
+        data: {
+          config: merged as Prisma.InputJsonValue,
+          ...(parsed.data.level_id !== undefined ? { level_id: parsed.data.level_id } : {}),
+        },
       })
 
       return reply.send(updated)

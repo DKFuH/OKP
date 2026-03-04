@@ -189,6 +189,7 @@ model BuildingLevel {
   rooms            Room[]
   from_connections VerticalConnection[] @relation("VerticalConnectionFromLevel")
   to_connections   VerticalConnection[] @relation("VerticalConnectionToLevel")
+  layout_sheets    LayoutSheet[]
 
   @@index([tenant_id, project_id, order_index])
   @@map("building_levels")
@@ -262,6 +263,7 @@ model Centerline {
 model LayoutSheet {
   id         String          @id @default(uuid())
   project_id String
+  level_id   String?
   name       String          @db.VarChar(100)
   sheet_type LayoutSheetType @default(floorplan)
   position   Int             @default(0)
@@ -270,8 +272,10 @@ model LayoutSheet {
   updated_at DateTime        @updatedAt
 
   views      LayoutView[]
+  level      BuildingLevel?  @relation(fields: [level_id], references: [id], onDelete: SetNull)
 
   @@index([project_id])
+  @@index([level_id])
   @@map("layout_sheets")
 }
 

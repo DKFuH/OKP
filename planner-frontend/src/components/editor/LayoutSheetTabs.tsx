@@ -8,6 +8,7 @@ export interface LayoutSheet {
   name: string
   sheet_type: string
   position: number
+  level_id?: string | null
   config?: {
     style_preset_id?: string | null
     sheet_scale?: '1:10' | '1:20' | '1:25' | '1:50'
@@ -18,6 +19,7 @@ export interface LayoutSheet {
 
 interface Props {
   projectId: string
+  activeLevelId?: string | null
   activeSheetId: string | null
   onSheetChange: (sheetId: string) => void
   showDaylightOptions?: boolean
@@ -31,14 +33,15 @@ const SHEET_LABELS: Record<string, string> = {
   section: 'SC',
 }
 
-export function LayoutSheetTabs({ projectId, activeSheetId, onSheetChange, showDaylightOptions = false }: Props) {
+export function LayoutSheetTabs({ projectId, activeLevelId = null, activeSheetId, onSheetChange, showDaylightOptions = false }: Props) {
   const [sheets, setSheets] = useState<LayoutSheet[]>([])
   const [presets, setPresets] = useState<LayoutStylePreset[]>([])
 
   useEffect(() => {
     let cancelled = false
+    const scopedQuery = activeLevelId ? `?level_id=${encodeURIComponent(activeLevelId)}` : ''
     api
-      .get<LayoutSheet[]>(`/projects/${projectId}/layout-sheets`)
+      .get<LayoutSheet[]>(`/projects/${projectId}/layout-sheets${scopedQuery}`)
       .then((items) => {
         if (cancelled) return
         setSheets(items)
@@ -51,7 +54,7 @@ export function LayoutSheetTabs({ projectId, activeSheetId, onSheetChange, showD
     return () => {
       cancelled = true
     }
-  }, [projectId])
+  }, [projectId, activeLevelId])
 
   useEffect(() => {
     let cancelled = false
