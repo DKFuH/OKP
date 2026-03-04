@@ -1,6 +1,6 @@
 # AGENT_SPRINTS - Sprint-Dokumentation
 
-Sprints `S47` bis `S77` sind implementiert und gemergt. `S78` ist in Arbeit.
+Sprints `S47` bis `S78` sind implementiert und gemergt.
 
 Stand: 2026-03-04
 
@@ -70,7 +70,7 @@ Stand: 2026-03-04
 | 75 | `S75-modell-import-asset-browser-light.md` | done | Plugin `asset-library`: OBJ/DAE-Import, Bounding-Box/Auto-Scale und Asset-Browser |
 | 76 | `S76-render-ux-praesentationsmodus.md` | done | Plugin `presentation`: Render-Presets und Praesentationsmodus |
 | 77 | `S77-nordkompass-sonnenstand-tageslicht.md` | done | Plugin `daylight`: Nordkompass, Sonnenstand und Tageslichtsteuerung |
-| 78 | `S78-textur-materialbibliothek.md` | planned | Plugin `materials`: Textur- und Materialbibliothek fuer Flaechen und Assets |
+| 78 | `S78-textur-materialbibliothek.md` | done | Plugin `materials`: Textur- und Materialbibliothek fuer Flaechen und Assets |
 | 79 | `S79-offline-pwa-und-aufmass-import.md` | planned | Core-PWA plus Plugin `survey-import` fuer mobilen Aufmass-/Blueprint-Import |
 | 80 | `S80-html-viewer-und-vektor-exporte.md` | planned | Plugin `viewer-export`: HTML-Webviewer und SVG-/Vektor-Exporte |
 | 81 | `S81-mehr-ebenen-projektmodell.md` | planned | Mehr-Ebenen-Projekte mit Levels, Sichtbarkeit und level-spezifischen Raeumen |

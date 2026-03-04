@@ -14,6 +14,22 @@ type PlacementLike = {
   width_mm: number
   depth_mm: number
   height_mm: number
+  material_assignment?: {
+    color_hex?: string
+    roughness?: number
+    metallic?: number
+  }
+}
+
+type SurfaceKey = 'floor' | 'ceiling' | 'wall_north' | 'wall_south' | 'wall_east' | 'wall_west'
+
+type SurfaceColorMap = {
+  floor?: string
+  ceiling?: string
+  wall_north?: string
+  wall_south?: string
+  wall_east?: string
+  wall_west?: string
 }
 
 type WallSegmentResolved = {
@@ -55,6 +71,80 @@ interface Props {
 
 const MM_TO_M = 0.001
 const WALL_THICKNESS_MM = 120
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
+function isSurfaceKey(value: unknown): value is SurfaceKey {
+  return value === 'floor' ||
+    value === 'ceiling' ||
+    value === 'wall_north' ||
+    value === 'wall_south' ||
+    value === 'wall_east' ||
+    value === 'wall_west'
+}
+
+function isValidHexColor(value: unknown): value is string {
+  if (typeof value !== 'string') {
+    return false
+  }
+  const trimmed = value.trim()
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)
+}
+
+function hexColorToThreeColor(hexColor: string | undefined, fallback: number): number {
+  if (!isValidHexColor(hexColor)) {
+    return fallback
+  }
+
+  const normalized = hexColor.trim()
+  const expanded = normalized.length === 4
+    ? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
+    : normalized
+
+  const parsed = Number.parseInt(expanded.slice(1), 16)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function extractSurfaceColors(room: RoomPayload): SurfaceColorMap {
+  const colors: SurfaceColorMap = {}
+  const coloring = asRecord(room.coloring)
+  const surfaces = Array.isArray(coloring?.surfaces) ? coloring.surfaces : []
+
+  for (const entry of surfaces) {
+    const surfaceEntry = asRecord(entry)
+    if (!surfaceEntry) continue
+
+    const surface = surfaceEntry.surface
+    if (!isSurfaceKey(surface)) continue
+
+    const colorHex = surfaceEntry.color_hex
+    if (!isValidHexColor(colorHex)) continue
+
+    colors[surface] = colorHex.trim()
+  }
+
+  return colors
+}
+
+function chooseWallColor(surfaceColors: SurfaceColorMap): string | undefined {
+  return surfaceColors.wall_north
+    ?? surfaceColors.wall_south
+    ?? surfaceColors.wall_east
+    ?? surfaceColors.wall_west
+}
+
+function clampUnitOrFallback(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+  return Math.min(1, Math.max(0, parsed))
+}
 
 function resolveWalls(vertices: VertexLike[], walls: WallLike[]): WallSegmentResolved[] {
   const byId = new Map(vertices.map((vertex) => [vertex.id, vertex]))
@@ -160,12 +250,16 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange, sunli
       return null
     }
 
+    const surfaceColors = extractSurfaceColors(room)
+
     return {
       vertices,
       walls: resolveWalls(vertices, walls),
       openings,
       placements,
       ceilingHeightMm: room.ceiling_height_mm,
+      surfaceColors,
+      wallColor: chooseWallColor(surfaceColors),
     }
   }, [room])
 
@@ -214,7 +308,10 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange, sunli
       geometryInput.vertices.map((vertex) => new THREE.Vector2(vertex.x_mm * MM_TO_M, vertex.y_mm * MM_TO_M)),
     )
     const floorGeometry = new THREE.ShapeGeometry(floorShape)
-    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x334155, side: THREE.DoubleSide })
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      color: hexColorToThreeColor(geometryInput.surfaceColors.floor, 0x334155),
+      side: THREE.DoubleSide,
+    })
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial)
     floorMesh.rotation.x = -Math.PI / 2
     group.add(floorMesh)
@@ -252,7 +349,9 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange, sunli
       const wallThicknessM = WALL_THICKNESS_MM * MM_TO_M
 
       const wallGeometry = new THREE.BoxGeometry(lengthM, wallHeightM, wallThicknessM)
-      const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x64748b })
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        color: hexColorToThreeColor(geometryInput.wallColor, 0x64748b),
+      })
       const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial)
 
       const angle = Math.atan2(dy, dx)
@@ -316,6 +415,9 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange, sunli
       const centerOffset = placement.offset_mm + placement.width_mm * 0.5
       const px = wall.start.x_mm + ux * centerOffset + nx * (placement.depth_mm * 0.5)
       const py = wall.start.y_mm + uy * centerOffset + ny * (placement.depth_mm * 0.5)
+      const placementColor = hexColorToThreeColor(placement.material_assignment?.color_hex, 0xf59e0b)
+      const placementRoughness = clampUnitOrFallback(placement.material_assignment?.roughness, 1)
+      const placementMetalness = clampUnitOrFallback(placement.material_assignment?.metallic, 0)
 
       const furnitureMesh = new THREE.Mesh(
         new THREE.BoxGeometry(
@@ -323,7 +425,11 @@ export function Preview3D({ room, cameraState = null, onCameraStateChange, sunli
           Math.max(0.2, placement.height_mm * MM_TO_M),
           Math.max(0.2, placement.depth_mm * MM_TO_M),
         ),
-        new THREE.MeshStandardMaterial({ color: 0xf59e0b }),
+        new THREE.MeshStandardMaterial({
+          color: placementColor,
+          roughness: placementRoughness,
+          metalness: placementMetalness,
+        }),
       )
       furnitureMesh.position.set(
         px * MM_TO_M,

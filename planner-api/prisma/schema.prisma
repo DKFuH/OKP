@@ -2099,3 +2099,27 @@ model ProjectEnvironment {
   @@index([tenant_id, project_id])
   @@map("project_environments")
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHASE 15 – Sprint 78: Materials-Plugin
+// ─────────────────────────────────────────────────────────────────────────
+
+model MaterialLibraryItem {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  name         String   @db.VarChar(140)
+  category     String   @db.VarChar(60)
+  texture_url  String?
+  preview_url  String?
+  scale_x_mm   Float?
+  scale_y_mm   Float?
+  rotation_deg Float    @default(0)
+  roughness    Float?
+  metallic     Float?
+  config_json  Json     @default("{}")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([tenant_id, category])
+  @@map("material_library_items")
+}

@@ -186,3 +186,8 @@
   color: #fff;
   border-color: var(--primary-color);
 }
+
+
+.subTitleSpaced {
+  margin-top: 0.75rem;
+}

@@ -23,6 +23,7 @@ export interface RoomPayload {
   name: string
   ceiling_height_mm: number
   boundary: RoomBoundaryPayload
+  coloring?: RoomColoring
   ceiling_constraints: unknown[]
   openings: unknown[]
   placements: unknown[]

@@ -13,6 +13,22 @@ const PointSchema = z.object({
   y_mm: z.number(),
 })
 
+const MaterialAssignmentSchema = z.object({
+  target_kind: z.enum(['placement', 'asset']).optional(),
+  material_item_id: z.string().uuid().nullable().optional(),
+  texture_url: z.string().url().nullable().optional(),
+  color_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  roughness: z.number().min(0).max(1).optional(),
+  metallic: z.number().min(0).max(1).optional(),
+  uv_scale: z
+    .object({
+      x: z.number().positive(),
+      y: z.number().positive(),
+    })
+    .optional(),
+  rotation_deg: z.number().min(0).max(360).optional(),
+})
+
 const PlacementSchema = z.object({
   id: z.string().min(1).default(() => randomUUID()),
   catalog_item_id: z.string().min(1),
@@ -29,6 +45,7 @@ const PlacementSchema = z.object({
   depth_mm: z.number().positive(),
   height_mm: z.number().positive(),
   worldPos: PointSchema.optional(),
+  material_assignment: MaterialAssignmentSchema.optional(),
 })
 
 const PersistedPlacementSchema = PlacementSchema.extend({

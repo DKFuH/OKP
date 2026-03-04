@@ -235,7 +235,7 @@ function AnnotationsSection({ roomId }: { roomId: string }) {
                 + Maßlinie hinzufügen
               </button>
 
-              <p className={styles.subTitle} style={{ marginTop: '0.75rem' }}>Kommentare ({comments.length})</p>
+              <p className={`${styles.subTitle} ${styles.subTitleSpaced}`}>Kommentare ({comments.length})</p>
               {comments.length === 0 ? (
                 <p className={styles.muted}>Keine Kommentare</p>
               ) : (
@@ -295,9 +295,13 @@ function RoomDecorationSection({ roomId }: { roomId: string }) {
   async function handleColorChange(surface: RoomSurfaceColor['surface'], colorHex: string) {
     setError(null)
     const currentSurfaces = coloring?.surfaces ?? []
+    const existingEntry = currentSurfaces.find((s) => s.surface === surface)
+    const mergedEntry: RoomSurfaceColor = existingEntry
+      ? { ...existingEntry, surface, color_hex: colorHex }
+      : { surface, color_hex: colorHex }
     const nextSurfaces: RoomSurfaceColor[] = [
       ...currentSurfaces.filter((s) => s.surface !== surface),
-      { surface, color_hex: colorHex },
+      mergedEntry,
     ]
     try {
       await roomDecorationApi.updateColoring(roomId, { surfaces: nextSurfaces })
@@ -348,7 +352,7 @@ function RoomDecorationSection({ roomId }: { roomId: string }) {
                 })}
               </div>
 
-              <p className={styles.subTitle} style={{ marginTop: '0.75rem' }}>Dekoobjekte ({decoObjects.length})</p>
+              <p className={`${styles.subTitle} ${styles.subTitleSpaced}`}>Dekoobjekte ({decoObjects.length})</p>
               {decoObjects.length === 0 ? (
                 <p className={styles.muted}>Keine Dekoobjekte</p>
               ) : (

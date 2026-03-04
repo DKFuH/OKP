@@ -150,6 +150,19 @@
   z-index: 70;
 }
 
+.materialDock {
+  position: absolute;
+  top: 106px;
+  right: 16px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  z-index: 70;
+}
+
+.materialDockShifted {
+  top: 470px;
+}
+
 .editorViewport {
   display: flex;
   flex: 1;

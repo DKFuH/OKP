@@ -5,11 +5,12 @@ import { tischlerPlugin } from './tischler.js'
 import { assetLibraryPlugin } from './assetLibrary.js'
 import { presentationPlugin } from './presentation.js'
 import { daylightPlugin } from './daylight.js'
+import { materialsPlugin } from './materials.js'
 
 /**
  * Bootstraps alle Branche-Plugins.
  * Wird einmalig beim Anwendungsstart aufgerufen, bevor die Plugins in
- * Fastify eingehaengt werden.
+ * Fastify eingehängt werden.
  */
 export function bootstrapPlugins(): void {
   registerPlugin(raumakustikPlugin)
@@ -17,6 +18,7 @@ export function bootstrapPlugins(): void {
   registerPlugin(assetLibraryPlugin)
   registerPlugin(presentationPlugin)
   registerPlugin(daylightPlugin)
+  registerPlugin(materialsPlugin)
 
   const tischlerEnabled = (process.env.ENABLE_TISCHLER_PLUGIN ?? 'true').toLowerCase() !== 'false'
   if (tischlerEnabled) {

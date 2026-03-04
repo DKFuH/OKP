@@ -13,6 +13,15 @@ const RoomSurfaceColorSchema = z.object({
   color_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   material_id: z.string().optional(),
   texture_url: z.string().url().optional(),
+  uv_scale: z
+    .object({
+      x: z.number().positive(),
+      y: z.number().positive(),
+    })
+    .optional(),
+  rotation_deg: z.number().min(0).max(360).optional(),
+  roughness: z.number().min(0).max(1).optional(),
+  metallic: z.number().min(0).max(1).optional(),
 })
 
 const RoomColoringSchema = z.object({

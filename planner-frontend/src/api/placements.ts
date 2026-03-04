@@ -18,6 +18,16 @@ export interface Placement {
   depth_mm: number
   height_mm: number
   worldPos?: { x_mm: number; y_mm: number }
+  material_assignment?: {
+    target_kind?: 'placement' | 'asset'
+    material_item_id?: string | null
+    texture_url?: string | null
+    color_hex?: string
+    roughness?: number
+    metallic?: number
+    uv_scale?: { x: number; y: number }
+    rotation_deg?: number
+  }
 }
 
 export const placementsApi = {

@@ -22,6 +22,7 @@ import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { PopoutWindow } from '../components/editor/PopoutWindow.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
 import { DaylightPanel } from '../components/editor/DaylightPanel.js'
+import { MaterialPanel } from '../components/editor/MaterialPanel.js'
 import { LeftSidebar } from '../components/editor/LeftSidebar.js'
 import { RightSidebar, type CeilingConstraint, type ConfiguredDimensions } from '../components/editor/RightSidebar.js'
 import { StatusBar } from '../components/editor/StatusBar.js'
@@ -153,8 +154,11 @@ export function Editor() {
   const [workflowStep, setWorkflowStep] = useState<'walls' | 'openings' | 'furniture'>('walls')
   const [activeLayoutSheetId, setActiveLayoutSheetId] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [presentationEnabled, setPresentationEnabled] = useState(false)
   const [daylightEnabled, setDaylightEnabled] = useState(false)
   const [daylightPanelOpen, setDaylightPanelOpen] = useState(false)
+  const [materialsEnabled, setMaterialsEnabled] = useState(false)
+  const [materialPanelOpen, setMaterialPanelOpen] = useState(false)
   const [projectEnvironment, setProjectEnvironment] = useState<ProjectEnvironment | null>(null)
   const [sunPreview, setSunPreview] = useState<SunPreview | null>(null)
   const [daylightSaving, setDaylightSaving] = useState(false)
@@ -190,11 +194,15 @@ export function Editor() {
     getTenantPlugins()
       .then((result) => {
         if (!active) return
+        setPresentationEnabled(result.enabled.includes('presentation'))
         setDaylightEnabled(result.enabled.includes('daylight'))
+        setMaterialsEnabled(result.enabled.includes('materials'))
       })
       .catch(() => {
         if (!active) return
+        setPresentationEnabled(false)
         setDaylightEnabled(false)
+        setMaterialsEnabled(false)
       })
 
     return () => {
@@ -252,6 +260,11 @@ export function Editor() {
     }
   }, [daylightEnabled, id, refreshSunPreview])
 
+  useEffect(() => {
+    if (!materialsEnabled) {
+      setMaterialPanelOpen(false)
+    }
+  }, [materialsEnabled])
 
   const handleDaylightPatch = useCallback((patch: Partial<ProjectEnvironment>) => {
     setProjectEnvironment((prev) => {
@@ -263,6 +276,27 @@ export function Editor() {
     })
   }, [])
 
+  const handleMaterialRoomPatch = useCallback((roomId: string, patch: { coloring: unknown; placements: Placement[] }) => {
+    setProject((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        rooms: prev.rooms.map((room) => (
+          room.id === roomId
+            ? {
+                ...room,
+                coloring: patch.coloring,
+                placements: patch.placements,
+              }
+            : room
+        )),
+      }
+    })
+
+    if (selectedRoomId === roomId) {
+      setPlacements(patch.placements)
+    }
+  }, [selectedRoomId])
 
   const handleSaveDaylightEnvironment = useCallback(async () => {
     if (!id || !projectEnvironment) return
@@ -385,7 +419,7 @@ export function Editor() {
       }
       await refreshAcousticGrids()
     } catch (error) {
-      alert(`Akustik-Grid lÃ¶schen fehlgeschlagen: ${String(error)}`)
+      alert(`Akustik-Grid löschen fehlgeschlagen: ${String(error)}`)
     } finally {
       setAcousticBusy(false)
     }
@@ -507,7 +541,7 @@ export function Editor() {
       })
   }, [id])
 
-  // Editor-Vertices + Ã–ffnungen neu laden wenn Raum wechselt
+  // Editor-Vertices + Öffnungen neu laden wenn Raum wechselt
   useEffect(() => {
     setSelectedOpeningId(null)
     setSelectedPlacementId(null)
@@ -527,7 +561,7 @@ export function Editor() {
       editor.reset()
     }
     editor.setReferenceImage(parseReferenceImage((room as unknown as RoomPayload | undefined)?.reference_image))
-    // Ã–ffnungen aus room.openings laden (JSONB, bereits im room-Objekt)
+    // Öffnungen aus room.openings laden (JSONB, bereits im room-Objekt)
     setOpenings((room?.openings as unknown as Opening[]) ?? [])
     setPlacements((room?.placements as unknown as Placement[]) ?? [])
 
@@ -578,18 +612,18 @@ export function Editor() {
     })
   }, [])
 
-  // Ã–ffnungen speichern
+  // Öffnungen speichern
   const handleSaveOpenings = useCallback(async (newOpenings: Opening[]) => {
     if (!selectedRoomRef.current) return
     try {
       const saved = await openingsApi.save(selectedRoomRef.current.id, newOpenings)
       setOpenings(saved)
     } catch (e) {
-      console.error('Ã–ffnungen speichern fehlgeschlagen:', e)
+      console.error('Öffnungen speichern fehlgeschlagen:', e)
     }
   }, [])
 
-  // Ã–ffnung hinzufÃ¼gen (wird vom Canvas aufgerufen wenn Wand ausgewÃ¤hlt)
+  // Öffnung hinzufügen (wird vom Canvas aufgerufen wenn Wand ausgewählt)
   const handleAddOpening = useCallback((wallId: string, wallLengthMm: number) => {
     const defaultWidth = Math.min(900, wallLengthMm)
     const offset = Math.max(0, Math.round((wallLengthMm - defaultWidth) / 2))
@@ -609,14 +643,14 @@ export function Editor() {
     handleSaveOpenings(updated)
   }, [handleSaveOpenings])
 
-  // Ã–ffnung aktualisieren
+  // Öffnung aktualisieren
   const handleUpdateOpening = useCallback((updated: Opening) => {
     const newOpenings = openingsRef.current.map(o => o.id === updated.id ? updated : o)
     setOpenings(newOpenings)
     handleSaveOpenings(newOpenings)
   }, [handleSaveOpenings])
 
-  // Ã–ffnung lÃ¶schen
+  // Öffnung löschen
   const handleDeleteOpening = useCallback((openingId: string) => {
     const newOpenings = openingsRef.current.filter(o => o.id !== openingId)
     setOpenings(newOpenings)
@@ -662,7 +696,7 @@ export function Editor() {
 
   const handleAddPlacement = useCallback((wallId: string, wallLengthMm: number) => {
     if (!selectedCatalogItem) {
-      console.warn('Kein Katalogartikel ausgewÃ¤hlt')
+      console.warn('Kein Katalogartikel ausgewählt')
       return
     }
 
@@ -735,7 +769,7 @@ export function Editor() {
     handleSavePlacements(nextPlacements)
   }, [handleSavePlacements])
 
-  // Auto-VervollstÃ¤ndigung (Langteile, Sockel, Wangen)
+  // Auto-Vervollständigung (Langteile, Sockel, Wangen)
   const handleAutoComplete = useCallback(async () => {
     if (!id || !selectedRoomRef.current) return
     setAutoCompleteLoading(true)
@@ -743,7 +777,7 @@ export function Editor() {
       const result = await autoCompletionApi.run(id, selectedRoomRef.current.id)
       setAutoCompleteResult(result)
     } catch (e) {
-      console.error('Auto-VervollstÃ¤ndigung fehlgeschlagen:', e)
+      console.error('Auto-Vervollständigung fehlgeschlagen:', e)
     } finally {
       setAutoCompleteLoading(false)
     }
@@ -751,7 +785,7 @@ export function Editor() {
 
   const handleGltfExport = useCallback(async () => {
     if (!selectedAlternativeId) {
-      alert('Keine Alternative ausgewÃ¤hlt')
+      alert('Keine Alternative ausgewählt')
       return
     }
 
@@ -781,7 +815,7 @@ export function Editor() {
     }
   }, [selectedAlternativeId])
 
-  // GeometrieprÃ¼fung ausfÃ¼hren
+  // Geometrieprüfung ausführen
   const handleRunValidation = useCallback(async () => {
     if (!selectedRoomRef.current || !id) return
     const room = selectedRoomRef.current
@@ -829,14 +863,14 @@ export function Editor() {
     }
   }, [id])
 
-  // DachschrÃ¤gen speichern
+  // Dachschrägen speichern
   const handleSaveCeilingConstraints = useCallback((constraints: CeilingConstraint[]) => {
     if (!selectedRoomRef.current) return
     roomsApi.update(selectedRoomRef.current.id, {
       ceiling_constraints: constraints as unknown[],
     }).then(updated => {
       handleRoomUpdated(updated)
-    }).catch((e: Error) => console.error('DachschrÃ¤gen speichern fehlgeschlagen:', e))
+    }).catch((e: Error) => console.error('Dachschrägen speichern fehlgeschlagen:', e))
   }, [handleRoomUpdated])
 
   const handleReferenceImageUpdate = useCallback((img: NonNullable<EditorState['referenceImage']>) => {
@@ -918,7 +952,7 @@ export function Editor() {
     }
   }, [selectedRoom])
 
-  // Auswahl-Info fÃ¼r RightSidebar â€“ muss VOR den Early-Returns stehen (Rules of Hooks)
+  // Auswahl-Info für RightSidebar – muss VOR den Early-Returns stehen (Rules of Hooks)
   const { state } = editor
   const selectedVertex = state.selectedIndex !== null ? (state.vertices[state.selectedIndex] ?? null) : null
   const selEdgeLen = state.selectedEdgeIndex !== null
@@ -927,7 +961,7 @@ export function Editor() {
   const selectedOpening = openings.find(o => o.id === selectedOpeningId) ?? null
   const selectedPlacement = placements.find(p => p.id === selectedPlacementId) ?? null
 
-  // Wandgeometrie fÃ¼r DachschrÃ¤gen-Panel
+  // Wandgeometrie für Dachschrägen-Panel
   const selectedWallGeom = useMemo(() => {
     const i = state.selectedEdgeIndex
     if (i === null || !state.wallIds[i]) return null
@@ -980,19 +1014,19 @@ export function Editor() {
     />
   )
 
-  if (loading) return <div className={styles.center}>Lade Projektâ€¦</div>
+  if (loading) return <div className={styles.center}>Lade Projekt…</div>
   if (error) return <div className={styles.center}>{error}</div>
   if (!project) return null
 
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
-        <button type="button" className={styles.backBtn} onClick={() => navigate('/')}>â† Projekte</button>
+        <button type="button" className={styles.backBtn} onClick={() => navigate('/')}>← Projekte</button>
         <span className={styles.projectName}>{project.name}</span>
         <div className={styles.topbarActions}>
           {autoCompleteResult && (
             <span className={styles.autoCompleteHint}>
-              âœ“ {autoCompleteResult.created} Langteile generiert
+              ✓ {autoCompleteResult.created} Langteile generiert
             </span>
           )}
           <div className={styles.modeSwitch} aria-label="Ansichtsmodus">
@@ -1007,7 +1041,7 @@ export function Editor() {
               type="button"
               className={`${styles.modeBtn} ${viewMode === 'split' ? styles.modeBtnActive : ''}`}
               onClick={() => setViewMode('split')}
-              title={compactLayout ? 'Split auf kleinen Displays nicht verfÃ¼gbar' : '2D und 3D parallel'}
+              title={compactLayout ? 'Split auf kleinen Displays nicht verfügbar' : '2D und 3D parallel'}
               disabled={compactLayout}
             >
               Split
@@ -1029,7 +1063,7 @@ export function Editor() {
             Besucher
           </label>
           <label className={styles.heightControl}>
-            HÃ¶he {cameraHeightMm} mm
+            Höhe {cameraHeightMm} mm
             <input
               type="range"
               min={900}
@@ -1046,7 +1080,7 @@ export function Editor() {
               aria-haspopup="true"
               onClick={() => setMoreMenuOpen((prev) => !prev)}
             >
-              Mehr â–¾
+              Mehr ▾
             </button>
             {moreMenuOpen && (
               <div className={styles.moreMenu} role="menu">
@@ -1058,7 +1092,7 @@ export function Editor() {
                   disabled={autoCompleteLoading || !selectedRoomId}
                   title="Arbeitsplatten, Sockel und Wangen automatisch generieren"
                 >
-                  {autoCompleteLoading ? 'Generiereâ€¦' : 'Auto vervollstÃ¤ndigen'}
+                  {autoCompleteLoading ? 'Generiere…' : 'Auto vervollständigen'}
                 </button>
                 <button
                   role="menuitem"
@@ -1066,9 +1100,9 @@ export function Editor() {
                   className={styles.moreMenuItem}
                   onClick={() => { setMoreMenuOpen(false); setIsPreviewPopoutOpen((prev) => !prev) }}
                   disabled={!selectedRoom}
-                  title="3D-Ansicht in separatem Fenster Ã¶ffnen"
+                  title="3D-Ansicht in separatem Fenster öffnen"
                 >
-                  {isPreviewPopoutOpen ? '3D-Fenster schlieÃŸen' : '3D in Fenster'}
+                  {isPreviewPopoutOpen ? '3D-Fenster schließen' : '3D in Fenster'}
                 </button>
                 <button
                   role="menuitem"
@@ -1086,6 +1120,16 @@ export function Editor() {
                 >
                   Panorama-Touren
                 </button>
+                {presentationEnabled && (
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className={styles.moreMenuItem}
+                    onClick={() => { setMoreMenuOpen(false); navigate(`/projects/${id}/presentation?source=split-view`) }}
+                  >
+                    Präsentationsmodus
+                  </button>
+                )}
                 {daylightEnabled && (
                   <button
                     role="menuitem"
@@ -1093,7 +1137,17 @@ export function Editor() {
                     className={styles.moreMenuItem}
                     onClick={() => { setMoreMenuOpen(false); setDaylightPanelOpen((prev) => !prev) }}
                   >
-                    {daylightPanelOpen ? 'Tageslichtpanel schlieÃŸen' : 'Tageslichtpanel'}
+                    {daylightPanelOpen ? 'Tageslichtpanel schließen' : 'Tageslichtpanel'}
+                  </button>
+                )}
+                {materialsEnabled && (
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className={styles.moreMenuItem}
+                    onClick={() => { setMoreMenuOpen(false); setMaterialPanelOpen((prev) => !prev) }}
+                  >
+                    {materialPanelOpen ? 'Materialpanel schließen' : 'Materialpanel'}
                   </button>
                 )}
                 <button
@@ -1111,7 +1165,7 @@ export function Editor() {
                   onClick={() => { setMoreMenuOpen(false); void handleGltfExport() }}
                   disabled={gltfExportLoading || !selectedAlternativeId}
                 >
-                  {gltfExportLoading ? 'GLB exportiereâ€¦' : 'GLB exportieren'}
+                  {gltfExportLoading ? 'GLB exportiere…' : 'GLB exportieren'}
                 </button>
                 <button
                   role="menuitem"
@@ -1130,7 +1184,7 @@ export function Editor() {
       {/* Workflow step tabs */}
       <nav className={styles.stepBar} aria-label="Arbeitsschritte">
         {(['walls', 'openings', 'furniture'] as const).map((step, idx) => {
-          const labels = ['1 Â· WÃ¤nde', '2 Â· Ã–ffnungen', '3 Â· MÃ¶belierung'] as const
+          const labels = ['1 · Wände', '2 · Öffnungen', '3 · Möbelierung'] as const
           const isActive = workflowStep === step
           return (
             <button
@@ -1178,6 +1232,15 @@ export function Editor() {
         </div>
       )}
 
+      {materialsEnabled && materialPanelOpen && id && (
+        <div className={`${styles.materialDock} ${daylightEnabled && daylightPanelOpen ? styles.materialDockShifted : ''}`}>
+          <MaterialPanel
+            projectId={id}
+            room={selectedRoom as unknown as RoomPayload | null}
+            onApplied={handleMaterialRoomPatch}
+          />
+        </div>
+      )}
 
       <div className={styles.workspace}>
         {showAreasPanel && id && (

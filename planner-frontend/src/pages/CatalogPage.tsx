@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { catalogApi } from '../api/catalog.js'
 import { catalogIndicesApi, type CatalogIndexRecord } from '../api/catalogIndices.js'
 import { projectsApi, type Project } from '../api/projects.js'
+import { getTenantPlugins } from '../api/tenantSettings.js'
 import { CatalogBrowser } from '../components/catalog/CatalogBrowser.js'
+import { MaterialBrowser } from '../components/catalog/MaterialBrowser.js'
 import styles from './CatalogPage.module.css'
 
 const TENANT_ID_PLACEHOLDER = '00000000-0000-0000-0000-000000000001'
@@ -56,6 +58,7 @@ export function CatalogPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [materialsEnabled, setMaterialsEnabled] = useState(false)
 
   const catalogOptionMap = useMemo(
     () => Object.fromEntries(catalogOptions.map((option) => [option.id, option])),
@@ -106,6 +109,24 @@ export function CatalogPage() {
 
   useEffect(() => {
     void loadCatalogIndexWorkspace()
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    getTenantPlugins()
+      .then((result) => {
+        if (!active) return
+        setMaterialsEnabled(result.enabled.includes('materials'))
+      })
+      .catch(() => {
+        if (!active) return
+        setMaterialsEnabled(false)
+      })
+
+    return () => {
+      active = false
+    }
   }, [])
 
   async function handleProjectChange(projectId: string) {
@@ -281,6 +302,7 @@ export function CatalogPage() {
       </section>
 
       <CatalogBrowser />
+      {materialsEnabled && <MaterialBrowser />}
     </div>
   )
 }

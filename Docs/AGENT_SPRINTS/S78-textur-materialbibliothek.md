@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-78-materials-plugin`
 **Gruppe:** B (startbar nach S75)
-**Status:** `planned`
+**Status:** `done`
 **Abhaengigkeiten:** S20 (Katalog), S51 (GLTF/GLB), S75 (Asset-Browser Light)
 
 ---
