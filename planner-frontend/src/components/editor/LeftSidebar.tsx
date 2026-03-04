@@ -9,6 +9,16 @@ import {
   type CatalogArticle,
   type UnifiedCatalogItem
 } from '../../api/catalog.js'
+import { getTenantPlugins } from '../../api/tenantSettings.js'
+import { assetLibraryApi } from '../../api/assetLibrary.js'
+import {
+  ASSET_CATEGORY_LABELS,
+  mapAssetToCatalogItem,
+  type AssetCategory,
+  type AssetLibraryItem,
+} from '../../plugins/assetLibrary/index.js'
+import { AssetBrowser } from '../catalog/AssetBrowser.js'
+import { AssetImportDialog } from '../catalog/AssetImportDialog.js'
 import styles from './LeftSidebar.module.css'
 
 interface Props {
@@ -34,7 +44,9 @@ const TYPE_OPTIONS: Array<{ value: '' | CatalogItemType; label: string }> = [
 export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, selectedCatalogItem, onSelectCatalogItem, workflowStep }: Props) {
   const [addingRoom, setAddingRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
-  const [catalogMode, setCatalogMode] = useState<'standard' | 'manufacturer'>('standard')
+  const [catalogMode, setCatalogMode] = useState<'standard' | 'manufacturer' | 'assets'>('standard')
+  const [assetPluginEnabled, setAssetPluginEnabled] = useState(false)
+  const [assetImportOpen, setAssetImportOpen] = useState(false)
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const [selectedManufacturerId, setSelectedManufacturerId] = useState<string>('')
 
@@ -42,6 +54,8 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, se
   const [typeFilter, setTypeFilter] = useState<'' | CatalogItemType>('')
   const [items, setItems] = useState<CatalogItem[]>([])
   const [articles, setArticles] = useState<CatalogArticle[]>([])
+  const [assetItems, setAssetItems] = useState<AssetLibraryItem[]>([])
+  const [assetCategoryFilter, setAssetCategoryFilter] = useState<'' | AssetCategory>('')
 
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogError, setCatalogError] = useState<string | null>(null)
@@ -50,10 +64,24 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, se
 
   // Load manufacturers once
   useEffect(() => {
+    getTenantPlugins()
+      .then((plugins) => {
+        setAssetPluginEnabled(plugins.enabled.includes('asset-library'))
+      })
+      .catch(() => {
+        setAssetPluginEnabled(false)
+      })
+
     catalogApi.listManufacturers()
       .then(setManufacturers)
       .catch(() => setCatalogError('Hersteller konnten nicht geladen werden'))
   }, [])
+
+  useEffect(() => {
+    if (!assetPluginEnabled && catalogMode === 'assets') {
+      setCatalogMode('standard')
+    }
+  }, [assetPluginEnabled, catalogMode])
 
   // Load legacy items
   useEffect(() => {
@@ -110,11 +138,66 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, se
       .finally(() => setCatalogLoading(false))
   }, [catalogMode, selectedManufacturerId])
 
+  // Load asset library items
+  useEffect(() => {
+    if (catalogMode !== 'assets' || !assetPluginEnabled) {
+      return
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      const requestToken = ++requestTokenRef.current
+      setCatalogLoading(true)
+      setCatalogError(null)
+      assetLibraryApi
+        .list({
+          q: query.trim() || undefined,
+          category: assetCategoryFilter || undefined,
+        })
+        .then((nextItems) => {
+          if (requestToken !== requestTokenRef.current) return
+          setAssetItems(nextItems)
+        })
+        .catch((e: unknown) => {
+          if (requestToken !== requestTokenRef.current) return
+          setAssetItems([])
+          setCatalogError(e instanceof Error ? e.message : 'Asset-Library konnte nicht geladen werden')
+        })
+        .finally(() => {
+          if (requestToken !== requestTokenRef.current) return
+          setCatalogLoading(false)
+        })
+    }, 300)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      requestTokenRef.current += 1
+    }
+  }, [catalogMode, query, assetCategoryFilter, assetPluginEnabled])
+
   const filteredArticles = articles.filter(a => {
     if (query && !a.name.toLowerCase().includes(query.toLowerCase()) && !a.sku.toLowerCase().includes(query.toLowerCase())) return false
     if (typeFilter && a.article_type !== typeFilter) return false
     return true
   })
+
+  const selectedAssetId = catalogMode === 'assets' ? selectedCatalogItem?.id ?? null : null
+
+  async function handleDeleteAsset(asset: AssetLibraryItem) {
+    try {
+      await assetLibraryApi.remove(asset.id)
+      setAssetItems((prev) => prev.filter((entry) => entry.id !== asset.id))
+      if (selectedCatalogItem?.id === asset.id) {
+        onSelectCatalogItem(null)
+      }
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : 'Asset konnte nicht gelöscht werden')
+    }
+  }
+
+  function handleImportedAsset(asset: AssetLibraryItem) {
+    setAssetItems((prev) => [asset, ...prev])
+    onSelectCatalogItem(mapAssetToCatalogItem(asset))
+  }
 
   return (
     <aside className={styles.sidebar}>
@@ -190,11 +273,20 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, se
             >
               Hersteller
             </button>
+            {assetPluginEnabled && (
+              <button
+                className={`${styles.modeBtn} ${catalogMode === 'assets' ? styles.modeBtnActive : ''}`}
+                onClick={() => setCatalogMode('assets')}
+              >
+                Assets
+              </button>
+            )}
           </div>
         </div>
 
         {catalogMode === 'manufacturer' && (
           <select
+            aria-label="Hersteller wählen"
             className={styles.mfrSelect}
             value={selectedManufacturerId}
             onChange={e => setSelectedManufacturerId(e.target.value)}
@@ -215,18 +307,42 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, se
           onChange={e => setQuery(e.target.value)}
         />
 
-        <select
-          aria-label="Kategorie filtern"
-          className={styles.typeSelect}
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value as '' | CatalogItemType)}
-        >
-          {TYPE_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        {catalogMode !== 'assets' ? (
+          <select
+            aria-label="Kategorie filtern"
+            className={styles.typeSelect}
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value as '' | CatalogItemType)}
+          >
+            {TYPE_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        ) : (
+          <select
+            aria-label="Asset-Kategorie filtern"
+            className={styles.typeSelect}
+            value={assetCategoryFilter}
+            onChange={e => setAssetCategoryFilter(e.target.value as '' | AssetCategory)}
+          >
+            <option value="">Alle</option>
+            {Object.entries(ASSET_CATEGORY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        )}
 
-        {catalogLoading ? (
+        {catalogMode === 'assets' ? (
+          <AssetBrowser
+            assets={assetItems}
+            selectedAssetId={selectedAssetId}
+            loading={catalogLoading}
+            error={catalogError}
+            onOpenImport={() => setAssetImportOpen(true)}
+            onSelectAsset={(asset) => onSelectCatalogItem(mapAssetToCatalogItem(asset))}
+            onDeleteAsset={(asset) => { void handleDeleteAsset(asset) }}
+          />
+        ) : catalogLoading ? (
           <p className={styles.empty}>Lade…</p>
         ) : catalogError ? (
           <p className={styles.error}>{catalogError}</p>
@@ -262,6 +378,14 @@ export function LeftSidebar({ rooms, selectedRoomId, onSelectRoom, onAddRoom, se
               ))
             )}
           </ul>
+        )}
+
+        {assetPluginEnabled && (
+          <AssetImportDialog
+            isOpen={assetImportOpen}
+            onClose={() => setAssetImportOpen(false)}
+            onImported={handleImportedAsset}
+          />
         )}
           </>
         )}

@@ -2055,3 +2055,25 @@ enum FengShuiMode {
   east
   both
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// PHASE 14 – Sprint 75: Asset-Library-Plugin
+// ─────────────────────────────────────────────────────────────────────────
+
+model AssetLibraryItem {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  name               String   @db.VarChar(180)
+  category           String   @db.VarChar(80)
+  source_format      String   @db.VarChar(20)
+  file_url           String
+  preview_url        String?
+  bbox_json          Json     @default("{}")
+  default_scale_json Json     @default("{}")
+  tags_json          Json     @default("[]")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@index([tenant_id, category])
+  @@map("asset_library_items")
+}

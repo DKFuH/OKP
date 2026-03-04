@@ -2,6 +2,7 @@ import { registerPlugin } from './pluginRegistry.js'
 import { raumakustikPlugin } from './raumakustik.js'
 import { fengshuiPlugin } from './fengshui.js'
 import { tischlerPlugin } from './tischler.js'
+import { assetLibraryPlugin } from './assetLibrary.js'
 
 /**
  * Bootstraps alle Branche-Plugins.
@@ -11,6 +12,7 @@ import { tischlerPlugin } from './tischler.js'
 export function bootstrapPlugins(): void {
   registerPlugin(raumakustikPlugin)
   registerPlugin(fengshuiPlugin)
+  registerPlugin(assetLibraryPlugin)
 
   const tischlerEnabled = (process.env.ENABLE_TISCHLER_PLUGIN ?? 'true').toLowerCase() !== 'false'
   if (tischlerEnabled) {

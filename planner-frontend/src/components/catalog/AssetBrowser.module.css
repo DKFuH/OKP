@@ -1,0 +1,128 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.4rem;
+}
+
+.importBtn {
+  border: 1px dashed var(--border-subtle);
+  background: var(--surface-default);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+  padding: 0.24rem 0.5rem;
+  cursor: pointer;
+}
+
+.importBtn:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.state,
+.error {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.state {
+  color: var(--text-muted);
+}
+
+.error {
+  color: var(--status-danger);
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-default);
+  overflow: hidden;
+}
+
+.cardActive {
+  border-color: var(--primary-color);
+}
+
+.cardMain {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 0.36rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 2.2rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.62rem;
+  color: var(--text-inverse);
+  background: var(--primary-color);
+}
+
+.name {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.badges {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.badge {
+  font-size: 0.62rem;
+  border-radius: var(--radius-pill);
+  padding: 0.06rem 0.3rem;
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.deleteBtn {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.22rem;
+}
+
+.deleteBtn:hover {
+  color: var(--status-danger);
+}

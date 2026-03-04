@@ -1,6 +1,6 @@
 # AGENT_SPRINTS - Sprint-Dokumentation
 
-Sprints `S47` bis `S73` sind implementiert und gemergt.
+Sprints `S47` bis `S75` sind implementiert und gemergt.
 
 Stand: 2026-03-04
 
@@ -38,7 +38,7 @@ Stand: 2026-03-04
 | 72 | `S72-bogen-bemassung-layout.md` | done | `local` | +39 |
 | 73 | `S73-bogen-3d-interop.md` | done | `local` | +8 |
 | 74 | `S74-split-view-virtual-visitor.md` | done | `local` | +10 |
-| 75 | `S75-modell-import-asset-browser-light.md` | planned | - | +10 |
+| 75 | `S75-modell-import-asset-browser-light.md` | done | `local` | +12 |
 | 76 | `S76-render-ux-praesentationsmodus.md` | planned | - | Frontend |
 
 ---
@@ -66,7 +66,7 @@ Stand: 2026-03-04
 | 72 | `S72-bogen-bemassung-layout.md` | done | Radius-, Bogenlaengen- und Sehnenmasse in Sheets und Detailansichten |
 | 73 | `S73-bogen-3d-interop.md` | done | Gebogene Waende in 3D, GLTF, IFC und DXF/DWG-Interop |
 | 74 | `S74-split-view-virtual-visitor.md` | done | Split-View im Editor und synchroner Virtual Visitor zwischen 2D und 3D |
-| 75 | `S75-modell-import-asset-browser-light.md` | planned | Plugin `asset-library`: OBJ/DAE-Import, Bounding-Box/Auto-Scale und Asset-Browser |
+| 75 | `S75-modell-import-asset-browser-light.md` | done | Plugin `asset-library`: OBJ/DAE-Import, Bounding-Box/Auto-Scale und Asset-Browser |
 | 76 | `S76-render-ux-praesentationsmodus.md` | planned | Plugin `presentation`: Render-Presets und Praesentationsmodus |
 | 77 | `S77-nordkompass-sonnenstand-tageslicht.md` | planned | Plugin `daylight`: Nordkompass, Sonnenstand und Tageslichtsteuerung |
 | 78 | `S78-textur-materialbibliothek.md` | planned | Plugin `materials`: Textur- und Materialbibliothek fuer Flaechen und Assets |

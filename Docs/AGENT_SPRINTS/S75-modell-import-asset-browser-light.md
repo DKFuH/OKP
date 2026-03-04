@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-75-asset-library-plugin`
 **Gruppe:** B (startbar nach S51 oder parallel zu S74)
-**Status:** `planned`
+**Status:** `done`
 **Abhaengigkeiten:** S20 (Katalog), S51 (GLTF/GLB), S53 (DWG/SKP Interop)
 
 ---
