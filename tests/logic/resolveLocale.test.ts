@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SUPPORTED_LOCALES, isSupportedLocale, resolveLocale } from '../../planner-frontend/src/i18n/resolveLocale.js'
 
 describe('isSupportedLocale', () => {
@@ -15,6 +15,16 @@ describe('isSupportedLocale', () => {
 })
 
 describe('resolveLocale', () => {
+  beforeEach(() => {
+    // Stub navigator with an unsupported language so the de-fallback tests are
+    // not influenced by the host environment's browser / Node language setting.
+    vi.stubGlobal('navigator', { language: 'ja' })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('falls back to de when no inputs are provided', () => {
     expect(resolveLocale()).toBe('de')
   })

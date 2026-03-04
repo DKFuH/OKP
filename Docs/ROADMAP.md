@@ -1569,7 +1569,7 @@ sauber integrierter Produktkern.
 
 | Sprint | Status | Thema | Deliverables |
 |--------|--------|-------|--------------|
-| 98 | `planned` | Stabilisierungsphase | Produktpfad stabilisieren, Kern-Findings abbauen, Goldene Pfade absichern |
+| 98 | `done` | Stabilisierungsphase | Produktpfad stabilisieren, Kern-Findings abbauen, Goldene Pfade absichern |
 
 ### Sprint-Metadaten
 

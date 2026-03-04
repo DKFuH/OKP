@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-98-stabilization`
 **Gruppe:** A
-**Status:** `planned`
+**Status:** `done`
 **Abhaengigkeiten:** S61-S81 als integrierter Produktstand
 
 ---
