@@ -13,7 +13,7 @@ Planungen leichter teilen und exportieren: ein eigenstaendiger HTML/WebGL
 Viewer fuer Kunden und Partner sowie Vektor-Exporte fuer Grundriss- und
 Sheet-Grafiken.
 
-Inspiration: Sweet Home 3D Export to HTML5, Export plan image, Side View.
+Leitidee: HTML-Viewer, Planbild-Export und Vektorpfade fuer Weitergabe und Dokumentation.
 
 **Plugin-Zuschnitt:** `viewer-export`
 

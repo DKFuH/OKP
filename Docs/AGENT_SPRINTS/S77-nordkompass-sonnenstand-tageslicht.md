@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-77-daylight-plugin`
 **Gruppe:** A (startbar nach S74)
-**Status:** `planned`
+**Status:** `in_progress`
 **Abhaengigkeiten:** S14 (3D-Preview), S67 (Layout-Styles), S76 (Praesentationsmodus)
 
 ---
@@ -13,7 +13,7 @@ Grundriss, 3D-Preview und Praesentationsmodus um Nordrichtung, Geolokation
 und einfachen Sonnenstand erweitern. Damit werden Tageslichtwirkung,
 Fensterorientierung und Schatten glaubwuerdig und im Plan dokumentierbar.
 
-Inspiration: Sweet Home 3D Compass, Sunlight by time of day and location.
+Leitidee: Nordrichtung, Standort und Tageslicht als konsistenter Umweltkontext.
 
 **Plugin-Zuschnitt:** `daylight`
 

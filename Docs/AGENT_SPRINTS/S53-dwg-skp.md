@@ -11,7 +11,7 @@
 
 Bestehende Stubs `interop-cad/dwg-import`, `dwg-export` und `interop-sketchup/skp-export`
 vollständig implementieren. Einen einheitlichen `POST /alternatives/:id/export`-Batch-Endpunkt
-mit `format`-Parameter einführen. Ergebnis: pCon.planner-Interop-Parität.
+mit `format`-Parameter einführen. Ergebnis: professionelle CAD-Interop.
 
 ---
 
@@ -117,7 +117,7 @@ export interface DwgExportOptions {
 
 /**
  * Erstellt DXF ASCII-String (exportiert als .dxf, wird aber auch als .dwg akzeptiert
- * von AutoCAD/LibreCAD da DXF und DWG inhaltlich austauschbar sind).
+ * von gängigen CAD-Tools da DXF und DWG inhaltlich austauschbar sind).
  * Vollständige DWG-Binary-Generierung erfordert proprietäre Bibliothek.
  */
 export function buildDwgBuffer(options: DwgExportOptions): Buffer {

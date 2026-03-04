@@ -13,7 +13,7 @@ Gebogene Waende als echten Geometrietyp im 2D-Kern einfuehren. V1 fokussiert
 auf Editor, Raumgeometrie, Snap-Verhalten und einfache Oeffnungen auf Boegen.
 3D, Layout-Bemaßung und Interop folgen bewusst erst in den Folgesprints.
 
-Inspiration: pCon.planner Arc Walls, Chief Architect Curved Walls.
+Leitidee: gebogene Wandelemente als eigener 2D-Geometrietyp.
 
 ---
 

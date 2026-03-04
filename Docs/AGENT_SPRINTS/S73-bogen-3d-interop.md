@@ -13,7 +13,7 @@ Gebogene Waende nicht nur im 2D-Kern, sondern auch in 3D, Export und
 Import tragfaehig machen. V1 arbeitet mit segmentierter Approximation,
 nicht mit perfekter NURBS-/BRep-Geometrie.
 
-Inspiration: pCon/Chief curved walls, pragmatische CAD-Interop.
+Leitidee: gebogene Wände mit pragmatischer 3D- und CAD-Interop.
 
 ---
 

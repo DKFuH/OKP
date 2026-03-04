@@ -14,7 +14,7 @@ parallel, orthogonal, coincident, symmetry-light und Driving Dimensions
 fuer wiederkehrende Kuechenlogik. Kein vollwertiger CAD-Solver, sondern
 ein deterministisches Regelset fuer haeufige Tischlerfaelle.
 
-Inspiration: AutoCAD Geometric Constraints, Fusion/Sketch parametric edits.
+Leitidee: geometrische Constraints und parametrische Driving-Dimensions.
 
 ---
 

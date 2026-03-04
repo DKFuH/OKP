@@ -13,7 +13,7 @@ YAKDS bekommt eine echte Mehrsprachenbasis: zentrale Message-Kataloge,
 Sprachumschaltung im Frontend, locale-aware Formatierung fuer Datum/Zahl/Waehrung
 und eine definierte Fallback-Strategie.
 
-Inspiration: Sweet Home 3D eingebaute UI-Translations und Language-Auswahl.
+Leitidee: eingebaute UI-Translations und locale-aware Umschaltung.
 
 ---
 
@@ -113,4 +113,3 @@ Funktionen:
 - zentrale UI-Bereiche reagieren sofort auf Sprachwechsel
 - Datum, Zahl und Waehrung werden locale-aware formatiert
 - fehlende Uebersetzungen brechen die UI nicht
-

@@ -14,7 +14,7 @@ massstabsstabil bleiben. Der Nutzer definiert Papier-/Plot-Stile einmal,
 und Floorplan-, Detail- und Schnittansichten rendern lesbar ohne
 manuelle Textgroessen-Korrektur pro View.
 
-Inspiration: AutoCAD Annotative Objects, pCon.planner Dimension Styles.
+Leitidee: annotative Objekte und massstabile Dimension Styles.
 
 ---
 

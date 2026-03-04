@@ -1,6 +1,6 @@
 # AGENT_SPRINTS - Sprint-Dokumentation
 
-Sprints `S47` bis `S76` sind implementiert und gemergt.
+Sprints `S47` bis `S76` sind implementiert und gemergt. `S77` ist in Arbeit.
 
 Stand: 2026-03-04
 
@@ -40,6 +40,7 @@ Stand: 2026-03-04
 | 74 | `S74-split-view-virtual-visitor.md` | done | `local` | +10 |
 | 75 | `S75-modell-import-asset-browser-light.md` | done | `local` | +12 |
 | 76 | `S76-render-ux-praesentationsmodus.md` | done | `local` | +8 |
+| 77 | `S77-nordkompass-sonnenstand-tageslicht.md` | in_progress | - | - |
 
 ---
 
@@ -68,7 +69,7 @@ Stand: 2026-03-04
 | 74 | `S74-split-view-virtual-visitor.md` | done | Split-View im Editor und synchroner Virtual Visitor zwischen 2D und 3D |
 | 75 | `S75-modell-import-asset-browser-light.md` | done | Plugin `asset-library`: OBJ/DAE-Import, Bounding-Box/Auto-Scale und Asset-Browser |
 | 76 | `S76-render-ux-praesentationsmodus.md` | done | Plugin `presentation`: Render-Presets und Praesentationsmodus |
-| 77 | `S77-nordkompass-sonnenstand-tageslicht.md` | planned | Plugin `daylight`: Nordkompass, Sonnenstand und Tageslichtsteuerung |
+| 77 | `S77-nordkompass-sonnenstand-tageslicht.md` | in_progress | Plugin `daylight`: Nordkompass, Sonnenstand und Tageslichtsteuerung |
 | 78 | `S78-textur-materialbibliothek.md` | planned | Plugin `materials`: Textur- und Materialbibliothek fuer Flaechen und Assets |
 | 79 | `S79-offline-pwa-und-aufmass-import.md` | planned | Core-PWA plus Plugin `survey-import` fuer mobilen Aufmass-/Blueprint-Import |
 | 80 | `S80-html-viewer-und-vektor-exporte.md` | planned | Plugin `viewer-export`: HTML-Webviewer und SVG-/Vektor-Exporte |
@@ -82,3 +83,9 @@ Stand: 2026-03-04
 | 88 | `S88-locking-visibility-safe-edit.md` | planned | Locking, Visibility und Safe-Edit fuer Level, Maße und Objekte |
 | 89 | `S89-browser-favoriten-ordner-kollektionen.md` | planned | Favoriten, Ordner und Kollektionen fuer Asset- und Materialbrowser |
 | 90 | `S90-cad-gruppen-bauteile-auswahlsets.md` | planned | CAD-Gruppen, Bauteile und Auswahlsets fuer Zeichnungselemente |
+| 91 | `S91-dokumente-pdf-archiv-versionierung.md` | planned | Dokumente, PDF-Archiv und Versionssicherung |
+| 92 | `S92-projektarchiv-kontakte-shop-defaults.md` | planned | Projektarchiv, Kontakte und tenantweite Standardwerte |
+| 93 | `S93-katalogversionen-index-sharing-aufschlaege.md` | planned | Katalogversionen, Index-Sharing und Lieferantenaufschlaege |
+| 94 | `S94-bestellstatus-positionsnummern-sperranzeige.md` | planned | Bestellstatus, Positionsnummern und Sperranzeige |
+| 95 | `S95-room-survey-json-import.md` | planned | Room-Survey-Import und robuste JSON-Interop |
+| 96 | `S96-mwst-skonto-zusatzartikel-profile.md` | planned | MwSt-, Skonto- und Zusatzartikel-Profile |

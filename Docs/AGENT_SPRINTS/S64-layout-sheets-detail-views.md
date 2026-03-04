@@ -11,7 +11,7 @@
 
 Professionelle Planungsunterlagen: mehrere Zeichnungsblätter (Tabs) im Editor,
 Detail-Views für komplexe Bereiche, Schnittansichten für Inseln und Hochschränke.
-Inspiriert von SolidWorks Drawing Sheets und ProKitchen Multi-View.
+Leitidee: mehrblaettrige Layout-Sheets und mehrere gekoppelte Zeichnungsansichten.
 
 ---
 

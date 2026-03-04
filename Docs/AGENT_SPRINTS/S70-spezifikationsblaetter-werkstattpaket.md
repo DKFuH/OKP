@@ -14,7 +14,7 @@ eine strukturierte Dokumentmappe aus Angebot, BOM, Cutlist, Nesting,
 Layout-Sheets und Montagehinweisen. Batchdruck existiert bereits; hier
 geht es um standardisierte, projektbezogene Profidokumente.
 
-Inspiration: ProKitchen Specification Sheets, CARAT/KPS Druckmappen.
+Leitidee: strukturierte Spezifikationsblaetter und Werkstattmappen.
 
 ---
 

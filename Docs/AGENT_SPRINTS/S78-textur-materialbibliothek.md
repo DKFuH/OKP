@@ -13,7 +13,7 @@ Oberflaechen systematisch verwalten: Boeden, Waende, Fronten und importierte
 Modelle erhalten eine einfache Textur- und Materialbibliothek mit Kategorien,
 Vorschau und Wiederverwendung ueber Projekte hinweg.
 
-Inspiration: Sweet Home 3D imported textures und TexturesLibraryEditor.
+Leitidee: importierte Texturen und verwaltbare Materialbibliotheken.
 
 **Plugin-Zuschnitt:** `materials`
 

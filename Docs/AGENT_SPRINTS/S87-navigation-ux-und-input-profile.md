@@ -13,8 +13,7 @@ Die Navigation in 2D und 3D soll sich professioneller und CAD-naher anfuehlen:
 Middle-Mouse-Pan, Touchpad-Gesten, invertierbare Achsen, konfigurierbare
 Navigationsprofile und konsistente Steuerung zwischen Editor, 3D und Viewer.
 
-Inspiration: zahlreiche SH3D-Requests zu Pan, Touchpad, invertierter Achse und
-Navigation in 2D/3D.
+Leitidee: professionelle Navigation mit Pan, Touchpad-Profilen und konsistenter 2D/3D-Steuerung.
 
 ---
 
@@ -77,4 +76,3 @@ Nur falls Settings serverseitig persistiert werden:
 - Touchpad-Nutzung fuehlt sich nicht wie ein Sonderfall an
 - Nutzer kann mindestens ein CAD-nahes Profil aktivieren
 - Navigationseinstellungen bleiben persistent
-

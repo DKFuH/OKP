@@ -14,8 +14,7 @@ Zeichnungsmodelle, Bauteile, Maßgruppen oder Objektbloecke koennen logisch
 zusammengefasst, gemeinsam transformiert, gelockt, ein-/ausgeblendet und
 wiederverwendet werden.
 
-Inspiration: AutoCAD-Gruppen/Blöcke, SH3D-Requests zu groupable walls,
-dimensions, rooms and walls.
+Leitidee: gruppierbare Zeichnungselemente, Bauteile und Auswahlsets fuer CAD-artige Arbeitslogik.
 
 ---
 
@@ -108,4 +107,3 @@ Funktionen:
 - Gruppen lassen sich gemeinsam transformieren
 - Gruppen koennen gesperrt und ausgeblendet werden
 - wiederkehrende Bauteilbloecke lassen sich schneller bearbeiten
-

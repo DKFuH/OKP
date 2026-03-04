@@ -14,7 +14,7 @@ Referenzbilder und zentrale Katalog-/Planungsdaten sollen lokal nutzbar
 bleiben. Zusaetzlich wird ein einfacher Importpfad fuer mobile
 Aufmass-/Blueprint-Daten vorbereitet.
 
-Inspiration: Sweet Home 3D offline usage und Tape Measure App Workflow.
+Leitidee: Offline-Nutzung und strukturierter Aufmass-Import fuer mobile Workflows.
 
 **Architekturregel:** hybrid
 

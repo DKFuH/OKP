@@ -14,12 +14,12 @@ Grundriss, rechts die 3D-Ansicht. Beide Views bleiben live synchron. Ein
 "Virtual Visitor" zeigt Kamera-Position, Blickrichtung und Augenhoehe direkt
 im Grundriss.
 
-Inspiration: Sweet Home 3D Split-View und Virtual Visitor.
+Leitidee: Split-View und Virtual Visitor als schneller, synchroner Planungsmodus.
 
 Wichtig:
 
 - nur UX/Workflow uebernehmen
-- keine Assets, Icons oder GPL-Code aus SH3D verwenden
+- keine Fremd-Assets, Icons oder Fremdcode verwenden
 - komplette Eigenimplementierung in React, Konva und Three.js
 
 ---
@@ -143,4 +143,3 @@ UX-V1:
 - 3D-Kamera und 2D-Visitor bleiben synchron
 - Augenhoehe beeinflusst die 3D-Kamera sichtbar
 - Mobile Ansicht faellt kontrolliert auf Single-View zurueck
-

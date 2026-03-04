@@ -13,7 +13,7 @@ Rendering und Kundenpraesentation vereinfachen: wenige klare
 Qualitaetsstufen fuer Bild-/Videoexport, schneller Praesentationsmodus ohne
 Editorrauschen und direkte Nutzung vorhandener Kamera-/Tourdaten.
 
-Inspiration: Sweet Home 3D Foto-/Video-Export mit wenigen Presets.
+Leitidee: Foto-/Video-Export mit wenigen klaren Presets und reduziertem Kundenmodus.
 
 **Plugin-Zuschnitt:** `presentation`
 

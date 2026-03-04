@@ -14,14 +14,14 @@ Bibliothekseintraege mit Vorschau, Kategorie und automatischer Skalierung
 genutzt werden. Fokus auf pragmatischen Import von OBJ/DAE mit Bounding-Box,
 Auto-Scale und einfacher Platzierung.
 
-Inspiration: Sweet Home 3D Model Import Wizard und einfacher Moebelbrowser.
+Leitidee: schlanker Modell-Import und einfacher Browser fuer importierte Assets.
 
 **Plugin-Zuschnitt:** `asset-library`
 
 Wichtig:
 
-- kein Kopieren von SH3D-Bibliotheken oder Assets
-- keine Uebernahme des SH3F-Formats
+- kein Kopieren fremder Bibliotheken oder Assets
+- keine Uebernahme fremdproduktspezifischer Bibliotheksformate
 - nur UX-Ideen, eigene Implementierung
 - Umsetzung als Plugin, nicht als Core-Katalogumbau
 

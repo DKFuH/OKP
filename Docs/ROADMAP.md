@@ -740,20 +740,20 @@ Vollständige Interop-Dokumentation: [`Docs/INTEROP.md`](./INTEROP.md)
 
 **Meta:** Status: `done` · Owner: Interop-Lead · ETA: Phase 7 · Abhängigkeiten: S52, S19
 
-**Ziel:** Bestehende Stubs (DWG, SKP) vollständig implementieren; pCon.planner-Interop-Parität erreichen.
+**Ziel:** Bestehende Stubs (DWG, SKP) vollständig implementieren; professionelle CAD-Interop erreichen.
 
 **Hintergrund:** DWG-Stubs (`interop-cad/dwg-import`, `dwg-export`) und SKP-Export-Stub (`interop-sketchup/skp-export`) existieren bereits im Repo ohne Implementierung.
 
 **Features:**
 - **DWG-Import:** Grundriss aus DWG-Datei importieren (Wände, Öffnungen); Bibliothek: `@jscad/dxf` oder Open Design Alliance Node Wrapper
 - **DWG-Export:** Planung (Wandansichten, Grundriss, Maßketten) als DWG exportieren
-- **SKP-Export:** Planung als SketchUp-Datei exportieren (`skp-export`-Stub implementieren)
+- **SKP-Export:** Planung als SKP-kompatiblen Exportpfad ausgeben (`skp-export`-Stub implementieren)
 - **DXF-Vollständigkeit:** Bestehenden DXF-Import/Export gegen reale Dateien aus Planungssoftware testen und Lücken schließen
 - **Batch-Export:** Alle Formate (DXF, DWG, GLTF, IFC) über einen einzigen `POST /alternatives/:id/export`-Endpunkt mit `format`-Parameter
 
 **Deliverables:** DWG-Import/-Export vollständig, SKP-Export vollständig, Batch-Export-Endpunkt, 25 Tests (inkl. Round-Trip-Tests DXF→OKP→DXF).
 
-**DoD:** DWG-Grundriss importiert und als Raum sichtbar; DWG-Export öffnet in AutoCAD/LibreCAD ohne Fehler; SKP-Export öffnet in SketchUp; Batch-Export liefert alle Formate in einem ZIP.
+**DoD:** DWG-Grundriss importiert und als Raum sichtbar; DWG-Export ist in gängigen CAD-Tools lesbar; SKP-Export ist nutzbar; Batch-Export liefert alle Formate in einem ZIP.
 
 ---
 
@@ -840,11 +840,11 @@ acoustic_layers – (project_id, layer_type VARCHAR, object_refs JSON)
 
 ## Phase 8 – Sprints 56–60: Planerqualität & erweiterte Raumdefinition
 
-**Ausgangslage (nach Sprint 55):** Vollständige Interop-Parität, OFML-ähnliche Artikelkonfiguration und Raumakustik vorhanden. Die Werkzeuge für Raumzeichnung, Bemaßung und Katalogtiefe sind jedoch noch deutlich hinter professionellen Studio-Systemen (CARAT, KPS.MAX, pCon.planner, Chief Architect).
+**Ausgangslage (nach Sprint 55):** Vollständige Interop-Parität, OFML-ähnliche Artikelkonfiguration und Raumakustik vorhanden. Die Werkzeuge für Raumzeichnung, Bemaßung und Katalogtiefe sind jedoch noch deutlich hinter professionellen Studio-Workflows.
 
 **Ziel:** Qualitätssprung im täglichen Planungsworkflow – Wand-Interaktoren für direkte Grundrissbearbeitung, Live-Bemaßung, erweiterte Wandobjekte, Grundriss-Nachzeichnen aus Bildern/DXF und tiefere Katalogstruktur.
 
-**Inspiration:** pCon.planner (Wand-Interaktoren, Bemaßung, 2D-Projektionen), CARAT/KPS.MAX (Kitchen Assistant, Live-Dims, Makros), Chief Architect (Toe-Kick, Countertop-Mods), 2020 Design (Multi-Point-Panorama).
+**Inspiration:** professionelle Studio-Workflows fuer Wand-Interaktoren, Bemaßung, 2D-Projektionen, Kitchen-Assistants, Live-Dims, Makros, Arbeitsplatten-Modifikationen und Multi-Point-Panoramen.
 
 ---
 
@@ -876,7 +876,7 @@ acoustic_layers – (project_id, layer_type VARCHAR, object_refs JSON)
 
 **Ziel:** Das `Opening`-Modell zu einem generischen `WallAttachment` ausbauen: Heizkörper, Steckdosen, Schalter, Nischen und generische Wandelemente als eigene Typen mit 2D-Symbolen.
 
-**Hintergrund:** Professionelle Studio-Systeme (pCon, CARAT) kennen neben Türen/Fenstern auch Installationsobjekte (Heizkörper, Steckdose, Wasserleitungen), die bei der Schrank-/Platzierungsplanung berücksichtigt werden müssen. Das bestehende `Opening`-Schema ist auf `door/window/pass-through` beschränkt.
+**Hintergrund:** Professionelle Studio-Workflows kennen neben Türen/Fenstern auch Installationsobjekte (Heizkörper, Steckdose, Wasserleitungen), die bei der Schrank-/Platzierungsplanung berücksichtigt werden müssen. Das bestehende `Opening`-Schema ist auf `door/window/pass-through` beschränkt.
 
 **Features:**
 
@@ -904,7 +904,7 @@ openings.wall_offset_depth_mm: INTEGER nullable
 
 **Ziel:** Foto oder Scan eines Grundrisses als halbtransparentes Hintergrundbild in den Canvas laden und darüber den Raum nachzeichnen.
 
-**Hintergrund:** Handgezeichnete oder eingescannte Grundrisse sind im Handwerk der häufigste Ausgangspunkt. CARAT und pCon.planner unterstützen diesen Workflow mit Bild-Import + Maßband-Kalibrierung. Eigenes Nachzeichnen spart Zeit gegenüber vollem DXF-Import.
+**Hintergrund:** Handgezeichnete oder eingescannte Grundrisse sind im Handwerk der häufigste Ausgangspunkt. Bild-Import plus Maßband-Kalibrierung unterstützt diesen Workflow. Eigenes Nachzeichnen spart Zeit gegenüber vollem DXF-Import.
 
 **Features:**
 
@@ -961,7 +961,7 @@ dimensions: id, room_id, type (linear|angular), points JSON, style JSON, created
 - **Einheitliche Katalog-Quellen:** LeftSidebar-Katalogbereich bündelt intern: Herstellerkataloge, SKP-Referenzen, generische Imports, Nutzerfavoriten – in einer einheitlichen Listenansicht mit Quellenicon.
 - **Kitchen Assistant (Light):** Button „Layout vorschlagen" → Analysiert Raumgeometrie (Wandlängen, Ecken, Öffnungen) → Schlägt 2–3 Grundlayouts vor (L-Form, U-Form, Einzeiler, Insel) als Vorschau; Klick übernimmt Schrankreihen-Grundstruktur als Makro.
 - **Live-Suche & Schnellfilter:** Suche in Katalog-Sidebar reagiert on-keystroke (< 100 ms); Schnellfilter-Chips: Favoriten, Zuletzt verwendet, Neuheiten (nach `created_at`), Aktionsartikel.
-- **Makro-Vorlagen aus Katalog:** Häufig genutzte Zeilen/Inseln (CARAT-„Makros"-Konzept) im Katalog als `CatalogMacro` speichern; beim Platzieren als Gruppe einfügen.
+- **Makro-Vorlagen aus Katalog:** Häufig genutzte Zeilen/Inseln als `CatalogMacro` speichern; beim Platzieren als Gruppe einfügen.
 
 **Neues Datenmodell:**
 ```
@@ -1172,10 +1172,10 @@ Panorama-Touren und standardisierte Werkstatt-/Vertriebspakete.
  
 **Aus Benchmarking uebernommen und bewusst priorisiert:**
  
-- AutoCAD / pCon: annotative Masse, Dimension Styles, plotting
+- annotative Masse, Dimension Styles und plotting-orientierte Layouts
 - klassische CAD-Systeme: pragmatische Constraints und Driving Dimensions
-- 2020 Design / ProKitchen: Multi-Point-Panoramen fuer Kundenpraesentation
-- ProKitchen / CARAT / KPS: Spezifikationsblaetter und strukturierte Dokumentmappen
+- Multi-Point-Panoramen fuer Kundenpraesentation
+- Spezifikationsblaetter und strukturierte Dokumentmappen
  
 **Bewusst noch nicht priorisiert:**
 
@@ -1248,21 +1248,21 @@ Editor-Spielerei. Die Phase trennt bewusst 2D-Kern, Bemaßung/Layout und
 | 73 | Gebogene Waende funktionieren durchgaengig von 2D ueber 3D bis Interop |
 ---
 
-## Phase 14 - Planer-UX nach SH3D-Prinzipien (Sprints 74-76)
+## Phase 14 - Planer-UX fuer Split-View, Asset-Import und Praesentation (Sprints 74-76)
 
 **Ziel:** Die bestehende technische Tiefe in eine schnellere, intuitivere
 Planer-UX ueberfuehren: Split-View, synchroner Virtual Visitor, einfacher
 Asset-Import und klarer Praesentationsmodus.
 
-**Inspiration bewusst nur auf UX-Ebene:**
+**Leitidee:**
 
-- Sweet Home 3D Split-View und Virtual Visitor
-- Sweet Home 3D Model Import Wizard
-- Sweet Home 3D Foto-/Videoexport mit wenigen klaren Presets
+- Split-View und Virtual Visitor
+- schlanker Modell-Import
+- Foto-/Videoexport mit wenigen klaren Presets
 
-**Lizenz-/Produktregel:**
+**Produktregel:**
 
-- keine SH3D-Assets, Icons oder Quellcode uebernehmen
+- keine Fremd-Assets, Icons oder Quellcode uebernehmen
 - nur Workflow- und Bedienideen adaptieren
 - vollstaendige Eigenimplementierung in React, Konva und Three.js
 
@@ -1303,16 +1303,16 @@ Asset-Import und klarer Praesentationsmodus.
 **Ziel:** Die Planer-UX um reale Umgebungsparameter, Materialverwaltung,
 Offline-Nutzung und leichtere Sharing-/Exportpfade erweitern.
 
-**Inspiration aus Sweet Home 3D Plug-ins und Tools:**
+**Leitidee:**
 
 - Compass und Tageslicht nach Ort/Uhrzeit
-- importierte Texturen und Bibliothekseditor
-- Offline-Nutzung und Tape-Measure-Workflow
+- importierte Texturen und Materialbibliotheken
+- Offline-Nutzung und Aufmass-Import
 - HTML5-Export, Planbild-Export und Side-View-Denke
 
 **Bewusst nicht uebernommen:**
 
-- SH3D-spezifische Bibliotheksformate (`SH3F`, `SH3T`)
+- fremdproduktspezifische Bibliotheksformate
 - generische Dachgeneratoren ohne klaren Kuechen-ROI
 - direkte GPL-Code- oder Asset-Nutzung
 
@@ -1327,7 +1327,7 @@ Offline-Nutzung und leichtere Sharing-/Exportpfade erweitern.
 
 | Sprint | Status | Thema | Deliverables |
 |--------|--------|-------|--------------|
-| 77 | `planned` | Plugin `daylight`: Nordkompass, Sonnenstand & Tageslicht | Umweltmodell, Kompassoverlay, Sonnenpreview, Nordpfeil in Sheets |
+| 77 | `in_progress` | Plugin `daylight`: Nordkompass, Sonnenstand & Tageslicht | Umweltmodell, Kompassoverlay, Sonnenpreview, Nordpfeil in Sheets |
 | 78 | `planned` | Plugin `materials`: Textur- & Materialbibliothek | Materialkatalog, Resolver, Texturzuweisung, Vorschau |
 | 79 | `planned` | Core + Plugin `survey-import`: Offline-PWA & Aufmass-Import | Manifest, Service Worker, Sync-Queue, Measurement-Import |
 | 80 | `planned` | Plugin `viewer-export`: HTML-Viewer & Vektor-Exporte | HTML/WebGL-Viewer, SVG-Planexport, SVG-Sheetexport |
@@ -1358,10 +1358,10 @@ Offline-Nutzung und leichtere Sharing-/Exportpfade erweitern.
 weiterentwickeln: Levels, Treppen, Deckenaussparungen, Vertikalschnitte und
 levelfaehige Layout-/Exportpfade.
 
-**Inspiration aus Sweet Home 3D und angrenzenden CAD-Workflows:**
+**Leitidee:**
 
 - Levels / mehrere Geschosse
-- Staircase Generator als Workflow-Idee, nicht als Codevorlage
+- Treppen-Workflow als Produktidee, nicht als Codevorlage
 - Side View / vertikale Ansichten
 
 **Core-vs-Plugin:**
@@ -1414,11 +1414,11 @@ levelfaehige Layout-/Exportpfade.
 **Ziel:** YAKDS bekommt echte Mehrsprachenfaehigkeit fuer UI, Tenant-Terminologie,
 Dokumente und Share-/Viewer-Pfade.
 
-**Inspiration aus Sweet Home 3D:**
+**Leitidee:**
 
 - eingebaute UI-Translations
 - auswaehlbare Sprache in den Einstellungen
-- optionale externe Sprachbibliotheken
+- optionale externe Sprachpakete
 
 ### Sprint-Uebersicht
 
@@ -1452,12 +1452,12 @@ Dokumente und Share-/Viewer-Pfade.
 produktiver machen: bessere Navigation, Locking/Sichtbarkeit, geordnete
 Browser und CAD-artige Gruppen-/Bauteillogik.
 
-**Inspiration aus offenen SH3D-Feature-Requests und klassischem CAD:**
+**Leitidee:**
 
 - Middle mouse panning, touchpad navigation, invertierte Achsen
 - lockable levels, hidden dimensions, safe edit
 - favorite folders und browser filters
-- gruppierbare Zeichnungselemente und Auswahlsets wie in AutoCAD
+- gruppierbare Zeichnungselemente und Auswahlsets
 
 ### Sprint-Uebersicht
 
@@ -1485,3 +1485,42 @@ Browser und CAD-artige Gruppen-/Bauteillogik.
 | 88 | Komplexe Projekte lassen sich sicherer bearbeiten |
 | 89 | Asset- und Materialbibliotheken bleiben auch im Alltag uebersichtlich |
 | 90 | Zeichnungsmodelle, Bauteile und Maßgruppen sind als echte Arbeitsstruktur nutzbar |
+
+---
+
+## Phase 19 - Dokumente, Projektsteuerung & kaufmaennische Robustheit (Sprints 91-96)
+
+**Ziel:** Dokumente, Projektstatus, Katalogindizes und kaufmaennische Regeln fuer den Studio- und Handwerksalltag robuster und zentral steuerbar machen.
+
+### Sprint-Uebersicht
+
+| Sprint | Status | Thema | Deliverables |
+|--------|--------|-------|--------------|
+| 91 | `planned` | Dokumente, PDF-Archiv & Versionssicherung | Dokumententab, PDF-Ablage, Backup-/Versionspruefung |
+| 92 | `planned` | Projektarchiv, Kontakte & Shop-Defaults | Archivsicht, Kontaktregister, Standardwerte je Tenant |
+| 93 | `planned` | Katalogversionen, Index-Sharing & Lieferantenaufschlaege | parallele Katalogversionen, freigegebene Indizes, Preisaufschlaege |
+| 94 | `planned` | Bestellstatus, Positionsnummern & Sperranzeige | Sammel-Lieferstatus, Renummerierung, Lock-Info |
+| 95 | `planned` | Room-Survey-Import & robuste JSON-Interop | Survey-JSON, Validierung, Importdiagnostik |
+| 96 | `planned` | MwSt-, Skonto- & Zusatzartikel-Profile | Steuerprofile, Rabattlogik, Zusatzartikelgruppen |
+
+### Sprint-Metadaten
+
+| Sprint | Owner | ETA | Abhaengigkeiten | DoD-Kurzfassung |
+|--------|-------|-----|----------------|-----------------|
+| 91 | Full-Stack | Phase 19 | S61, S70, S79 | Dokumente sind versioniert, archiviert und als PDF nachvollziehbar |
+| 92 | Full-Stack | Phase 19 | S47, S49, S84 | Projektarchiv und Kontakte sind tenantweit konsistent verwaltbar |
+| 93 | Backend | Phase 19 | S20, S29, S54 | Katalogversionen und Indexregeln sind parallel und freigegeben nutzbar |
+| 94 | Full-Stack | Phase 19 | S46, S48, S60 | Bestellstatus, Renummerierung und Locks sind transparent bedienbar |
+| 95 | Full-Stack | Phase 19 | S47, S58, S79 | Room-Surveys werden robust validiert und importiert |
+| 96 | Backend | Phase 19 | S13, S49, S54 | MwSt- und Skontologik ist profilbasiert und reporting-faehig |
+
+### Meilenstein Phase 19
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 91 | Dokumente und Exporte sind revisionssicherer organisiert |
+| 92 | Projekte, Kontakte und Defaults lassen sich zentral und sauber fuehren |
+| 93 | Preis- und Katalogpflege wird fuer groessere Datenstaende beherrschbar |
+| 94 | Bestellung und Projektstatus werden operativ transparenter |
+| 95 | Survey- und JSON-Importe werden deutlich robuster |
+| 96 | Kaufmaennische Regeln sind sauber konfigurierbar statt implizit verdrahtet |

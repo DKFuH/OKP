@@ -13,7 +13,7 @@ Treppen und vertikale Verbindungen als eigenes Planungselement einfuehren.
 V1 konzentriert sich auf gerade und gewendelte Treppen, Treppenaugen,
 Aussparungen und die Verknuepfung zwischen zwei Ebenen.
 
-Inspiration: Sweet Home 3D Staircase Generator, Levels-Workflow.
+Leitidee: Treppen und vertikale Verbindungen als planbare Mehr-Ebenen-Elemente.
 
 **Plugin-Zuschnitt:** `stairs`
 

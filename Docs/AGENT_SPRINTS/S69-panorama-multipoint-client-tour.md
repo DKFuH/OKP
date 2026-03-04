@@ -13,7 +13,7 @@ Aus einer Planung mehrere verknuepfte Panorama-Viewpoints erzeugen, damit
 Kunden durch die Kueche navigieren koennen. Fokus ist eine browserfaehige,
 leichte Tour statt vollwertiger VR.
 
-Inspiration: 2020 Design Multi-Point Panorama, ProKitchen Online Walkthroughs.
+Leitidee: Multi-Point-Panoramen und gefuehrte Kundenrundgaenge.
 
 ---
 

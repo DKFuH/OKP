@@ -13,7 +13,7 @@ Sprachen sollen nicht nur hart im Core liegen, sondern als verwaltbare
 Sprachpakete erweiterbar werden. Das erlaubt spaetere Fachwort-Varianten,
 Branchensprache und optionale weitere Locales ohne Core-Fork.
 
-Inspiration: Sweet Home 3D externe Sprachbibliotheken.
+Leitidee: verwaltbare Sprachpakete und tenant-spezifische Terminologie.
 
 ---
 
@@ -108,4 +108,3 @@ Funktionen:
 - Tenant-Overrides greifen ueber Core-Keys
 - neue Locales lassen sich ohne Codefork aktivieren
 - fehlerhafte Packs werden sauber validiert
-

@@ -226,7 +226,7 @@ Eintragen:
 - Cutlist-Teile koennen in `NestingJob` berechnet werden
 - Mehrere Platten werden korrekt angelegt, wenn eine Platte nicht reicht
 - Rotation und Kerf werden korrekt beruecksichtigt
-- DXF-Export ist in LibreCAD/AutoCAD importierbar
+- DXF-Export ist in gängigen CAD-Tools importierbar
 - Frontend zeigt Vorschau und Kennzahlen
 - Mindestens 18 neue Tests gruen
 

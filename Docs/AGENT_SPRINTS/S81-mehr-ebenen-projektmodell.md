@@ -14,7 +14,7 @@ Galerie oder Podest. Raeume, Waende, Platzierungen und Referenzbilder muessen
 einer Ebene zugeordnet werden koennen. V1 fokussiert auf Datenmodell,
 Editor-Umschaltung und Grundlogik.
 
-Inspiration: Sweet Home 3D Levels / multiple floors.
+Leitidee: mehrere Ebenen als echtes Projektmodell statt Ein-Ebenen-Planung.
 
 ---
 
@@ -112,4 +112,3 @@ Funktionen:
 - Editor kann aktive Ebene wechseln
 - Layout/Sheet-Ansichten koennen nach Ebene filtern
 - Altprojekte bleiben lauffaehig
-

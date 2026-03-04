@@ -13,8 +13,7 @@ Katalog-, Asset- und Materialbrowser sollen in grossen Bibliotheken skalieren:
 Favoriten, Unterordner, Kollektionen, gespeicherte Filter und bessere Preview-
 Ordnungslogik fuer den taeglichen Einsatz.
 
-Inspiration: SH3D-Requests zu favorite furniture folders, subfolders,
-browser filters und texture previews.
+Leitidee: Favoriten, Unterordner, Filter und bessere Vorschau fuer grosse Bibliotheken.
 
 ---
 
@@ -90,4 +89,3 @@ Funktionen:
 - Bibliothekseintraege koennen in Ordnern organisiert werden
 - gespeicherte Filter und Kollektionen beschleunigen die Suche
 - Browser bleibt auch bei grossen Datenmengen bedienbar
-

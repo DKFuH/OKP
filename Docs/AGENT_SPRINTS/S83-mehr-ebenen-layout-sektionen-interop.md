@@ -13,7 +13,7 @@ Mehr-Ebenen-Projekte professionell darstellen und exportieren:
 level-spezifische Sheets, vertikale Schnitte, Treppendarstellung und
 grundlegende Mehr-Ebenen-Daten in Exporten.
 
-Inspiration: Sweet Home 3D Side View, more levels, export thinking.
+Leitidee: level-aware Sheets, vertikale Schnitte und mehrstufige Exportpfade.
 
 **Plugin-Zuschnitt:** `multilevel-docs`
 

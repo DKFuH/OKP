@@ -13,8 +13,7 @@ YAKDS bekommt einen professionellen Schutz- und Sichtbarkeitsmodus:
 Objekte, Maße, Levels und Gruppen koennen gesperrt oder ausgeblendet werden,
 damit komplexe Plaene sicher bearbeitet werden koennen.
 
-Inspiration: SH3D-Requests zu lockable levels, hide/show dimensions,
-visibility made easy und safe editing.
+Leitidee: sichere Bearbeitung ueber Locking, Sichtbarkeit und Safe-Edit-Modi.
 
 ---
 
@@ -88,4 +87,3 @@ Funktionen:
 - Sichtbarkeit groesserer Teilmengen ist schnell steuerbar
 - Level-Locks funktionieren in Mehr-Ebenen-Projekten
 - Safe-Edit reduziert Fehlbedienungen bei grossen Plaenen
-

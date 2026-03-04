@@ -11,8 +11,8 @@
 
 Automatische Zuschnittliste aus Platzierungen: Welche Platte (Material,
 Größe) muss wie oft in welcher Dimension zugeschnitten werden?
-Export als PDF und CSV für die Werkstatt. Inspiriert von SketchList 3D
-und Cabinet Vision – essenziell für Tischlereibetriebe.
+Export als PDF und CSV für die Werkstatt. Leitidee: strukturierte
+Zuschnittlisten und materialorientierte Werkstattunterlagen.
 
 ---
 
