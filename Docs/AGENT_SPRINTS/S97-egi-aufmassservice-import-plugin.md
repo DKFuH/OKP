@@ -11,8 +11,8 @@
 
 Das Plugin `survey-import` soll um einen konkreten Import-Adapter fuer
 strukturierte EGI-Aufmassdateien erweitert werden. Der Adapter importiert
-Wandgeometrie, Oeffnungen, Hindernisse und Installationspunkte in das
-interne Raum-/Aufmassmodell von YAKDS.
+Wandgeometrie, Dachschraegen, Oeffnungen, Hindernisse und
+Installationspunkte in das interne Raum-/Aufmassmodell von YAKDS.
 
 Leitidee: Formatadapter statt harter Sonderlogik im Core.
 
@@ -27,6 +27,9 @@ mit folgenden Sektionen:
 - `Wall_*`
 - `Window_*`
 - `Door_*`
+- `Roof_*`
+- `Recess_*`
+- `Radiator_*`
 - `Hindrance_*`
 - `CS_Installation_*`
 
@@ -71,14 +74,26 @@ Keine neue Core-Route nur fuer dieses Format.
 
 - `Window_*` -> Fenster
 - `Door_*` -> Tueren
+- `Hinge` und `Opening` -> Oeffnungsrichtung / Anschlag, soweit intern abbildbar
 - `WallRefNo` -> Zuordnung zur Wand
 
-### 3.3 Hindernisse
+### 3.3 Dachschraegen
+
+- `Roof_*` -> Dachschraege / CeilingConstraint / Hoehenbegrenzung
+- V1 darf reduzierte Semantik importieren, solange die Schraegflaeche
+  sichtbar einer Wand / Raumkante zugeordnet werden kann
+- Wenn ein Datensatz nicht vollstaendig auf das interne Modell passt,
+  wird er als importierte Dachschraege mit Warning uebernommen statt
+  verworfen
+
+### 3.4 Hindernisse und bauliche Sonderfaelle
 
 - `Hindrance_*` -> Hindernis, Nische oder generischer Survey-Blocker
+- `Recess_*` -> Nische / Aussparung
+- `Radiator_*` -> Heizkoerper oder generisches Wandobjekt
 - V1 darf unbekannte Hindernistypen als `custom` oder `obstacle` markieren
 
-### 3.4 Installationen
+### 3.5 Installationen
 
 - `CS_Installation_*` -> Installationsobjekte / Anschlusspunkte
 - Beispiele: `water-cold`, `water-drain`, `electrical_outlet`
@@ -101,6 +116,7 @@ Antwortstruktur V1:
   "format": "egi",
   "summary": {
     "walls": 6,
+    "roofs": 2,
     "windows": 2,
     "doors": 1,
     "hindrances": 14,
@@ -145,11 +161,13 @@ V1:
 Mindestens:
 
 - Parser liest `GLOBAL`, `Wall`, `Window`, `Door`, `Hindrance`, `CS_Installation`
+- Parser liest auch `Roof`, `Recess` und `Radiator`
 - Winkelfelder und numerische Strings werden robust geparsed
 - `WallRefNo` wird korrekt auf Zielwaende aufgeloest
 - unbekannte `CS_Installation.Type` erzeugen Warnung statt Abbruch
+- `Roof_*` wird als Dachschraege / Hoehenbegrenzung uebernommen
 - Import-Endpoint liefert Summary + Warnings
-- Beispiel-Datei aus dem Sprint dient als Fixture
+- mehrere Beispiel-Dateien aus dem Sprint dienen als Fixtures
 
 Ziel: mindestens 12 Tests.
 
@@ -158,8 +176,9 @@ Ziel: mindestens 12 Tests.
 ## 7. DoD
 
 - `.egi`-Datei ist ueber Plugin importierbar
-- Waende, Tueren, Fenster und Installationen erscheinen in der Import-Preview
+- Waende, Dachschraegen, Tueren, Fenster und Installationen erscheinen in der Import-Preview
 - Hindernisse werden mindestens generisch uebernommen
+- Nischen und Heizkoerper werden nicht still verworfen
 - Warnungen sind fuer nicht perfekt mappbare Objekte sichtbar
 - Tests gruen
 - keine EGI-spezifische Sonderlogik im Core ausser generischen Survey-Hooks
@@ -171,5 +190,5 @@ Ziel: mindestens 12 Tests.
 - Vollstaendige Semantik aller Hindernis-Untertypen
 - Rueckexport in EGI
 - Auto-Heilung inkonsistenter Geometrie
+- perfekte semantische Uebersetzung aller Dachschraegen-Sonderfaelle
 - Hersteller- oder provider-spezifische Nachlogik jenseits des Formatmappings
-
