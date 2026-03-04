@@ -15,6 +15,7 @@ Projektstatus per 2026-03-04.
 - Sprints 47-51: abgeschlossen
 - Sprint 56: abgeschlossen
 - Sprints 57-87: abgeschlossen
+- Sprint 98: abgeschlossen (Stabilisierungsphase)
 
 Aktuell auf `main`:
 
@@ -39,7 +40,15 @@ Aktuell auf `main`:
 - S85 (Language Packs) ist abgeschlossen.
 - S86 (Multilinguale Dokumente & Shares) ist abgeschlossen.
 - S87 (Navigation-UX und Input-Profile) ist abgeschlossen.
-- Naechster Fokus: S88 (Locking, Visibility und Safe-Edit).
+- Naechster Fokus: Stabilitaetsnachlauf nach S98 und folgende Ausbau-Sprints gemaess ROADMAP.
+
+---
+
+## Letzte Aenderungen (2026-03-04)
+
+- RC1-Tag veroeffentlicht: `v0.1.0-rc1` (remote vorhanden auf `origin`).
+- Verifikation fuer RC1 durchgefuehrt: Frontend-Build, API-Build, Full-Testlauf und Security-Smoke gruen.
+- Haupt-README ueberarbeitet (RC1-Status, Docker-Quickstart, Setup/Verifikation vereinheitlicht).
 
 ---
 
