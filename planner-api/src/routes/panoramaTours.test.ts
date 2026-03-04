@@ -11,6 +11,9 @@ const { prismaMock } = vi.hoisted(() => ({
     project: {
       findUnique: vi.fn(),
     },
+    tenantSetting: {
+      findUnique: vi.fn(),
+    },
     panoramaTour: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -31,6 +34,7 @@ function tourFixture(overrides: Record<string, unknown> = {}) {
     tenant_id: tenantA,
     project_id: projectId,
     name: 'Standardtour',
+    locale_code: 'de',
     points_json: [],
     share_token: null,
     expires_at: null,
@@ -56,6 +60,7 @@ describe('panoramaTourRoutes', () => {
     vi.clearAllMocks()
 
     prismaMock.project.findUnique.mockResolvedValue({ id: projectId, tenant_id: tenantA })
+    prismaMock.tenantSetting.findUnique.mockResolvedValue({ preferred_locale: 'de' })
     prismaMock.panoramaTour.findMany.mockResolvedValue([tourFixture()])
     prismaMock.panoramaTour.findUnique.mockResolvedValue(tourFixture())
     prismaMock.panoramaTour.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => tourFixture(data))
@@ -81,6 +86,7 @@ describe('panoramaTourRoutes', () => {
       url: `/api/v1/projects/${projectId}/panorama-tours`,
       payload: {
         name: 'Kundentour',
+        locale_code: 'en',
         points_json: [
           {
             id: 'p1',
@@ -93,7 +99,7 @@ describe('panoramaTourRoutes', () => {
     })
 
     expect(res.statusCode).toBe(201)
-    expect(res.json()).toMatchObject({ name: 'Kundentour' })
+    expect(res.json()).toMatchObject({ name: 'Kundentour', locale_code: 'en' })
     await app.close()
   })
 
@@ -137,12 +143,13 @@ describe('panoramaTourRoutes', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/v1/panorama-tours/${tourId}/share`,
-      payload: { expires_in_days: 7 },
+      payload: { expires_in_days: 7, locale_code: 'en' },
     })
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({
       share_token: expect.any(String),
+      locale_code: 'en',
       share_url: expect.stringContaining('/share/panorama/'),
     })
     await app.close()

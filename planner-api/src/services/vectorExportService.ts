@@ -18,6 +18,7 @@ type PlanSvgInput = {
   projectName: string
   roomName?: string | null
   vertices: NumericPoint[]
+  localeCode: 'de' | 'en'
   levelId?: string | null
   levelName?: string | null
   sectionLine?: {
@@ -35,6 +36,7 @@ type PlanSvgInput = {
 
 type LayoutSheetSvgInput = {
   sheetName: string
+  localeCode: 'de' | 'en'
   showArcAnnotation: boolean
   arcLabel?: string
   showNorthArrow: boolean
@@ -50,6 +52,7 @@ type HtmlViewerInput = {
   projectName: string
   roomName?: string | null
   vertices: NumericPoint[]
+  localeCode: 'de' | 'en'
 }
 
 function toFiniteNumber(value: unknown): number | null {
@@ -164,6 +167,7 @@ export function extractBoundaryVertices(boundary: unknown): NumericPoint[] {
 export function renderPlanSvg(input: PlanSvgInput): string {
   const normalized = normalizePlanVertices(input.vertices)
   const metadataPayload = {
+    locale_code: input.localeCode,
     level_id: input.levelId ?? null,
     level_name: input.levelName ?? null,
     section_line: input.sectionLine
@@ -182,12 +186,13 @@ export function renderPlanSvg(input: PlanSvgInput): string {
   }
 
   if (normalized.length < 3) {
+    const fallbackText = input.localeCode === 'en' ? 'No valid room geometry available' : 'Keine gueltige Raumgeometrie vorhanden'
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
   <metadata id="okp-metadata">${escapeXml(JSON.stringify(metadataPayload))}</metadata>
   <rect x="0" y="0" width="900" height="600" fill="#ffffff" />
   <text x="40" y="60" font-size="24" font-family="Arial">${escapeXml(input.projectName)}</text>
-  <text x="40" y="100" font-size="16" font-family="Arial">No valid room geometry available</text>
+  <text x="40" y="100" font-size="16" font-family="Arial">${escapeXml(fallbackText)}</text>
 </svg>`
   }
 
@@ -215,7 +220,7 @@ export function renderPlanSvg(input: PlanSvgInput): string {
       stroke-width="2"
       stroke-dasharray="8 4"
     />
-    <text x="40" y="68" font-size="13" font-family="Arial" fill="#0369a1">Schnitt: ${escapeXml(input.sectionLine.label ?? input.sectionLine.id)}</text>`
+    <text x="40" y="68" font-size="13" font-family="Arial" fill="#0369a1">${input.localeCode === 'en' ? 'Section' : 'Schnitt'}: ${escapeXml(input.sectionLine.label ?? input.sectionLine.id)}</text>`
     : ''
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -242,6 +247,7 @@ export function renderLayoutSheetSvg(input: LayoutSheetSvgInput): string {
     : ''
 
   const metadataPayload = {
+    locale_code: input.localeCode,
     level_id: input.levelId ?? null,
     level_name: input.levelName ?? null,
     section_line_id: input.sectionLineId ?? null,
@@ -249,8 +255,8 @@ export function renderLayoutSheetSvg(input: LayoutSheetSvgInput): string {
   }
 
   const scopeText = [
-    input.levelName ? `Ebene: ${input.levelName}` : null,
-    input.sectionLabel ? `Schnitt: ${input.sectionLabel}` : null,
+    input.levelName ? `${input.localeCode === 'en' ? 'Level' : 'Ebene'}: ${input.levelName}` : null,
+    input.sectionLabel ? `${input.localeCode === 'en' ? 'Section' : 'Schnitt'}: ${input.sectionLabel}` : null,
   ].filter((entry): entry is string => Boolean(entry)).join(' · ')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -267,18 +273,24 @@ export function renderLayoutSheetSvg(input: LayoutSheetSvgInput): string {
 
 export function renderHtmlViewer(input: HtmlViewerInput): string {
   const payload = {
+    locale_code: input.localeCode,
     project_id: input.projectId,
     project_name: input.projectName,
     room_name: input.roomName ?? null,
     vertices_mm: input.vertices,
   }
 
+  const pageTitleSuffix = input.localeCode === 'en' ? 'Viewer Export' : 'Viewer-Export'
+  const introText = input.localeCode === 'en' ? 'Read-only viewer export.' : 'Schreibgeschuetzter Viewer-Export.'
+  const ariaLabel = input.localeCode === 'en' ? 'Plan preview placeholder' : 'Plangrundriss-Vorschau'
+  const fallbackText = input.localeCode === 'en' ? 'No valid room geometry available' : 'Keine gueltige Raumgeometrie vorhanden'
+
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(input.localeCode)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(input.projectName)} \u2013 Viewer Export</title>
+  <title>${escapeHtml(input.projectName)} \u2013 ${escapeHtml(pageTitleSuffix)}</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 16px; background: #f8fafc; color: #0f172a; }
     .frame { background: #ffffff; border: 1px solid #cbd5e1; padding: 12px; }
@@ -287,9 +299,9 @@ export function renderHtmlViewer(input: HtmlViewerInput): string {
 </head>
 <body>
   <h1>${escapeHtml(input.projectName)}</h1>
-  <p>Read-only viewer export.</p>
+  <p>${escapeHtml(introText)}</p>
   <div class="frame">
-    <canvas id="viewer-canvas" width="900" height="440" aria-label="Plan preview placeholder"></canvas>
+    <canvas id="viewer-canvas" width="900" height="440" aria-label="${escapeHtml(ariaLabel)}"></canvas>
   </div>
   <script id="viewer-data" type="application/json">${escapeJsonForHtml(payload)}</script>
   <script>
@@ -323,7 +335,7 @@ export function renderHtmlViewer(input: HtmlViewerInput): string {
     } else if (ctx) {
       ctx.fillStyle = '#334155';
       ctx.font = '16px Arial';
-      ctx.fillText('No valid room geometry available', 24, 36);
+      ctx.fillText(${JSON.stringify(fallbackText)}, 24, 36);
     }
   </script>
 </body>

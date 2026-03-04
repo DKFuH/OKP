@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { specificationPackagesApi, type SpecificationPackage } from '../api/specificationPackages.js'
+import { useLocale } from '../hooks/useLocale.js'
 import styles from './TenantSettingsPage.module.css'
 
 const DEFAULT_SECTIONS = ['quote', 'bom', 'cutlist', 'nesting', 'layout_sheets', 'installation_notes']
@@ -8,10 +9,12 @@ const DEFAULT_SECTIONS = ['quote', 'bom', 'cutlist', 'nesting', 'layout_sheets',
 export function SpecificationPackagesPage() {
   const navigate = useNavigate()
   const { id: projectId } = useParams<{ id: string }>()
+  const { locale } = useLocale()
 
   const [items, setItems] = useState<SpecificationPackage[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [name, setName] = useState('Werkstattpaket Standard')
+  const [localeCode, setLocaleCode] = useState<'de' | 'en'>(locale.startsWith('en') ? 'en' : 'de')
   const [selectedSections, setSelectedSections] = useState<string[]>(['quote', 'bom', 'cutlist', 'layout_sheets'])
   const [includeCoverPage, setIncludeCoverPage] = useState(true)
   const [includeCompanyProfile, setIncludeCompanyProfile] = useState(true)
@@ -40,6 +43,7 @@ export function SpecificationPackagesPage() {
   useEffect(() => {
     if (!active) {
       setName('Werkstattpaket Standard')
+      setLocaleCode(locale.startsWith('en') ? 'en' : 'de')
       setSelectedSections(['quote', 'bom', 'cutlist', 'layout_sheets'])
       setIncludeCoverPage(true)
       setIncludeCompanyProfile(true)
@@ -48,10 +52,11 @@ export function SpecificationPackagesPage() {
 
     const config = active.config_json ?? {}
     setName(active.name)
+    setLocaleCode(active.locale_code?.startsWith('en') ? 'en' : 'de')
     setSelectedSections(Array.isArray(config.sections) ? config.sections : ['quote', 'bom', 'cutlist', 'layout_sheets'])
     setIncludeCoverPage(config.include_cover_page !== false)
     setIncludeCompanyProfile(config.include_company_profile !== false)
-  }, [active])
+  }, [active, locale])
 
   async function refreshList(selectId?: string | null) {
     if (!projectId) return
@@ -80,6 +85,7 @@ export function SpecificationPackagesPage() {
     try {
       const created = await specificationPackagesApi.create(projectId, {
         name,
+        locale_code: localeCode,
         config_json: {
           sections: selectedSections,
           include_cover_page: includeCoverPage,
@@ -100,7 +106,7 @@ export function SpecificationPackagesPage() {
     setSaving(true)
     setError(null)
     try {
-      await specificationPackagesApi.generate(active.id)
+      await specificationPackagesApi.generate(active.id, localeCode)
       await refreshList(active.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Paket konnte nicht generiert werden')
@@ -115,7 +121,7 @@ export function SpecificationPackagesPage() {
     setSaving(true)
     setError(null)
     try {
-      await specificationPackagesApi.download(active.id)
+      await specificationPackagesApi.download(active.id, localeCode)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download fehlgeschlagen')
     } finally {
@@ -175,6 +181,14 @@ export function SpecificationPackagesPage() {
           <label className={styles.field}>
             <span>Name</span>
             <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+
+          <label className={styles.field}>
+            <span>Sprache</span>
+            <select value={localeCode} onChange={(event) => setLocaleCode(event.target.value === 'en' ? 'en' : 'de')}>
+              <option value='de'>Deutsch</option>
+              <option value='en'>English</option>
+            </select>
           </label>
         </div>
 

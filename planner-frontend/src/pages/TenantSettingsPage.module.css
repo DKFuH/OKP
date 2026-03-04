@@ -76,6 +76,7 @@
 }
 
 .field input,
+.field select,
 .field textarea {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border-color);
@@ -88,6 +89,7 @@
 }
 
 .field input:focus,
+.field select:focus,
 .field textarea:focus {
   border-color: var(--primary-color);
 }

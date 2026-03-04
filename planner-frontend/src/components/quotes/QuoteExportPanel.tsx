@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   createQuote,
   exportQuotePdf,
@@ -16,12 +16,17 @@ interface Props {
 }
 
 export function QuoteExportPanel({ projectId, createPayload = {}, buildCreatePayload }: Props) {
-  const { formatDate } = useLocale()
+  const { formatDate, locale } = useLocale()
   const [quote, setQuote] = useState<Quote | null>(null)
+  const [exportLocale, setExportLocale] = useState<'de' | 'en'>('de')
   const [loadingCreate, setLoadingCreate] = useState(false)
   const [loadingQuote, setLoadingQuote] = useState(false)
   const [loadingExport, setLoadingExport] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setExportLocale(locale.startsWith('en') ? 'en' : 'de')
+  }, [locale])
 
   async function handleCreateQuote() {
     setLoadingCreate(true)
@@ -65,7 +70,7 @@ export function QuoteExportPanel({ projectId, createPayload = {}, buildCreatePay
     setError(null)
 
     try {
-      await exportQuotePdf(quote.id)
+      await exportQuotePdf(quote.id, exportLocale)
     } catch (caughtError: unknown) {
       setError(caughtError instanceof Error ? caughtError.message : 'PDF-Export fehlgeschlagen.')
     } finally {
@@ -80,6 +85,18 @@ export function QuoteExportPanel({ projectId, createPayload = {}, buildCreatePay
       </header>
 
       <div className={styles.actions}>
+        <label className={styles.localeField}>
+          <span>Sprache</span>
+          <select
+            value={exportLocale}
+            onChange={(event) => setExportLocale(event.target.value === 'en' ? 'en' : 'de')}
+            disabled={loadingCreate || loadingQuote || loadingExport}
+          >
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+
         <button
           type="button"
           className={styles.primaryBtn}

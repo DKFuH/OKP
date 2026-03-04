@@ -26,6 +26,9 @@ const { prismaMock } = vi.hoisted(() => ({
     layoutSheet: {
       count: vi.fn(),
     },
+    tenantSetting: {
+      findUnique: vi.fn(),
+    },
     specificationPackage: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -46,6 +49,7 @@ function packageFixture(overrides: Record<string, unknown> = {}) {
     tenant_id: tenantA,
     project_id: projectId,
     name: 'Werkstattpaket',
+    locale_code: 'de',
     config_json: { sections: ['quote', 'bom', 'cutlist', 'layout_sheets'] },
     generated_at: null,
     artifact_json: {},
@@ -76,6 +80,7 @@ describe('specificationPackageRoutes', () => {
     prismaMock.cutlist.count.mockResolvedValue(1)
     prismaMock.nestingJob.count.mockResolvedValue(1)
     prismaMock.layoutSheet.count.mockResolvedValue(1)
+    prismaMock.tenantSetting.findUnique.mockResolvedValue({ preferred_locale: 'de' })
 
     prismaMock.specificationPackage.findMany.mockResolvedValue([packageFixture()])
     prismaMock.specificationPackage.findUnique.mockResolvedValue(packageFixture())
@@ -90,9 +95,10 @@ describe('specificationPackageRoutes', () => {
     const createRes = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/specification-packages`,
-      payload: { name: 'Vertrieb + Werkstatt' },
+      payload: { name: 'Vertrieb + Werkstatt', locale_code: 'en' },
     })
     expect(createRes.statusCode).toBe(201)
+    expect(createRes.json()).toMatchObject({ locale_code: 'en' })
 
     const listRes = await app.inject({ method: 'GET', url: `/api/v1/projects/${projectId}/specification-packages` })
     expect(listRes.statusCode).toBe(200)
@@ -121,6 +127,7 @@ describe('specificationPackageRoutes', () => {
     const generateRes = await app.inject({
       method: 'POST',
       url: `/api/v1/specification-packages/${packageId}/generate`,
+      payload: { locale_code: 'en' },
     })
     expect(generateRes.statusCode).toBe(200)
     expect(generateRes.json()).toMatchObject({ sections: expect.any(Array) })

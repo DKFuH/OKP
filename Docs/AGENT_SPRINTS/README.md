@@ -78,7 +78,7 @@ Stand: 2026-03-04
 | 83 | `S83-mehr-ebenen-layout-sektionen-interop.md` | done | Plugin `multilevel-docs`: Mehr-Ebenen-Sheets, Vertikalschnitte und Export-Metadaten |
 | 84 | `S84-i18n-core-und-locale-switcher.md` | done | Core-i18n, Language Switcher und locale-aware Formatierung |
 | 85 | `S85-language-packs-und-uebersetzungsverwaltung.md` | done | Sprachpakete und tenant-spezifische Uebersetzungsverwaltung |
-| 86 | `S86-mehrsprachige-dokumente-und-shares.md` | planned | Mehrsprachige PDFs, Exporte, Viewer und Shares |
+| 86 | `S86-mehrsprachige-dokumente-und-shares.md` | done | Mehrsprachige PDFs, Exporte, Viewer und Shares |
 | 87 | `S87-navigation-ux-und-input-profile.md` | planned | Navigation-UX, CAD-Profil, Touchpad- und MMB-Steuerung |
 | 88 | `S88-locking-visibility-safe-edit.md` | planned | Locking, Visibility und Safe-Edit fuer Level, Maße und Objekte |
 | 89 | `S89-browser-favoriten-ordner-kollektionen.md` | planned | Favoriten, Ordner und Kollektionen fuer Asset- und Materialbrowser |

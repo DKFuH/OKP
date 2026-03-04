@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { panoramaToursApi, type PanoramaPoint, type PanoramaTour } from '../api/panoramaTours.js'
 import { getTenantPlugins } from '../api/tenantSettings.js'
+import { useLocale } from '../hooks/useLocale.js'
 import styles from './TenantSettingsPage.module.css'
 
 const DEFAULT_POINT: PanoramaPoint = {
@@ -14,10 +15,12 @@ const DEFAULT_POINT: PanoramaPoint = {
 export function PanoramaToursPage() {
   const navigate = useNavigate()
   const { id: projectId } = useParams<{ id: string }>()
+  const { locale } = useLocale()
 
   const [items, setItems] = useState<PanoramaTour[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [name, setName] = useState('Neue Tour')
+  const [shareLocale, setShareLocale] = useState<'de' | 'en'>(locale.startsWith('en') ? 'en' : 'de')
   const [pointsJson, setPointsJson] = useState(JSON.stringify([DEFAULT_POINT], null, 2))
   const [shareLink, setShareLink] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -59,15 +62,17 @@ export function PanoramaToursPage() {
   useEffect(() => {
     if (!active) {
       setName('Neue Tour')
+      setShareLocale(locale.startsWith('en') ? 'en' : 'de')
       setPointsJson(JSON.stringify([DEFAULT_POINT], null, 2))
       setShareLink(null)
       return
     }
 
     setName(active.name)
+    setShareLocale(active.locale_code?.startsWith('en') ? 'en' : 'de')
     setPointsJson(JSON.stringify(active.points_json, null, 2))
     setShareLink(active.share_token ? `${window.location.origin}/share/panorama/${active.share_token}` : null)
-  }, [active])
+  }, [active, locale])
 
   async function refreshList(selectId?: string | null) {
     if (!projectId) return
@@ -97,6 +102,7 @@ export function PanoramaToursPage() {
     try {
       const created = await panoramaToursApi.create(projectId, {
         name,
+        locale_code: shareLocale,
         points_json: parsePoints(),
       })
       await refreshList(created.id)
@@ -114,6 +120,7 @@ export function PanoramaToursPage() {
     try {
       await panoramaToursApi.update(active.id, {
         name,
+        locale_code: shareLocale,
         points_json: parsePoints(),
       })
       await refreshList(active.id)
@@ -145,8 +152,9 @@ export function PanoramaToursPage() {
     setSaving(true)
     setError(null)
     try {
-      const share = await panoramaToursApi.share(active.id, 30)
+      const share = await panoramaToursApi.share(active.id, 30, shareLocale)
       setShareLink(`${window.location.origin}${share.share_url}`)
+      setShareLocale(share.locale_code.startsWith('en') ? 'en' : 'de')
       await refreshList(active.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Share-Link konnte nicht erstellt werden')
@@ -199,6 +207,14 @@ export function PanoramaToursPage() {
           <label className={styles.field}>
             <span>Name</span>
             <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+
+          <label className={styles.field}>
+            <span>Sprache</span>
+            <select value={shareLocale} onChange={(event) => setShareLocale(event.target.value === 'en' ? 'en' : 'de')}>
+              <option value='de'>Deutsch</option>
+              <option value='en'>English</option>
+            </select>
           </label>
 
           <label className={styles.field}>

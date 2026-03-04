@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { exportHtmlViewer, exportLayoutSheetSvg, exportPlanSvg } from '../api/viewerExports.js'
+import { useLocale } from '../hooks/useLocale.js'
 import {
   VIEWER_EXPORT_ARTIFACTS,
   type ViewerExportArtifactKind,
@@ -31,9 +32,11 @@ function triggerDownload(blob: Blob, filename: string): void {
 export function ExportsPage() {
   const navigate = useNavigate()
   const { id: projectId } = useParams<{ id: string }>()
+  const { locale } = useLocale()
   const [sheetId, setSheetId] = useState('')
   const [levelId, setLevelId] = useState('')
   const [sectionLineId, setSectionLineId] = useState('')
+  const [exportLocale, setExportLocale] = useState<'de' | 'en'>(locale.startsWith('en') ? 'en' : 'de')
   const [loadingKind, setLoadingKind] = useState<ViewerExportArtifactKind | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -41,6 +44,10 @@ export function ExportsPage() {
   const labelByKind = useMemo(() => {
     return new Map(VIEWER_EXPORT_ARTIFACTS.map((artifact) => [artifact.kind, artifact.label]))
   }, [])
+
+  useEffect(() => {
+    setExportLocale(locale.startsWith('en') ? 'en' : 'de')
+  }, [locale])
 
   if (!projectId) {
     return <Navigate to="/" replace />
@@ -62,17 +69,17 @@ export function ExportsPage() {
 
     try {
       if (kind === 'html-viewer') {
-        const blob = await exportHtmlViewer(requiredProjectId)
+        const blob = await exportHtmlViewer(requiredProjectId, exportLocale)
         triggerDownload(blob, `project-${projectSlug}-viewer.html`)
       } else if (kind === 'plan-svg') {
-        const blob = await exportPlanSvg(requiredProjectId, scopedPayload)
+        const blob = await exportPlanSvg(requiredProjectId, scopedPayload, exportLocale)
         triggerDownload(blob, `project-${projectSlug}-grundriss.svg`)
       } else {
         const normalizedSheetId = sheetId.trim()
         if (!normalizedSheetId) {
           throw new Error('Bitte eine Layout-Sheet-ID eingeben')
         }
-        const blob = await exportLayoutSheetSvg(normalizedSheetId, scopedPayload)
+        const blob = await exportLayoutSheetSvg(normalizedSheetId, scopedPayload, exportLocale)
         triggerDownload(blob, `layout-sheet-${sheetSlug}.svg`)
       }
 
@@ -104,6 +111,17 @@ export function ExportsPage() {
 
         <section className={styles.panel}>
           <div className={styles.actions}>
+            <label className={styles.field}>
+              <span>Sprache</span>
+              <select
+                value={exportLocale}
+                onChange={(event) => setExportLocale(event.target.value === 'en' ? 'en' : 'de')}
+              >
+                <option value='de'>Deutsch</option>
+                <option value='en'>English</option>
+              </select>
+            </label>
+
             <button
               type="button"
               className={styles.btnPrimary}

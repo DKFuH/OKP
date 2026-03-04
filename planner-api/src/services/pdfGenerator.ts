@@ -1,3 +1,5 @@
+import { resolveLocaleCode, type SupportedLocaleCode } from './localeSupport.js'
+
 type QuotePdfItem = {
   position: number
   description: string
@@ -40,6 +42,7 @@ export type PdfRecipient = {
 }
 
 export type QuotePdfInput = {
+  locale_code?: string | null
   quote_number: string
   version: number
   valid_until: string | Date
@@ -67,6 +70,7 @@ export type CutlistPdfSummary = {
 }
 
 export type CutlistPdfInput = {
+  locale_code?: string | null
   project_name: string
   room_name?: string
   generated_at: string | Date
@@ -93,13 +97,63 @@ function escapePdfText(value: string): string {
     .replace(/\)/g, '\\)')
 }
 
-function formatDate(value: string | Date): string {
+function formatDate(value: string | Date, localeCode: SupportedLocaleCode): string {
   const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? 'unbekannt' : date.toLocaleDateString('de-DE')
+  if (Number.isNaN(date.getTime())) {
+    return localeCode === 'en' ? 'unknown' : 'unbekannt'
+  }
+
+  return date.toLocaleDateString(localeCode === 'en' ? 'en-GB' : 'de-DE')
 }
 
-function formatAmount(value: number): string {
-  return `${value.toFixed(2)} EUR`
+function formatAmount(value: number, localeCode: SupportedLocaleCode): string {
+  const fixed = value.toFixed(2)
+  if (localeCode === 'en') {
+    return `EUR ${fixed}`
+  }
+
+  return `${fixed} EUR`
+}
+
+const QUOTE_COPY: Record<SupportedLocaleCode, {
+  heading: string
+  validUntil: string
+  positions: string
+  noVisibleItems: string
+  subtotalNet: string
+  vat: string
+  totalGross: string
+  unitPriceShort: string
+  linePriceShort: string
+  vatId: string
+  taxNumber: string
+}> = {
+  de: {
+    heading: 'ANGEBOT',
+    validUntil: 'Gueltig bis',
+    positions: 'Positionen',
+    noVisibleItems: 'Keine sichtbaren Positionen vorhanden.',
+    subtotalNet: 'Zwischensumme netto',
+    vat: 'MwSt 19%',
+    totalGross: 'Gesamtbetrag brutto',
+    unitPriceShort: 'EP',
+    linePriceShort: 'GP',
+    vatId: 'USt-IdNr',
+    taxNumber: 'St-Nr',
+  },
+  en: {
+    heading: 'QUOTE',
+    validUntil: 'Valid until',
+    positions: 'Items',
+    noVisibleItems: 'No visible items available.',
+    subtotalNet: 'Subtotal net',
+    vat: 'VAT 19%',
+    totalGross: 'Total gross',
+    unitPriceShort: 'Unit',
+    linePriceShort: 'Line',
+    vatId: 'VAT ID',
+    taxNumber: 'Tax No',
+  },
 }
 
 function wrapText(value: string, maxChars: number): string[] {
@@ -163,12 +217,13 @@ function resolveTotals(items: QuotePdfItem[], snapshot?: QuotePdfSnapshot) {
   }
 }
 
-function renderItemLines(item: QuotePdfItem): PdfLine[] {
+function renderItemLines(item: QuotePdfItem, localeCode: SupportedLocaleCode): PdfLine[] {
+  const copy = QUOTE_COPY[localeCode]
   const descriptionLines = wrapText(item.description, 42)
   const firstDescription = descriptionLines[0] ?? ''
   const remainingDescriptions = descriptionLines.slice(1)
   const prefix = `${String(item.position).padStart(2, '0')}  `
-  const detail = `${item.qty} ${item.unit}  EP ${formatAmount(item.unit_price_net)}  GP ${formatAmount(item.line_net)}`
+  const detail = `${item.qty} ${item.unit}  ${copy.unitPriceShort} ${formatAmount(item.unit_price_net, localeCode)}  ${copy.linePriceShort} ${formatAmount(item.line_net, localeCode)}`
 
   const lines: PdfLine[] = [
     {
@@ -188,6 +243,8 @@ function renderItemLines(item: QuotePdfItem): PdfLine[] {
 }
 
 function renderQuoteLines(input: QuotePdfInput): PdfLine[] {
+  const localeCode = resolveLocaleCode({ requested: input.locale_code })
+  const copy = QUOTE_COPY[localeCode]
   const visibleItems = toVisibleItems(input.items)
   const totals = resolveTotals(visibleItems, input.price_snapshot)
   const lines: PdfLine[] = []
@@ -205,9 +262,9 @@ function renderQuoteLines(input: QuotePdfInput): PdfLine[] {
     lines.push({ text: '', size: 9 })
   }
 
-  lines.push({ text: `ANGEBOT ${input.quote_number}`, size: 16 })
+  lines.push({ text: `${copy.heading} ${input.quote_number}`, size: 16 })
   lines.push({ text: `Version ${input.version}`, size: 11 })
-  lines.push({ text: `Gueltig bis: ${formatDate(input.valid_until)}`, size: 11 })
+  lines.push({ text: `${copy.validUntil}: ${formatDate(input.valid_until, localeCode)}`, size: 11 })
   lines.push({ text: '', size: 11 })
 
   // Empfängerblock
@@ -231,20 +288,20 @@ function renderQuoteLines(input: QuotePdfInput): PdfLine[] {
     lines.push({ text: '', size: 11 })
   }
 
-  lines.push({ text: 'Positionen', size: 13 })
+  lines.push({ text: copy.positions, size: 13 })
 
   if (visibleItems.length === 0) {
-    lines.push({ text: 'Keine sichtbaren Positionen vorhanden.', size: 11 })
+    lines.push({ text: copy.noVisibleItems, size: 11 })
   } else {
     visibleItems.forEach((item) => {
-      lines.push(...renderItemLines(item))
+      lines.push(...renderItemLines(item, localeCode))
     })
   }
 
   lines.push({ text: '', size: 11 })
-  lines.push({ text: `Zwischensumme netto: ${formatAmount(totals.subtotalNet)}`, size: 11 })
-  lines.push({ text: `MwSt 19%: ${formatAmount(totals.vatAmount)}`, size: 11 })
-  lines.push({ text: `Gesamtbetrag brutto: ${formatAmount(totals.totalGross)}`, size: 12 })
+  lines.push({ text: `${copy.subtotalNet}: ${formatAmount(totals.subtotalNet, localeCode)}`, size: 11 })
+  lines.push({ text: `${copy.vat}: ${formatAmount(totals.vatAmount, localeCode)}`, size: 11 })
+  lines.push({ text: `${copy.totalGross}: ${formatAmount(totals.totalGross, localeCode)}`, size: 12 })
 
   // Fußzeile: Bankverbindung + USt + quote_footer / footer_text
   const hasBankInfo = input.sender && (input.sender.bank_name || input.sender.iban || input.sender.bic)
@@ -260,8 +317,8 @@ function renderQuoteLines(input: QuotePdfInput): PdfLine[] {
     }
     if (hasTaxInfo && input.sender) {
       const taxParts: string[] = []
-      if (input.sender.vat_id) taxParts.push(`USt-IdNr: ${input.sender.vat_id}`)
-      if (input.sender.tax_number) taxParts.push(`St-Nr: ${input.sender.tax_number}`)
+      if (input.sender.vat_id) taxParts.push(`${copy.vatId}: ${input.sender.vat_id}`)
+      if (input.sender.tax_number) taxParts.push(`${copy.taxNumber}: ${input.sender.tax_number}`)
       lines.push({ text: taxParts.join(' | '), size: 9 })
     }
   }
@@ -278,43 +335,60 @@ function renderQuoteLines(input: QuotePdfInput): PdfLine[] {
   return lines
 }
 
-function cutlistGrainLabel(value: CutlistPdfPart['grain_direction']): string {
+function cutlistGrainLabel(value: CutlistPdfPart['grain_direction'], localeCode: SupportedLocaleCode): string {
+  if (localeCode === 'en') {
+    if (value === 'length') return 'length'
+    if (value === 'width') return 'width'
+    return 'none'
+  }
+
   if (value === 'length') return 'laengs'
   if (value === 'width') return 'quer'
   return 'kein'
 }
 
 function renderCutlistLines(input: CutlistPdfInput): PdfLine[] {
+  const localeCode = resolveLocaleCode({ requested: input.locale_code })
   const lines: PdfLine[] = []
 
-  lines.push({ text: 'ZUSCHNITTLISTE', size: 16 })
-  lines.push({ text: `Projekt: ${input.project_name}`, size: 11 })
+  lines.push({ text: localeCode === 'en' ? 'CUTLIST' : 'ZUSCHNITTLISTE', size: 16 })
+  lines.push({ text: `${localeCode === 'en' ? 'Project' : 'Projekt'}: ${input.project_name}`, size: 11 })
   if (input.room_name) {
-    lines.push({ text: `Raum: ${input.room_name}`, size: 11 })
+    lines.push({ text: `${localeCode === 'en' ? 'Room' : 'Raum'}: ${input.room_name}`, size: 11 })
   }
-  lines.push({ text: `Datum: ${formatDate(input.generated_at)}`, size: 11 })
+  lines.push({ text: `${localeCode === 'en' ? 'Date' : 'Datum'}: ${formatDate(input.generated_at, localeCode)}`, size: 11 })
   lines.push({ text: '', size: 11 })
-  lines.push({ text: 'Nr | Bezeichnung | BxH mm | Anzahl | Material | Korn', size: 11 })
+  lines.push({
+    text: localeCode === 'en'
+      ? 'No | Label | WxH mm | Quantity | Material | Grain'
+      : 'Nr | Bezeichnung | BxH mm | Anzahl | Material | Korn',
+    size: 11,
+  })
 
   if (input.parts.length === 0) {
-    lines.push({ text: 'Keine Teile vorhanden.', size: 11 })
+    lines.push({ text: localeCode === 'en' ? 'No parts available.' : 'Keine Teile vorhanden.', size: 11 })
   } else {
     input.parts.forEach((part, index) => {
-      const line = `${index + 1} | ${part.label} | ${part.width_mm}x${part.height_mm} | ${part.quantity} | ${part.material_code} | ${cutlistGrainLabel(part.grain_direction)}`
+      const line = `${index + 1} | ${part.label} | ${part.width_mm}x${part.height_mm} | ${part.quantity} | ${part.material_code} | ${cutlistGrainLabel(part.grain_direction, localeCode)}`
       wrapText(line, 88).forEach((wrapped) => lines.push({ text: wrapped, size: 10 }))
     })
   }
 
   lines.push({ text: '', size: 11 })
-  lines.push({ text: `Gesamtteile: ${input.summary.total_parts}`, size: 11 })
-  lines.push({ text: 'Material-Zusammenfassung:', size: 11 })
+  lines.push({ text: `${localeCode === 'en' ? 'Total parts' : 'Gesamtteile'}: ${input.summary.total_parts}`, size: 11 })
+  lines.push({ text: localeCode === 'en' ? 'Material summary:' : 'Material-Zusammenfassung:', size: 11 })
 
   const materialEntries = Object.entries(input.summary.by_material)
   if (materialEntries.length === 0) {
-    lines.push({ text: '- keine Materialien -', size: 10 })
+    lines.push({ text: localeCode === 'en' ? '- no materials -' : '- keine Materialien -', size: 10 })
   } else {
     for (const [code, data] of materialEntries) {
-      lines.push({ text: `${code}: ${data.count} Teile, ${data.area_sqm.toFixed(3)} m2`, size: 10 })
+      lines.push({
+        text: localeCode === 'en'
+          ? `${code}: ${data.count} parts, ${data.area_sqm.toFixed(3)} m2`
+          : `${code}: ${data.count} Teile, ${data.area_sqm.toFixed(3)} m2`,
+        size: 10,
+      })
     }
   }
 

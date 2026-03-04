@@ -350,6 +350,7 @@ model PanoramaTour {
   tenant_id   String
   project_id  String
   name        String   @db.VarChar(140)
+  locale_code String?  @db.VarChar(10)
   points_json Json     @default("[]")
   share_token String?  @unique
   expires_at  DateTime?
@@ -365,6 +366,7 @@ model SpecificationPackage {
   tenant_id     String
   project_id    String
   name          String   @db.VarChar(140)
+  locale_code   String?  @db.VarChar(10)
   config_json   Json     @default("{}")
   generated_at  DateTime?
   artifact_json Json     @default("{}")
@@ -574,6 +576,7 @@ model Quote {
   version      Int         @default(1)
   quote_number String
   status       QuoteStatus @default(draft)
+  locale_code  String?     @db.VarChar(10)
   valid_until  DateTime
   free_text    String?
   footer_text  String?
@@ -1834,6 +1837,7 @@ model ShareLink {
   tenant_id   String
   entity_type String
   entity_id   String
+  locale_code String?   @db.VarChar(10)
   expires_at  DateTime?
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt

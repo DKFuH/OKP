@@ -39,15 +39,17 @@ async function extractErrorMessage(response: Response): Promise<string> {
   return fallback
 }
 
-async function fetchExportBlob(path: string): Promise<Blob> {
+async function fetchExportBlob(path: string, localeCode?: string): Promise<Blob> {
   let response: Response
 
   try {
     response = await fetch(`${BASE_URL}${path}`, {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'X-Tenant-Id': TENANT_ID_PLACEHOLDER,
       },
+      body: JSON.stringify(localeCode ? { locale_code: localeCode } : {}),
     })
   } catch (error) {
     const detail = error instanceof Error && error.message ? `: ${error.message}` : ''
@@ -67,9 +69,9 @@ async function fetchExportBlob(path: string): Promise<Blob> {
   return blob
 }
 
-export function exportHtmlViewer(projectId: string): Promise<Blob> {
+export function exportHtmlViewer(projectId: string, localeCode?: string): Promise<Blob> {
   const id = formatPathParameter(projectId, 'projectId')
-  return fetchExportBlob(`/projects/${id}/export/html-viewer`)
+  return fetchExportBlob(`/projects/${id}/export/html-viewer`, localeCode)
 }
 
 type SvgExportScope = {
@@ -77,8 +79,9 @@ type SvgExportScope = {
   section_line_id?: string
 }
 
-async function fetchScopedSvgBlob(path: string, scope?: SvgExportScope): Promise<Blob> {
+async function fetchScopedSvgBlob(path: string, scope?: SvgExportScope, localeCode?: string): Promise<Blob> {
   const payload = {
+    ...(localeCode ? { locale_code: localeCode } : {}),
     ...(scope?.level_id ? { level_id: scope.level_id } : {}),
     ...(scope?.section_line_id ? { section_line_id: scope.section_line_id } : {}),
   }
@@ -111,12 +114,12 @@ async function fetchScopedSvgBlob(path: string, scope?: SvgExportScope): Promise
   return blob
 }
 
-export function exportPlanSvg(projectId: string, scope?: SvgExportScope): Promise<Blob> {
+export function exportPlanSvg(projectId: string, scope?: SvgExportScope, localeCode?: string): Promise<Blob> {
   const id = formatPathParameter(projectId, 'projectId')
-  return fetchScopedSvgBlob(`/projects/${id}/export/plan-svg`, scope)
+  return fetchScopedSvgBlob(`/projects/${id}/export/plan-svg`, scope, localeCode)
 }
 
-export function exportLayoutSheetSvg(sheetId: string, scope?: SvgExportScope): Promise<Blob> {
+export function exportLayoutSheetSvg(sheetId: string, scope?: SvgExportScope, localeCode?: string): Promise<Blob> {
   const id = formatPathParameter(sheetId, 'sheetId')
-  return fetchScopedSvgBlob(`/layout-sheets/${id}/export/svg`, scope)
+  return fetchScopedSvgBlob(`/layout-sheets/${id}/export/svg`, scope, localeCode)
 }

@@ -27,6 +27,23 @@
   flex-wrap: wrap;
 }
 
+.localeField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.localeField select {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-default);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  padding: 0.35rem 0.7rem;
+}
+
 .primaryBtn,
 .secondaryBtn,
 .refreshBtn {

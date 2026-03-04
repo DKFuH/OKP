@@ -5,6 +5,7 @@ import styles from './TenantSettingsPage.module.css'
 
 export function PublicPanoramaTourPage() {
   const { token } = useParams<{ token: string }>()
+  const [localeCode, setLocaleCode] = useState<'de' | 'en'>('de')
   const [tourName, setTourName] = useState<string>('')
   const [points, setPoints] = useState<PanoramaPoint[]>([])
   const [activePointId, setActivePointId] = useState<string | null>(null)
@@ -13,13 +14,14 @@ export function PublicPanoramaTourPage() {
 
   useEffect(() => {
     if (!token) {
-      setError('Ungültiger Share-Token')
+      setError('Ungueltiger Share-Token')
       setLoading(false)
       return
     }
 
     panoramaToursApi.getShared(token)
       .then((tour) => {
+        setLocaleCode(tour.locale_code?.startsWith('en') ? 'en' : 'de')
         setTourName(tour.name)
         setPoints(tour.points_json)
         setActivePointId(tour.points_json[0]?.id ?? null)
@@ -32,27 +34,49 @@ export function PublicPanoramaTourPage() {
 
   const active = useMemo(() => points.find((point) => point.id === activePointId) ?? null, [points, activePointId])
 
-  if (loading) return <div className={styles.center}>Lade Panorama-Tour…</div>
+  const copy = localeCode === 'en'
+    ? {
+        loading: 'Loading panorama tour…',
+        publicTour: 'Public tour',
+        subtitle: 'Camera viewpoints and hotspot navigation.',
+        viewpoints: 'Viewpoints',
+        noPoints: 'This tour does not contain any points.',
+        point: 'Point',
+        camera: 'Camera',
+        toPrefix: 'To',
+      }
+    : {
+        loading: 'Lade Panorama-Tour…',
+        publicTour: 'Oeffentliche Tour',
+        subtitle: 'Kamerapunkte und Hotspot-Navigation.',
+        viewpoints: 'Viewpoints',
+        noPoints: 'Diese Tour enthaelt keine Punkte.',
+        point: 'Punkt',
+        camera: 'Kamera',
+        toPrefix: 'Zu',
+      }
+
+  if (loading) return <div className={styles.center}>{copy.loading}</div>
   if (error) return <div className={styles.center}>{error}</div>
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <p className={styles.kicker}>Öffentliche Tour</p>
+          <p className={styles.kicker}>{copy.publicTour}</p>
           <h1>{tourName}</h1>
-          <p className={styles.subtitle}>Kamerapunkte und Hotspot-Navigation.</p>
+          <p className={styles.subtitle}>{copy.subtitle}</p>
         </div>
       </header>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Viewpoints</h2>
+        <h2 className={styles.sectionTitle}>{copy.viewpoints}</h2>
         {points.length === 0 ? (
-          <p>Diese Tour enthält keine Punkte.</p>
+          <p>{copy.noPoints}</p>
         ) : (
           <div className={styles.grid}>
             <label className={styles.field}>
-              <span>Punkt</span>
+              <span>{copy.point}</span>
               <select value={activePointId ?? ''} onChange={(event) => setActivePointId(event.target.value)}>
                 {points.map((point) => (
                   <option key={point.id} value={point.id}>{point.label}</option>
@@ -62,7 +86,7 @@ export function PublicPanoramaTourPage() {
 
             {active && (
               <div className={styles.field}>
-                <span>Kamera</span>
+                <span>{copy.camera}</span>
                 <pre>
 {JSON.stringify(active.camera, null, 2)}
                 </pre>
@@ -80,7 +104,7 @@ export function PublicPanoramaTourPage() {
                 className={styles.btnSecondary}
                 onClick={() => setActivePointId(hotspot.target_point_id)}
               >
-                {hotspot.label ?? `Zu ${hotspot.target_point_id}`}
+                {hotspot.label ?? `${copy.toPrefix} ${hotspot.target_point_id}`}
               </button>
             ))}
           </div>

@@ -13,17 +13,20 @@ import { z } from 'zod'
 import { randomBytes } from 'node:crypto'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendForbidden, sendNotFound } from '../errors.js'
+import { normalizeLocaleCode } from '../services/localeSupport.js'
 
 // ─── Schemas ─────────────────────────────────────────────────────
 
 const CreateShareLinkBodySchema = z.object({
     entity_type: z.string().min(1),
     entity_id: z.string().min(1),
+    locale_code: z.string().min(2).max(10).optional(),
     expires_in_days: z.number().int().positive().optional(),
 })
 
 const PatchShareLinkBodySchema = z.object({
     expires_in_days: z.number().int().positive(),
+    locale_code: z.string().min(2).max(10).optional(),
 })
 
 const TokenParamsSchema = z.object({
@@ -63,6 +66,11 @@ export async function shareLinkRoutes(app: FastifyInstance) {
             return sendBadRequest(reply, body.error.errors[0].message)
         }
 
+        const localeCode = normalizeLocaleCode(body.data.locale_code)
+        if (body.data.locale_code && !localeCode) {
+            return sendBadRequest(reply, 'locale_code must be one of: de, en')
+        }
+
         const expiresAt = body.data.expires_in_days
             ? addDays(new Date(), body.data.expires_in_days)
             : null
@@ -73,6 +81,7 @@ export async function shareLinkRoutes(app: FastifyInstance) {
                 tenant_id: tenantId,
                 entity_type: body.data.entity_type,
                 entity_id: body.data.entity_id,
+                ...(localeCode ? { locale_code: localeCode } : {}),
                 ...(expiresAt ? { expires_at: expiresAt } : {}),
             },
         })
@@ -137,6 +146,11 @@ export async function shareLinkRoutes(app: FastifyInstance) {
                 return sendBadRequest(reply, body.error.errors[0].message)
             }
 
+            const localeCode = normalizeLocaleCode(body.data.locale_code)
+            if (body.data.locale_code && !localeCode) {
+                return sendBadRequest(reply, 'locale_code must be one of: de, en')
+            }
+
             const existing = await prisma.shareLink.findFirst({
                 where: { token: params.data.token, tenant_id: tenantId },
             })
@@ -148,7 +162,10 @@ export async function shareLinkRoutes(app: FastifyInstance) {
 
             const updated = await prisma.shareLink.update({
                 where: { token: params.data.token },
-                data: { expires_at: newExpiry },
+                data: {
+                    expires_at: newExpiry,
+                    ...(localeCode ? { locale_code: localeCode } : {}),
+                },
             })
 
             return reply.send(updated)

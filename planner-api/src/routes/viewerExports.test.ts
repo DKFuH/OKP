@@ -26,6 +26,9 @@ const { prismaMock } = vi.hoisted(() => ({
     projectEnvironment: {
       findUnique: vi.fn(),
     },
+    tenantSetting: {
+      findUnique: vi.fn(),
+    },
   },
 }))
 
@@ -96,6 +99,7 @@ describe('viewerExportsRoutes', () => {
     })
     prismaMock.buildingLevel.findFirst.mockResolvedValue({ id: levelId, name: 'EG' })
     prismaMock.projectEnvironment.findUnique.mockResolvedValue({ north_angle_deg: 0 })
+    prismaMock.tenantSetting.findUnique.mockResolvedValue({ preferred_locale: 'de' })
   })
 
   it('html-viewer forbidden without tenant', async () => {
@@ -148,6 +152,23 @@ describe('viewerExportsRoutes', () => {
     expect(response.headers['content-type']).toContain('text/html')
     expect(response.body).toContain('<html')
     expect(response.body).toContain('viewer-data')
+    expect(response.body).toContain('lang="de"')
+    await app.close()
+  })
+
+  it('html-viewer accepts locale_code=en and renders english copy', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/export/html-viewer`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: { locale_code: 'en' },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain('lang="en"')
+    expect(response.body).toContain('Read-only viewer export.')
     await app.close()
   })
 
@@ -200,7 +221,7 @@ describe('viewerExportsRoutes', () => {
     })
 
     expect(response.statusCode).toBe(200)
-    expect(response.body).toContain('No valid room geometry available')
+    expect(response.body).toContain('Keine gueltige Raumgeometrie vorhanden')
     await app.close()
   })
 

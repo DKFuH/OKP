@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
+import { resolveLocaleCode, type SupportedLocaleCode } from './localeSupport.js'
 
 export interface SpecificationSectionResult {
   key: string
@@ -79,15 +80,38 @@ function resolveSections(config: PackageConfig): string[] {
   return input.filter((value): value is string => typeof value === 'string' && value.length > 0)
 }
 
+const SECTION_TITLES: Record<SupportedLocaleCode, Record<string, string>> = {
+  de: {
+    quote: 'Angebot',
+    bom: 'Stueckliste',
+    cutlist: 'Zuschnittliste',
+    layout_sheets: 'Layout-Sheets',
+    nesting: 'Nesting-Anlagen',
+  },
+  en: {
+    quote: 'Quote',
+    bom: 'Bill of Materials',
+    cutlist: 'Cutlist',
+    layout_sheets: 'Layout Sheets',
+    nesting: 'Nesting Files',
+  },
+}
+
+function titleForSection(section: string, localeCode: SupportedLocaleCode): string {
+  return SECTION_TITLES[localeCode][section] ?? section
+}
+
 export async function generateSpecificationPackage(
   prisma: PrismaClient,
   projectId: string,
   packageId: string,
   config: PackageConfig,
+  localeCodeInput?: string | null,
 ): Promise<{
   merged_pdf: Buffer
   sections: SpecificationSectionResult[]
 }> {
+  const localeCode = resolveLocaleCode({ requested: localeCodeInput })
   const sections = resolveSections(config)
   const summary: SpecificationSectionResult[] = []
 
@@ -99,27 +123,27 @@ export async function generateSpecificationPackage(
 
   for (const section of sections) {
     if (section === 'quote' && quoteCount > 0) {
-      summary.push({ key: 'quote', title: 'Angebot', page_count: 1, artifact_type: 'pdf' })
+      summary.push({ key: 'quote', title: titleForSection('quote', localeCode), page_count: 1, artifact_type: 'pdf' })
       continue
     }
 
     if (section === 'bom' && roomCount > 0) {
-      summary.push({ key: 'bom', title: 'Stückliste', page_count: 1, artifact_type: 'pdf' })
+      summary.push({ key: 'bom', title: titleForSection('bom', localeCode), page_count: 1, artifact_type: 'pdf' })
       continue
     }
 
     if (section === 'cutlist' && cutlistCount > 0) {
-      summary.push({ key: 'cutlist', title: 'Zuschnittliste', page_count: 1, artifact_type: 'pdf' })
+      summary.push({ key: 'cutlist', title: titleForSection('cutlist', localeCode), page_count: 1, artifact_type: 'pdf' })
       continue
     }
 
     if (section === 'layout_sheets' && sheetCount > 0) {
-      summary.push({ key: 'layout_sheets', title: 'Layout-Sheets', page_count: 1, artifact_type: 'pdf' })
+      summary.push({ key: 'layout_sheets', title: titleForSection('layout_sheets', localeCode), page_count: 1, artifact_type: 'pdf' })
       continue
     }
 
     if (section === 'nesting' && nestingCount > 0) {
-      summary.push({ key: 'nesting', title: 'Nesting-Anlagen', page_count: 1, artifact_type: 'json' })
+      summary.push({ key: 'nesting', title: titleForSection('nesting', localeCode), page_count: 1, artifact_type: 'json' })
     }
   }
 
@@ -127,10 +151,10 @@ export async function generateSpecificationPackage(
 
   if (config.include_cover_page !== false) {
     pages.push([
-      'Werkstattpaket',
-      `Projekt: ${projectId}`,
-      `Paket: ${packageId}`,
-      `Generiert am: ${new Date().toLocaleString('de-DE')}`,
+      localeCode === 'en' ? 'Workshop Package' : 'Werkstattpaket',
+      `${localeCode === 'en' ? 'Project' : 'Projekt'}: ${projectId}`,
+      `${localeCode === 'en' ? 'Package' : 'Paket'}: ${packageId}`,
+      `${localeCode === 'en' ? 'Generated at' : 'Generiert am'}: ${new Date().toLocaleString(localeCode === 'en' ? 'en-GB' : 'de-DE')}`,
     ])
   }
 
@@ -139,15 +163,15 @@ export async function generateSpecificationPackage(
     pages.push([
       item.title,
       `Section-Key: ${item.key}`,
-      'V1-Referenzseite fuer Spezifikationspakete',
+      localeCode === 'en' ? 'V1 reference page for specification packages' : 'V1-Referenzseite fuer Spezifikationspakete',
     ])
   }
 
   if (pages.length === 0) {
     pages.push([
-      'Werkstattpaket',
-      'Keine druckbaren Abschnitte vorhanden',
-      'Bitte Paketkonfiguration oder Projektdaten prüfen',
+      localeCode === 'en' ? 'Workshop Package' : 'Werkstattpaket',
+      localeCode === 'en' ? 'No printable sections available' : 'Keine druckbaren Abschnitte vorhanden',
+      localeCode === 'en' ? 'Please review package configuration or project data' : 'Bitte Paketkonfiguration oder Projektdaten pruefen',
     ])
   }
 

@@ -1426,7 +1426,7 @@ Dokumente und Share-/Viewer-Pfade.
 |--------|--------|-------|--------------|
 | 84 | `done` | i18n-Core & Locale Switcher | Message-Kataloge, Locale-Resolver, Sprachumschalter |
 | 85 | `done` | Language Packs & Uebersetzungsverwaltung | verwaltbare Sprachpakete und Tenant-Overrides |
-| 86 | `planned` | Mehrsprachige Dokumente & Shares | locale-aware PDFs, Viewer und Exporte |
+| 86 | `done` | Mehrsprachige Dokumente & Shares | locale-aware PDFs, Viewer und Exporte |
 
 ### Sprint-Metadaten
 

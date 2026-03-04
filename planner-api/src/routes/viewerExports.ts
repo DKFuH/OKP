@@ -8,6 +8,7 @@ import {
   renderLayoutSheetSvg,
   renderPlanSvg,
 } from '../services/vectorExportService.js'
+import { normalizeLocaleCode, resolveLocaleCode } from '../services/localeSupport.js'
 
 type SheetConfig = {
   show_arc_annotations?: unknown
@@ -29,14 +30,20 @@ type SectionLineExport = {
   sheet_visibility?: string
 }
 
+const HtmlViewerBodySchema = z.object({
+  locale_code: z.string().min(2).max(10).optional(),
+})
+
 const PlanSvgBodySchema = z.object({
   level_id: z.string().uuid().optional(),
   section_line_id: z.string().uuid().optional(),
+  locale_code: z.string().min(2).max(10).optional(),
 })
 
 const LayoutSheetSvgBodySchema = z.object({
   level_id: z.string().uuid().optional(),
   section_line_id: z.string().uuid().optional(),
+  locale_code: z.string().min(2).max(10).optional(),
 })
 
 function parseConfig(value: unknown): SheetConfig {
@@ -134,11 +141,41 @@ function resolveSectionLine(lines: SectionLineExport[], sectionLineId?: string):
   return lines.find((line) => line.id === sectionLineId) ?? null
 }
 
+async function resolveTenantExportLocale(tenantId: string, requestedLocale?: string): Promise<'de' | 'en'> {
+  const normalizedRequested = normalizeLocaleCode(requestedLocale)
+  if (requestedLocale && !normalizedRequested) {
+    throw new Error('locale_code must be one of: de, en')
+  }
+
+  const settings = await prisma.tenantSetting.findUnique({
+    where: { tenant_id: tenantId },
+    select: { preferred_locale: true },
+  })
+
+  return resolveLocaleCode({
+    requested: normalizedRequested,
+    tenantPreferred: settings?.preferred_locale ?? null,
+  })
+}
+
 export async function viewerExportsRoutes(app: FastifyInstance) {
-  app.post<{ Params: { id: string } }>('/projects/:id/export/html-viewer', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: z.infer<typeof HtmlViewerBodySchema> }>('/projects/:id/export/html-viewer', async (request, reply) => {
     const tenantId = getTenantId(request)
     if (!tenantId) {
       return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsedBody = HtmlViewerBodySchema.safeParse(request.body ?? {})
+    if (!parsedBody.success) {
+      return reply.status(400).send({ error: 'BAD_REQUEST', message: parsedBody.error.errors[0]?.message ?? 'Invalid payload' })
+    }
+
+    let localeCode: 'de' | 'en'
+    try {
+      localeCode = await resolveTenantExportLocale(tenantId, parsedBody.data.locale_code)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid payload'
+      return reply.status(400).send({ error: 'BAD_REQUEST', message })
     }
 
     const project = await prisma.project.findUnique({
@@ -165,6 +202,7 @@ export async function viewerExportsRoutes(app: FastifyInstance) {
       projectName: project.name,
       roomName: firstRoom?.name ?? null,
       vertices,
+      localeCode,
     })
 
     reply.header('content-disposition', `attachment; filename="${buildHtmlFilename(project.id)}"`)
@@ -181,6 +219,14 @@ export async function viewerExportsRoutes(app: FastifyInstance) {
     const parsedBody = PlanSvgBodySchema.safeParse(request.body ?? {})
     if (!parsedBody.success) {
       return reply.status(400).send({ error: 'BAD_REQUEST', message: parsedBody.error.errors[0]?.message ?? 'Invalid payload' })
+    }
+
+    let localeCode: 'de' | 'en'
+    try {
+      localeCode = await resolveTenantExportLocale(tenantId, parsedBody.data.locale_code)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid payload'
+      return reply.status(400).send({ error: 'BAD_REQUEST', message })
     }
 
     const project = await prisma.project.findUnique({
@@ -216,6 +262,7 @@ export async function viewerExportsRoutes(app: FastifyInstance) {
       projectName: project.name,
       roomName: selectedRoom?.name ?? null,
       vertices,
+      localeCode,
       levelId: selectedRoom?.level?.id ?? selectedRoom?.level_id ?? parsedBody.data.level_id ?? null,
       levelName: selectedRoom?.level?.name ?? null,
       sectionLine,
@@ -235,6 +282,14 @@ export async function viewerExportsRoutes(app: FastifyInstance) {
     const parsedBody = LayoutSheetSvgBodySchema.safeParse(request.body ?? {})
     if (!parsedBody.success) {
       return reply.status(400).send({ error: 'BAD_REQUEST', message: parsedBody.error.errors[0]?.message ?? 'Invalid payload' })
+    }
+
+    let localeCode: 'de' | 'en'
+    try {
+      localeCode = await resolveTenantExportLocale(tenantId, parsedBody.data.locale_code)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid payload'
+      return reply.status(400).send({ error: 'BAD_REQUEST', message })
     }
 
     const sheet = await prisma.layoutSheet.findUnique({
@@ -312,6 +367,7 @@ export async function viewerExportsRoutes(app: FastifyInstance) {
 
     const svg = renderLayoutSheetSvg({
       sheetName: sheet.name,
+      localeCode,
       showArcAnnotation: showArc,
       arcLabel,
       showNorthArrow,

@@ -6,6 +6,7 @@ import { sendBadRequest, sendNotFound, sendServerError } from '../errors.js'
 import { registerProjectDocument } from '../services/documentRegistry.js'
 import { queueNotification } from '../services/notificationService.js'
 import { buildQuotePdf, type PdfSender, type PdfRecipient } from '../services/pdfGenerator.js'
+import { normalizeLocaleCode, resolveLocaleCode } from '../services/localeSupport.js'
 
 const QuoteParamsSchema = z.object({
   id: z.string().uuid(),
@@ -28,8 +29,13 @@ const CreateQuoteBodySchema = z.object({
   valid_until: z.string().datetime().optional(),
   free_text: z.string().max(10000).nullable().optional(),
   footer_text: z.string().max(10000).nullable().optional(),
+  locale_code: z.string().min(2).max(10).optional(),
   bom_lines: z.array(BomLineSchema).max(2000).default([]),
   price_summary: z.unknown().optional(),
+})
+
+const QuoteExportBodySchema = z.object({
+  locale_code: z.string().min(2).max(10).optional(),
 })
 
 function plusDaysIso(days: number): string {
@@ -77,10 +83,27 @@ export async function quoteRoutes(app: FastifyInstance) {
     }
 
     const projectId = parsedParams.data.id
-    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } })
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true, tenant_id: true } })
     if (!project) {
       return sendNotFound(reply, 'Project not found')
     }
+
+    const requestedLocale = normalizeLocaleCode(parsedBody.data.locale_code)
+    if (parsedBody.data.locale_code && !requestedLocale) {
+      return sendBadRequest(reply, 'locale_code must be one of: de, en')
+    }
+
+    const tenantLocaleSettings = project.tenant_id
+      ? await prisma.tenantSetting.findUnique({
+          where: { tenant_id: project.tenant_id },
+          select: { preferred_locale: true },
+        })
+      : null
+
+    const effectiveLocale = resolveLocaleCode({
+      requested: requestedLocale,
+      tenantPreferred: tenantLocaleSettings?.preferred_locale ?? null,
+    })
 
     const settings = await prisma.quoteSettings.findUnique({
       where: { project_id: projectId },
@@ -114,6 +137,7 @@ export async function quoteRoutes(app: FastifyInstance) {
           project_id: projectId,
           version: nextVersion,
           quote_number: quoteNumber,
+          locale_code: effectiveLocale,
           valid_until: new Date(validUntil),
           free_text: freeText,
           footer_text: footerText,
@@ -185,10 +209,20 @@ export async function quoteRoutes(app: FastifyInstance) {
     return reply.send(quote)
   })
 
-  app.post<{ Params: { id: string } }>('/quotes/:id/export-pdf', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: z.infer<typeof QuoteExportBodySchema> }>('/quotes/:id/export-pdf', async (request, reply) => {
     const parsedParams = QuoteExportParamsSchema.safeParse(request.params)
     if (!parsedParams.success) {
       return sendBadRequest(reply, parsedParams.error.errors[0].message)
+    }
+
+    const parsedBody = QuoteExportBodySchema.safeParse(request.body ?? {})
+    if (!parsedBody.success) {
+      return sendBadRequest(reply, parsedBody.error.errors[0].message)
+    }
+
+    const requestedLocale = normalizeLocaleCode(parsedBody.data.locale_code)
+    if (parsedBody.data.locale_code && !requestedLocale) {
+      return sendBadRequest(reply, 'locale_code must be one of: de, en')
     }
 
     const quote = await prisma.quote.findUnique({
@@ -213,6 +247,19 @@ export async function quoteRoutes(app: FastifyInstance) {
     const settings = await prisma.tenantSetting.findUnique({
       where: { tenant_id: quote.project.tenant_id ?? '' },
     })
+
+    const effectiveLocale = resolveLocaleCode({
+      requested: requestedLocale,
+      persisted: quote.locale_code,
+      tenantPreferred: settings?.preferred_locale ?? null,
+    })
+
+    if (requestedLocale && quote.locale_code !== effectiveLocale) {
+      await prisma.quote.update({
+        where: { id: quote.id },
+        data: { locale_code: effectiveLocale },
+      })
+    }
 
     const sender: PdfSender | undefined = settings?.company_name
       ? {
@@ -251,6 +298,7 @@ export async function quoteRoutes(app: FastifyInstance) {
     }
 
     const pdf = buildQuotePdf({
+      locale_code: effectiveLocale,
       quote_number: quote.quote_number,
       version: quote.version,
       valid_until: quote.valid_until,

@@ -70,6 +70,14 @@
   color: var(--text-primary);
 }
 
+.field select {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-default);
+  color: var(--text-primary);
+}
+
 .btnPrimary,
 .btnSecondary {
   border: none;

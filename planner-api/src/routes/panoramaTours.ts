@@ -9,14 +9,17 @@ import {
   normalizePanoramaPoints,
   resolveExpiryDate,
 } from '../services/panoramaTourService.js'
+import { normalizeLocaleCode, resolveLocaleCode } from '../services/localeSupport.js'
 
 const TourBodySchema = z.object({
   name: z.string().min(1).max(140),
+  locale_code: z.string().min(2).max(10).optional(),
   points_json: z.array(z.unknown()).default([]),
 })
 
 const ShareBodySchema = z.object({
   expires_in_days: z.number().int().positive().max(3650).optional(),
+  locale_code: z.string().min(2).max(10).optional(),
 })
 
 type PanoramaTourStore = {
@@ -35,6 +38,19 @@ function ensureTenant(tenantId: string | null, reply: { status: (code: number) =
   if (tenantId) return true
   reply.status(403).send({ error: 'FORBIDDEN', message: 'Missing tenant scope' })
   return false
+}
+
+async function getTenantPreferredLocale(tenantId: string | null): Promise<string | null> {
+  if (!tenantId) {
+    return null
+  }
+
+  const settings = await prisma.tenantSetting.findUnique({
+    where: { tenant_id: tenantId },
+    select: { preferred_locale: true },
+  })
+
+  return settings?.preferred_locale ?? null
 }
 
 export async function panoramaTourRoutes(app: FastifyInstance) {
@@ -67,6 +83,17 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
     const parsed = TourBodySchema.safeParse(request.body ?? {})
     if (!parsed.success) return sendBadRequest(reply, parsed.error.errors[0]?.message ?? 'Invalid payload')
 
+    const requestedLocale = normalizeLocaleCode(parsed.data.locale_code)
+    if (parsed.data.locale_code && !requestedLocale) {
+      return sendBadRequest(reply, 'locale_code must be one of: de, en')
+    }
+
+    const tenantPreferredLocale = await getTenantPreferredLocale(request.tenantId)
+    const effectiveLocale = resolveLocaleCode({
+      requested: requestedLocale,
+      tenantPreferred: tenantPreferredLocale,
+    })
+
     let normalizedPoints: unknown[]
     try {
       normalizedPoints = normalizePanoramaPoints(parsed.data.points_json)
@@ -80,6 +107,7 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
         tenant_id: request.tenantId,
         project_id: request.params.id,
         name: parsed.data.name,
+        locale_code: effectiveLocale,
         points_json: normalizedPoints as Prisma.InputJsonValue,
       },
     })
@@ -92,6 +120,11 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
 
     const parsed = TourBodySchema.safeParse(request.body ?? {})
     if (!parsed.success) return sendBadRequest(reply, parsed.error.errors[0]?.message ?? 'Invalid payload')
+
+    const requestedLocale = normalizeLocaleCode(parsed.data.locale_code)
+    if (parsed.data.locale_code && !requestedLocale) {
+      return sendBadRequest(reply, 'locale_code must be one of: de, en')
+    }
 
     const store = getStore()
     const existing = await store.findUnique({ where: { id: request.params.id } })
@@ -106,10 +139,18 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
       return sendBadRequest(reply, 'Invalid panorama points payload')
     }
 
+    const tenantPreferredLocale = await getTenantPreferredLocale(request.tenantId)
+    const effectiveLocale = resolveLocaleCode({
+      requested: requestedLocale,
+      persisted: String(existing.locale_code ?? ''),
+      tenantPreferred: tenantPreferredLocale,
+    })
+
     const updated = await store.update({
       where: { id: request.params.id },
       data: {
         name: parsed.data.name,
+        locale_code: effectiveLocale,
         points_json: normalizedPoints as Prisma.InputJsonValue,
       },
     })
@@ -136,6 +177,11 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
     const parsed = ShareBodySchema.safeParse(request.body ?? {})
     if (!parsed.success) return sendBadRequest(reply, parsed.error.errors[0]?.message ?? 'Invalid payload')
 
+    const requestedLocale = normalizeLocaleCode(parsed.data.locale_code)
+    if (parsed.data.locale_code && !requestedLocale) {
+      return sendBadRequest(reply, 'locale_code must be one of: de, en')
+    }
+
     const store = getStore()
     const existing = await store.findUnique({ where: { id: request.params.id } })
     if (!existing || String(existing.tenant_id) !== request.tenantId) {
@@ -144,12 +190,19 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
 
     const share_token = generateShareToken()
     const expires_at = resolveExpiryDate(parsed.data.expires_in_days ?? null)
+    const tenantPreferredLocale = await getTenantPreferredLocale(request.tenantId)
+    const effectiveLocale = resolveLocaleCode({
+      requested: requestedLocale,
+      persisted: String(existing.locale_code ?? ''),
+      tenantPreferred: tenantPreferredLocale,
+    })
 
     const updated = await store.update({
       where: { id: request.params.id },
       data: {
         share_token,
         expires_at,
+        locale_code: effectiveLocale,
       },
     })
 
@@ -157,6 +210,7 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
       id: String(updated.id),
       share_token,
       expires_at,
+      locale_code: effectiveLocale,
       share_url: `/share/panorama/${share_token}`,
     })
   })
@@ -181,6 +235,7 @@ export async function panoramaTourRoutes(app: FastifyInstance) {
       id: found.id,
       project_id: found.project_id,
       name: found.name,
+      locale_code: found.locale_code ?? null,
       points_json: found.points_json,
       expires_at: expiresDate,
     })

@@ -23,6 +23,7 @@ export interface PanoramaTour {
   tenant_id: string
   project_id: string
   name: string
+  locale_code: string | null
   points_json: PanoramaPoint[]
   share_token: string | null
   expires_at: string | null
@@ -34,6 +35,7 @@ export interface PanoramaShareResult {
   id: string
   share_token: string
   expires_at: string | null
+  locale_code: string
   share_url: string
 }
 
@@ -41,6 +43,7 @@ export interface PublicPanoramaTour {
   id: string
   project_id: string
   name: string
+  locale_code: string | null
   points_json: PanoramaPoint[]
   expires_at: string | null
 }
@@ -48,16 +51,22 @@ export interface PublicPanoramaTour {
 export const panoramaToursApi = {
   list: (projectId: string) => api.get<PanoramaTour[]>(`/projects/${projectId}/panorama-tours`),
 
-  create: (projectId: string, payload: { name: string; points_json: PanoramaPoint[] }) =>
+  create: (projectId: string, payload: { name: string; locale_code?: string; points_json: PanoramaPoint[] }) =>
     api.post<PanoramaTour>(`/projects/${projectId}/panorama-tours`, payload),
 
-  update: (id: string, payload: { name: string; points_json: PanoramaPoint[] }) =>
+  update: (id: string, payload: { name: string; locale_code?: string; points_json: PanoramaPoint[] }) =>
     api.put<PanoramaTour>(`/panorama-tours/${id}`, payload),
 
   remove: (id: string) => api.delete(`/panorama-tours/${id}`),
 
-  share: (id: string, expiresInDays?: number) =>
-    api.post<PanoramaShareResult>(`/panorama-tours/${id}/share`, expiresInDays ? { expires_in_days: expiresInDays } : {}),
+  share: (id: string, expiresInDays?: number, localeCode?: string) =>
+    api.post<PanoramaShareResult>(
+      `/panorama-tours/${id}/share`,
+      {
+        ...(expiresInDays ? { expires_in_days: expiresInDays } : {}),
+        ...(localeCode ? { locale_code: localeCode } : {}),
+      },
+    ),
 
   getShared: (token: string) => api.get<PublicPanoramaTour>(`/share/panorama/${token}`),
 }

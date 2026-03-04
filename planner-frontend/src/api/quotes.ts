@@ -41,6 +41,7 @@ export interface Quote {
   project_id: string
   version: number
   quote_number: string
+  locale_code: string | null
   valid_until: string
   free_text: string | null
   footer_text: string | null
@@ -74,9 +75,13 @@ export function getQuote(id: string): Promise<Quote> {
   return api.get<Quote>(`/quotes/${id}`)
 }
 
-export async function exportQuotePdf(id: string): Promise<void> {
+export async function exportQuotePdf(id: string, localeCode?: string): Promise<void> {
   const response = await fetch(`${BASE_URL}/quotes/${id}/export-pdf`, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(localeCode ? { locale_code: localeCode } : {}),
   })
 
   if (!response.ok) {

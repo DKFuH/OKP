@@ -21,6 +21,7 @@ export interface SpecificationPackage {
   tenant_id: string
   project_id: string
   name: string
+  locale_code: string | null
   config_json: {
     sections?: string[]
     include_cover_page?: boolean
@@ -41,15 +42,17 @@ export interface SpecificationGenerateResult {
 export const specificationPackagesApi = {
   list: (projectId: string) => api.get<SpecificationPackage[]>(`/projects/${projectId}/specification-packages`),
 
-  create: (projectId: string, payload: { name: string; config_json?: SpecificationPackage['config_json'] }) =>
+  create: (projectId: string, payload: { name: string; locale_code?: string; config_json?: SpecificationPackage['config_json'] }) =>
     api.post<SpecificationPackage>(`/projects/${projectId}/specification-packages`, payload),
 
-  generate: (id: string) => api.post<SpecificationGenerateResult>(`/specification-packages/${id}/generate`, {}),
+  generate: (id: string, localeCode?: string) =>
+    api.post<SpecificationGenerateResult>(`/specification-packages/${id}/generate`, localeCode ? { locale_code: localeCode } : {}),
 
   remove: (id: string) => api.delete(`/specification-packages/${id}`),
 
-  download: async (id: string): Promise<void> => {
-    const response = await fetch(`${BASE_URL}/specification-packages/${id}/download`)
+  download: async (id: string, localeCode?: string): Promise<void> => {
+    const query = localeCode ? `?locale_code=${encodeURIComponent(localeCode)}` : ''
+    const response = await fetch(`${BASE_URL}/specification-packages/${id}/download${query}`)
     if (!response.ok) {
       const err: ApiError = await response
         .json()
