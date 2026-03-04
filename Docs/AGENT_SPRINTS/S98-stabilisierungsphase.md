@@ -140,6 +140,10 @@ Mindestens:
 - fokussierte Vitest-Suites fuer betroffene Kernrouten und Services
 - manuelle Goldener-Pfad-Abnahme
 
+Abnahmevorlage:
+
+- `Docs/S98_GOLDENE_PFADE_CHECKLISTE.md`
+
 Goldene Pfade:
 
 - Projekt anlegen
