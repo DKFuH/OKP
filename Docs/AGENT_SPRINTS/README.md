@@ -68,3 +68,7 @@ Stand: 2026-03-04
 | 74 | `S74-split-view-virtual-visitor.md` | planned | Split-View im Editor und synchroner Virtual Visitor zwischen 2D und 3D |
 | 75 | `S75-modell-import-asset-browser-light.md` | planned | OBJ/DAE-Import, Bounding-Box/Auto-Scale und einfacher Asset-Browser |
 | 76 | `S76-render-ux-praesentationsmodus.md` | planned | Render-Presets, Praesentationsmodus und vereinfachte Bild-/Videoexporte |
+| 77 | `S77-nordkompass-sonnenstand-tageslicht.md` | planned | Nordkompass, Sonnenstand und Tageslichtsteuerung fuer Plan, 3D und Sheets |
+| 78 | `S78-textur-materialbibliothek.md` | planned | Textur- und Materialbibliothek fuer Flaechen, Fronten und importierte Assets |
+| 79 | `S79-offline-pwa-und-aufmass-import.md` | planned | Offline-PWA, Sync-Queue und mobiler Aufmass-/Blueprint-Import |
+| 80 | `S80-html-viewer-und-vektor-exporte.md` | planned | HTML-Webviewer sowie SVG-/Vektor-Exporte fuer Plan und Sheets |

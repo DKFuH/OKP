@@ -1289,3 +1289,50 @@ Asset-Import und klarer Praesentationsmodus.
 | 74 | Planen in 2D und Kontrollieren in 3D fuehlt sich simultan statt sequenziell an |
 | 75 | Eigene Modelle koennen schnell importiert, skaliert und wiederverwendet werden |
 | 76 | Kundenpraesentationen und schnelle Exporte funktionieren mit deutlich weniger UI-Reibung |
+
+---
+
+## Phase 15 - Umwelt, Materialien, Offline & Viewer (Sprints 77-80)
+
+**Ziel:** Die Planer-UX um reale Umgebungsparameter, Materialverwaltung,
+Offline-Nutzung und leichtere Sharing-/Exportpfade erweitern.
+
+**Inspiration aus Sweet Home 3D Plug-ins und Tools:**
+
+- Compass und Tageslicht nach Ort/Uhrzeit
+- importierte Texturen und Bibliothekseditor
+- Offline-Nutzung und Tape-Measure-Workflow
+- HTML5-Export, Planbild-Export und Side-View-Denke
+
+**Bewusst nicht uebernommen:**
+
+- SH3D-spezifische Bibliotheksformate (`SH3F`, `SH3T`)
+- generische Treppen-/Dachgeneratoren ohne klaren Kuechen-ROI
+- direkte GPL-Code- oder Asset-Nutzung
+
+### Sprint-Uebersicht
+
+| Sprint | Status | Thema | Deliverables |
+|--------|--------|-------|--------------|
+| 77 | `planned` | Nordkompass, Sonnenstand & Tageslicht | Umweltmodell, Kompassoverlay, Sonnenpreview, Nordpfeil in Sheets |
+| 78 | `planned` | Textur- & Materialbibliothek | Materialkatalog, Resolver, Texturzuweisung, Vorschau |
+| 79 | `planned` | Offline-PWA & Aufmass-Import | Manifest, Service Worker, Sync-Queue, Measurement-Import |
+| 80 | `planned` | HTML-Viewer & Vektor-Exporte | HTML/WebGL-Viewer, SVG-Planexport, SVG-Sheetexport |
+
+### Sprint-Metadaten
+
+| Sprint | Owner | ETA | Abhaengigkeiten | DoD-Kurzfassung |
+|--------|-------|-----|----------------|-----------------|
+| 77 | Full-Stack | Phase 15 | S14, S67, S76 | Projekt kennt Nordrichtung und Tageslicht wirkt in 3D und Layout |
+| 78 | Full-Stack | Phase 15 | S20, S51, S75 | Materialien sind tenantweit verwaltbar und auf Flaechen/Assets anwendbar |
+| 79 | Full-Stack | Phase 15 | S47, S58, S74 | zuletzt genutzte Projekte sind offline nutzbar und spaeter synchronisierbar |
+| 80 | Full-Stack | Phase 15 | S64, S69, S76 | Viewer- und SVG-Exporte funktionieren fuer externe Weitergabe |
+
+### Meilenstein Phase 15
+
+| Nach Sprint | Ergebnis |
+|-------------|----------|
+| 77 | Licht- und Ausrichtungswirkung werden fuer Planung und Praesentation realer |
+| 78 | Materialien und Texturen sind nicht mehr ad hoc, sondern als Bibliothek nutzbar |
+| 79 | Der Planer wird unterwegs und bei instabiler Verbindung belastbar nutzbar |
+| 80 | Planungen koennen deutlich leichter als Viewer oder Vektorunterlage geteilt werden |
