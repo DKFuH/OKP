@@ -97,6 +97,43 @@ const INVOICE_FIXTURE = `<?xml version="1.0" encoding="UTF-8"?>
   </INVOICE_SUMMARY>
 </INVOICE>`
 
+const ORDERRESPONSE_FIXTURE = `<?xml version="1.0" encoding="UTF-8"?>
+<ORDERRESPONSE version="1.0">
+  <ORDERRESPONSE_HEADER>
+    <ORDERRESPONSE_INFO>
+      <ORDERRESPONSE_ID>ORSP-2024-0001</ORDERRESPONSE_ID>
+      <ORDERRESPONSE_DATE>2024-03-20</ORDERRESPONSE_DATE>
+    </ORDERRESPONSE_INFO>
+    <PARTIES>
+      <BUYER_PARTY>
+        <PARTY_ID>buyer-001</PARTY_ID>
+      </BUYER_PARTY>
+      <SUPPLIER_PARTY>
+        <PARTY_ID>supplier-001</PARTY_ID>
+      </SUPPLIER_PARTY>
+    </PARTIES>
+  </ORDERRESPONSE_HEADER>
+  <ORDERRESPONSE_ITEM_LIST>
+    <ORDERRESPONSE_ITEM>
+      <LINE_ITEM_ID>1</LINE_ITEM_ID>
+      <PRODUCT>
+        <SUPPLIER_PID>US-600</SUPPLIER_PID>
+      </PRODUCT>
+      <QUANTITY>3</QUANTITY>
+      <ORDER_UNIT>C62</ORDER_UNIT>
+      <PRODUCT_PRICE_FIX>
+        <PRICE_AMOUNT>199.90</PRICE_AMOUNT>
+        <PRICE_CURRENCY>EUR</PRICE_CURRENCY>
+      </PRODUCT_PRICE_FIX>
+      <LINE_AMOUNT>599.70</LINE_AMOUNT>
+    </ORDERRESPONSE_ITEM>
+  </ORDERRESPONSE_ITEM_LIST>
+  <ORDERRESPONSE_SUMMARY>
+    <TOTAL_ITEM_NUM>1</TOTAL_ITEM_NUM>
+    <TOTAL_AMOUNT>599.70</TOTAL_AMOUNT>
+  </ORDERRESPONSE_SUMMARY>
+</ORDERRESPONSE>`
+
 describe('opentransParser', () => {
     describe('parseOpenTransDocument – ORDER', () => {
         it('detects ORDER document type', () => {
@@ -194,6 +231,20 @@ describe('opentransParser', () => {
 
         it('extracts INVOICE_SUMMARY totals', () => {
             const doc = parseOpenTransDocument(Buffer.from(INVOICE_FIXTURE))
+            expect(doc.totalItemCount).toBe(1)
+            expect(doc.totalAmount).toBeCloseTo(599.7)
+        })
+    })
+
+    describe('parseOpenTransDocument – ORDERRESPONSE', () => {
+        it('extracts ORDERRESPONSE item list and summary', () => {
+            const doc = parseOpenTransDocument(Buffer.from(ORDERRESPONSE_FIXTURE))
+
+            expect(doc.documentType).toBe('ORDERRESPONSE')
+            expect(doc.documentId).toBe('ORSP-2024-0001')
+            expect(doc.documentDate).toBe('2024-03-20')
+            expect(doc.items).toHaveLength(1)
+            expect(doc.items[0].supplierPid).toBe('US-600')
             expect(doc.totalItemCount).toBe(1)
             expect(doc.totalAmount).toBeCloseTo(599.7)
         })

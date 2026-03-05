@@ -197,11 +197,13 @@ function extractItem(item: any): OpenTransOrderItem | null {
 function extractItems(docRoot: any, docType: OpenTransDocumentType): OpenTransOrderItem[] {
     const itemListKey =
         docType === 'INVOICE' ? 'INVOICE_ITEM_LIST' :
+        docType === 'ORDERRESPONSE' ? 'ORDERRESPONSE_ITEM_LIST' :
         docType === 'DISPATCHNOTIFICATION' ? 'DISPATCHNOTIFICATION_ITEM_LIST' :
         'ORDER_ITEM_LIST'
 
     const itemKey =
         docType === 'INVOICE' ? 'INVOICE_ITEM' :
+        docType === 'ORDERRESPONSE' ? 'ORDERRESPONSE_ITEM' :
         docType === 'DISPATCHNOTIFICATION' ? 'DISPATCHNOTIFICATION_ITEM' :
         'ORDER_ITEM'
 
@@ -218,6 +220,7 @@ function extractItems(docRoot: any, docType: OpenTransDocumentType): OpenTransOr
 function extractSummary(docRoot: any, docType: OpenTransDocumentType): { totalItemCount?: number; totalAmount?: number } {
     const summaryKey =
         docType === 'INVOICE' ? 'INVOICE_SUMMARY' :
+        docType === 'ORDERRESPONSE' ? 'ORDERRESPONSE_SUMMARY' :
         docType === 'DISPATCHNOTIFICATION' ? 'DISPATCHNOTIFICATION_SUMMARY' :
         'ORDER_SUMMARY'
 
