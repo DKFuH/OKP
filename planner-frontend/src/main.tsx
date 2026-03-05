@@ -29,6 +29,7 @@ import { SpecificationPackagesPage } from './pages/SpecificationPackagesPage.js'
 import { ExportsPage } from './pages/ExportsPage.js'
 import { CutlistPage } from './pages/CutlistPage'
 import { NestingPage } from './pages/NestingPage'
+import { CaptureDialogHarnessPage } from './pages/CaptureDialogHarnessPage.js'
 import { getTenantPlugins } from './api/tenantSettings.js'
 import { bootstrapOfflinePwa } from './pwa/offlineBootstrap.js'
 import './i18n/index.js'
@@ -145,6 +146,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/settings/project-defaults" element={<ProjectDefaultsPage />} />
         <Route path="/settings/plugins" element={<PluginsSettingsPage />} />
         <Route path="/settings/layout-styles" element={<LayoutStylesPage />} />
+        <Route path="/__e2e/capture-dialog" element={<CaptureDialogHarnessPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
