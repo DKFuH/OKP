@@ -21,6 +21,90 @@
 
 .referenceOpacitySlider { width: 80px; }
 
+.modifierBadge {
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--status-info);
+  color: var(--status-info);
+  background: var(--status-info-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.settingToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.settingField {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.settingMeta {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.45rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.settingMetaWarn {
+  border-color: var(--status-danger);
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+
+.settingMetaActive {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.settingMetaSubtle {
+  border-color: var(--border-subtle);
+  background: var(--surface-default);
+  color: var(--text-muted);
+}
+
+.settingMetaButton {
+  appearance: none;
+  cursor: pointer;
+}
+
+.settingMetaButton:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.settingInput {
+  width: 62px;
+  height: 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 0.3rem;
+  font-size: 0.78rem;
+  background: var(--surface-default);
+  color: var(--text-primary);
+}
+
+.settingInput:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
 .stageCrosshair { cursor: crosshair; }
 
 .stageDefault { cursor: default; }

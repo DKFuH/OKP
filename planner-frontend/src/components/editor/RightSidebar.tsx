@@ -61,7 +61,8 @@ interface Props {
   selectedWallVisible: boolean | null
   selectedWallLocked: boolean | null
   onMoveVertex: (index: number, pos: Point2D) => void
-  onSetEdgeLength: (edgeIndex: number, lengthMm: number) => void
+  onSetEdgeLength: (edgeIndex: number, lengthMm: number, options?: { fineStep?: boolean }) => void
+  onEdgeLengthDraftChange: (lengthMm: number | null) => void
   onUpdateOpening: (opening: Opening) => void
   onDeleteOpening: (openingId: string) => void
   onUpdatePlacement: (placement: Placement) => void
@@ -135,7 +136,7 @@ export function RightSidebar({
   selectedWallGeom,
   selectedWallVisible,
   selectedWallLocked,
-  onMoveVertex, onSetEdgeLength,
+  onMoveVertex, onSetEdgeLength, onEdgeLengthDraftChange,
   onUpdateOpening, onDeleteOpening,
   onUpdatePlacement, onDeletePlacement,
   onSaveCeilingConstraints,
@@ -323,6 +324,7 @@ export function RightSidebar({
           edgeIndex={selectedEdgeIndex}
           lengthMm={edgeLengthMm}
           onSetLength={onSetEdgeLength}
+          onDraftChange={onEdgeLengthDraftChange}
         />
       ) : (
         <>
@@ -636,21 +638,55 @@ function VertexPanel({ index, vertex, onMove }: {
 
 // ─── Kanten-Panel ─────────────────────────────────────────────────────────────
 
-function EdgePanel({ edgeIndex, lengthMm, onSetLength }: {
+function EdgePanel({ edgeIndex, lengthMm, onSetLength, onDraftChange }: {
   edgeIndex: number
   lengthMm: number
-  onSetLength: (i: number, mm: number) => void
+  onSetLength: (i: number, mm: number, options?: { fineStep?: boolean }) => void
+  onDraftChange: (mm: number | null) => void
 }) {
   const [lenVal, setLenVal] = useState(String(Math.round(lengthMm)))
+  const [isFineStepModifierDown, setIsFineStepModifierDown] = useState(false)
 
   useEffect(() => {
     setLenVal(String(Math.round(lengthMm)))
-  }, [lengthMm])
+    onDraftChange(null)
+  }, [lengthMm, onDraftChange])
 
-  function commit() {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Control') {
+        setIsFineStepModifierDown(true)
+      }
+    }
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Control') {
+        setIsFineStepModifierDown(false)
+      }
+    }
+
+    const onBlur = () => setIsFineStepModifierDown(false)
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
+
+  function commit(fineStep = false) {
     const n = parseFloat(lenVal)
-    if (!Number.isFinite(n) || n <= 0) { setLenVal(String(Math.round(lengthMm))); return }
-    onSetLength(edgeIndex, n)
+    if (!Number.isFinite(n) || n <= 0) {
+      setLenVal(String(Math.round(lengthMm)))
+      onDraftChange(null)
+      return
+    }
+    onSetLength(edgeIndex, n, { fineStep })
+    onDraftChange(null)
   }
 
   return (
@@ -664,12 +700,17 @@ function EdgePanel({ edgeIndex, lengthMm, onSetLength }: {
           type="number"
           min={1}
           value={lenVal}
-          onChange={e => setLenVal(e.target.value)}
-          onBlur={commit}
-          onKeyDown={e => { if (e.key === 'Enter') commit() }}
+          onChange={(e) => {
+            const value = e.target.value
+            setLenVal(value)
+            const numeric = parseFloat(value)
+            onDraftChange(Number.isFinite(numeric) && numeric > 0 ? numeric : null)
+          }}
+          onBlur={() => commit(isFineStepModifierDown)}
+          onKeyDown={e => { if (e.key === 'Enter') commit(e.ctrlKey || isFineStepModifierDown) }}
         />
       </div>
-      <p className={styles.hint}>{(lengthMm / 1000).toFixed(3)} m</p>
+      <p className={styles.hint}>{(lengthMm / 1000).toFixed(3)} m · Ctrl = Feinschritt (halbes Raster)</p>
     </div>
   )
 }

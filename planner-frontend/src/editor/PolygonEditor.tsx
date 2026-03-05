@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useRef, useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Stage, Layer, Line, Circle, Group, Rect, Text, Image as KonvaImage } from 'react-konva'
 import type Konva from 'konva'
 import type { Point2D } from '@shared/types'
@@ -8,7 +8,9 @@ import type { Dimension } from '../api/dimensions.js'
 import type { Centerline } from '../api/centerlines.js'
 import type { GeoJsonGrid } from '../api/acoustics.js'
 import type { VerticalConnection } from '../api/verticalConnections.js'
-import type { EditorState, EditorTool } from './usePolygonEditor.js'
+import type { EditorSettings, EditorState, EditorTool, SnapOverrideOptions } from './usePolygonEditor.js'
+import { constrainOrthogonally, constrainToNearestSegmentAxis, type SnapSegment } from './snapUtils.js'
+import { resolvePolygonShortcutStates } from './actionStateResolver.js'
 import { CenterlineLayer } from '../components/canvas/CenterlineLayer.js'
 import { AcousticOverlay } from '../pages/AcousticOverlay.js'
 import { profileZoomFactor, type NavigationSettings } from '../components/editor/navigationSettings.js'
@@ -40,6 +42,9 @@ const COLOR = {
   vertexHover: resolveColor('--status-danger'),
   vertexSelected: resolveColor('--status-warning'),
   edgeSelected: resolveColor('--status-warning'),
+  edgePreviewCommit: resolveColor('--status-success', '--primary-color'),
+  edgePreviewDraft: resolveColor('--status-warning', '--primary-color'),
+  edgePreviewGhost: resolveColor('--status-info', '--primary-color'),
   error: resolveColor('--status-danger'),
   errorFill: resolveColor('--status-danger-bg'),
   openingDoor: resolveColor('--status-info'),
@@ -144,13 +149,14 @@ interface Props {
   height: number
   state: EditorState
   isValid: boolean
-  onAddVertex: (p: Point2D) => void
+  onAddVertex: (p: Point2D, options?: SnapOverrideOptions) => void
   onClosePolygon: () => void
-  onMoveVertex: (i: number, p: Point2D) => void
+  onMoveVertex: (i: number, p: Point2D, options?: SnapOverrideOptions) => void
   onSelectVertex: (i: number | null) => void
   onSelectEdge: (i: number | null) => void
   onHoverVertex: (i: number | null) => void
   onDeleteVertex: (i: number) => void
+  onUpdateSettings: (settings: Partial<EditorSettings>) => void
   onSetTool: (t: EditorTool) => void
   onReset: () => void
   onSave: () => void
@@ -175,6 +181,7 @@ interface Props {
   acousticGrid?: GeoJsonGrid | null
   acousticVisible?: boolean
   acousticOpacity?: number
+  edgeLengthPreviewMm?: number | null
   onReferenceImageUpdate?: (img: NonNullable<EditorState['referenceImage']>) => void
   navigationSettings: NavigationSettings
   virtualVisitor?: {
@@ -191,6 +198,7 @@ export function PolygonEditor({
   width, height, state, isValid,
   onAddVertex, onClosePolygon, onMoveVertex,
   onSelectVertex, onSelectEdge, onHoverVertex, onDeleteVertex,
+  onUpdateSettings,
   onSetTool, onReset, onSave,
   verticalConnections = [],
   openings = [], selectedOpeningId, onSelectOpening, onAddOpening,
@@ -205,6 +213,7 @@ export function PolygonEditor({
   acousticGrid = null,
   acousticVisible = false,
   acousticOpacity = 0.5,
+  edgeLengthPreviewMm = null,
   onReferenceImageUpdate,
   navigationSettings,
   virtualVisitor = null,
@@ -218,7 +227,76 @@ export function PolygonEditor({
   const middlePanStartRef = useRef<{ pointerX: number; pointerY: number; offsetX: number; offsetY: number } | null>(null)
   const [dragLabel, setDragLabel] = useState<{ x: number; y: number; text: string } | null>(null)
   const [referenceImageElement, setReferenceImageElement] = useState<HTMLImageElement | null>(null)
+  const [isOrthoModifierDown, setIsOrthoModifierDown] = useState(false)
+  const [isMagnetismBypassDown, setIsMagnetismBypassDown] = useState(false)
+  const [snapToleranceMode, setSnapToleranceMode] = useState<'auto' | 'base'>('auto')
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 })
+
+  const dynamicMagnetismToleranceMm = useMemo(() => {
+    const baseTolerance = state.settings.magnetismToleranceMm
+    if (!Number.isFinite(baseTolerance) || baseTolerance <= 0) {
+      return baseTolerance
+    }
+
+    const zoomFactor = Math.max(0.2, viewport.zoom)
+    const scaledTolerance = baseTolerance / zoomFactor
+    const minTolerance = Math.max(24, Math.round(baseTolerance * 0.35))
+    const maxTolerance = Math.max(minTolerance, Math.round(baseTolerance * 2))
+    return Math.max(minTolerance, Math.min(maxTolerance, Math.round(scaledTolerance)))
+  }, [state.settings.magnetismToleranceMm, viewport.zoom])
+
+  const magnetismEnabled = state.settings.magnetismEnabled || state.settings.axisMagnetismEnabled
+  const baseMagnetismToleranceMm = state.settings.magnetismToleranceMm
+  const selectedMagnetismToleranceMm = snapToleranceMode === 'base'
+    ? baseMagnetismToleranceMm
+    : dynamicMagnetismToleranceMm
+  const isMagnetismIndicatorWarn = !magnetismEnabled || isMagnetismBypassDown || selectedMagnetismToleranceMm <= 0
+  const toleranceRatio = !Number.isFinite(baseMagnetismToleranceMm) || baseMagnetismToleranceMm <= 0
+    ? 1
+    : selectedMagnetismToleranceMm / baseMagnetismToleranceMm
+  const isMagnetismIndicatorActive = !isMagnetismIndicatorWarn
+    && (toleranceRatio >= 1.35 || toleranceRatio <= 0.75)
+  const effectiveMagnetismLabel = isMagnetismIndicatorWarn
+    ? 'aus'
+    : snapToleranceMode === 'base'
+      ? `${selectedMagnetismToleranceMm} mm (Basis)`
+      : `${selectedMagnetismToleranceMm} mm`
+  const effectiveMagnetismTooltip = (() => {
+    if (isMagnetismIndicatorWarn) {
+      if (isMagnetismBypassDown && Number.isFinite(baseMagnetismToleranceMm) && baseMagnetismToleranceMm > 0) {
+        return `Fangtoleranz: aus (Alt gedrueckt, Basis ${baseMagnetismToleranceMm} mm)`
+      }
+
+      if (!magnetismEnabled && Number.isFinite(baseMagnetismToleranceMm) && baseMagnetismToleranceMm > 0) {
+        return `Fangtoleranz: aus (Punkt-/Achsenfang deaktiviert, Basis ${baseMagnetismToleranceMm} mm)`
+      }
+
+      return 'Fangtoleranz: aus'
+    }
+
+    if (snapToleranceMode === 'base') {
+      if (Number.isFinite(baseMagnetismToleranceMm) && baseMagnetismToleranceMm > 0) {
+        return `Fangtoleranz: Basis-Modus aktiv (${baseMagnetismToleranceMm} mm). Klick wechselt auf Auto.`
+      }
+
+      return 'Fangtoleranz: Basis-Modus aktiv. Klick wechselt auf Auto.'
+    }
+
+    if (Number.isFinite(baseMagnetismToleranceMm) && baseMagnetismToleranceMm > 0) {
+      return `Fangtoleranz (Basis -> Effektiv): ${baseMagnetismToleranceMm} mm -> ${selectedMagnetismToleranceMm} mm. Klick wechselt auf Basis.`
+    }
+
+    return `Fangtoleranz (Effektiv): ${selectedMagnetismToleranceMm} mm. Klick wechselt auf Basis.`
+  })()
+  const zoomPercent = Math.max(1, Math.round(viewport.zoom * 100))
+  const zoomLabel = `${zoomPercent}%`
+  const magnetismIndicatorClassName = `${styles.settingMeta} ${
+    isMagnetismIndicatorWarn
+      ? styles.settingMetaWarn
+      : isMagnetismIndicatorActive
+        ? styles.settingMetaActive
+        : ''
+  }`
 
   const resolveLogicalPointer = useCallback((stage: Konva.Stage) => {
     const pointer = stage.getPointerPosition()
@@ -231,6 +309,41 @@ export function PolygonEditor({
       y: (pointer.y - viewport.y) / viewport.zoom,
     }
   }, [viewport.x, viewport.y, viewport.zoom])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') {
+        setIsOrthoModifierDown(true)
+      }
+      if (event.key === 'Alt') {
+        setIsMagnetismBypassDown(true)
+      }
+    }
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') {
+        setIsOrthoModifierDown(false)
+      }
+      if (event.key === 'Alt') {
+        setIsMagnetismBypassDown(false)
+      }
+    }
+
+    const onBlur = () => {
+      setIsOrthoModifierDown(false)
+      setIsMagnetismBypassDown(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
 
   useEffect(() => {
     const url = state.referenceImage?.url
@@ -278,9 +391,19 @@ export function PolygonEditor({
 
     if (state.tool !== 'draw') return
     if (safeEditMode) return
+
+    let point = { x_mm: canvasToWorld(pos.x), y_mm: canvasToWorld(pos.y) }
+    const origin = state.vertices.at(-1)
+    if (isOrthoModifierDown && origin) {
+      point = constrainWithShiftModifier(point, { x_mm: origin.x_mm, y_mm: origin.y_mm })
+    }
+
     // Child shapes (vertices, edges) set e.cancelBubble = true so they never reach here
-    onAddVertex({ x_mm: canvasToWorld(pos.x), y_mm: canvasToWorld(pos.y) })
-  }, [resolveLogicalPointer, safeEditMode, state.tool, state.referenceImage, onAddVertex, onReferenceImageUpdate, onRepositionVisitor])
+    onAddVertex(point, {
+      disableMagnetism: isMagnetismBypassDown,
+      magnetismToleranceMmOverride: selectedMagnetismToleranceMm,
+    })
+  }, [resolveLogicalPointer, safeEditMode, state.tool, state.referenceImage, state.vertices, isOrthoModifierDown, isMagnetismBypassDown, selectedMagnetismToleranceMm, constrainWithShiftModifier, onAddVertex, onReferenceImageUpdate, onRepositionVisitor])
 
   const handleStageDblClick = useCallback(() => {
     if (safeEditMode) return
@@ -299,22 +422,28 @@ export function PolygonEditor({
       const previousWallLocked = Boolean(wallSegments[prevEdgeIndex]?.locked)
       return currentWallLocked || previousWallLocked
     })()
+    const shortcutStates = resolvePolygonShortcutStates({
+      safeEditMode,
+      selectedVertexIndex: state.selectedIndex,
+      selectedEdgeIndex: state.selectedEdgeIndex,
+      selectedVertexLocked: isSelectedVertexLocked,
+    })
 
     function handleKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === 'd' || e.key === 'D') onSetTool('draw')
-      if (e.key === 's' || e.key === 'S') onSetTool('select')
-      if ((e.key === 'Backspace' || e.key === 'Delete') && state.selectedIndex !== null && !safeEditMode && !isSelectedVertexLocked) {
+      if ((e.key === 'd' || e.key === 'D') && shortcutStates.toolDraw.enabled) onSetTool('draw')
+      if ((e.key === 's' || e.key === 'S') && shortcutStates.toolSelect.enabled) onSetTool('select')
+      if ((e.key === 'Backspace' || e.key === 'Delete') && shortcutStates.deleteVertex.enabled && state.selectedIndex !== null) {
         onDeleteVertex(state.selectedIndex)
       }
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && shortcutStates.clearSelection.enabled) {
         onSelectVertex(null)
         onSelectEdge(null)
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [safeEditMode, wallSegments, state.selectedIndex, state.vertices.length, onSetTool, onDeleteVertex, onSelectVertex, onSelectEdge])
+  }, [safeEditMode, wallSegments, state.selectedIndex, state.selectedEdgeIndex, state.vertices.length, onSetTool, onDeleteVertex, onSelectVertex, onSelectEdge])
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent) => {
@@ -387,6 +516,22 @@ export function PolygonEditor({
     })
   }, [navigationSettings, viewport.x, viewport.y, viewport.zoom])
 
+  const handleResetZoom = useCallback(() => {
+    const targetZoom = 1
+    const logicalCenterX = (width / 2 - viewport.x) / viewport.zoom
+    const logicalCenterY = (height / 2 - viewport.y) / viewport.zoom
+
+    setViewport({
+      x: width / 2 - logicalCenterX * targetZoom,
+      y: height / 2 - logicalCenterY * targetZoom,
+      zoom: targetZoom,
+    })
+  }, [height, viewport.x, viewport.y, viewport.zoom, width])
+
+  const handleToggleSnapToleranceMode = useCallback(() => {
+    setSnapToleranceMode((prev) => (prev === 'auto' ? 'base' : 'auto'))
+  }, [])
+
   const handleContainerMouseDown = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button !== 1 || !navigationSettings.middle_mouse_pan) {
       return
@@ -421,6 +566,44 @@ export function PolygonEditor({
     const segment = wallSegments[index]
     return Boolean(segment?.locked)
   })
+
+  const alignmentSegments = useMemo(() => {
+    if (state.vertices.length < 2) {
+      return [] as SnapSegment[]
+    }
+
+    const edgeCount = state.closed ? state.vertices.length : state.vertices.length - 1
+    const segments: SnapSegment[] = []
+    for (let i = 0; i < edgeCount; i += 1) {
+      const nextIndex = (i + 1) % state.vertices.length
+      const start = state.vertices[i]
+      const end = state.vertices[nextIndex]
+      segments.push({
+        start: { x_mm: start.x_mm, y_mm: start.y_mm },
+        end: { x_mm: end.x_mm, y_mm: end.y_mm },
+      })
+    }
+
+    return segments
+  }, [state.closed, state.vertices])
+
+  function constrainWithShiftModifier(point: Point2D, origin: Point2D): Point2D {
+    const orthogonalCandidate = constrainOrthogonally(point, origin)
+    if (alignmentSegments.length === 0) {
+      return orthogonalCandidate
+    }
+
+    const segmentAxisCandidate = constrainToNearestSegmentAxis(point, origin, alignmentSegments)
+    const orthDx = orthogonalCandidate.x_mm - point.x_mm
+    const orthDy = orthogonalCandidate.y_mm - point.y_mm
+    const orthDistSq = orthDx * orthDx + orthDy * orthDy
+
+    const axisDx = segmentAxisCandidate.x_mm - point.x_mm
+    const axisDy = segmentAxisCandidate.y_mm - point.y_mm
+    const axisDistSq = axisDx * axisDx + axisDy * axisDy
+
+    return axisDistSq < orthDistSq ? segmentAxisCandidate : orthogonalCandidate
+  }
 
   const isWallEditable = useCallback((index: number) => {
     return wallVisibleByIndex[index] !== false && !wallLockedByIndex[index]
@@ -518,6 +701,55 @@ export function PolygonEditor({
       <div className={styles.toolbar}>
         <ToolBtn active={state.tool === 'draw'} onClick={() => onSetTool('draw')}>Zeichnen</ToolBtn>
         <ToolBtn active={state.tool === 'select'} onClick={() => onSetTool('select')}>Auswählen</ToolBtn>
+        {isOrthoModifierDown && <span className={styles.modifierBadge}>ORTHO</span>}
+        {isMagnetismBypassDown && <span className={styles.modifierBadge}>MAG OFF</span>}
+        <label className={styles.settingToggle} title="Punktfang ein/aus">
+          <input
+            type="checkbox"
+            checked={state.settings.magnetismEnabled}
+            onChange={(event) => onUpdateSettings({ magnetismEnabled: event.target.checked })}
+          />
+          Punktfang
+        </label>
+        <label className={styles.settingToggle} title="Fang auf Wandachsen/Projektionen ein/aus">
+          <input
+            type="checkbox"
+            checked={state.settings.axisMagnetismEnabled}
+            onChange={(event) => onUpdateSettings({ axisMagnetismEnabled: event.target.checked })}
+          />
+          Achsenfang
+        </label>
+        <label className={styles.settingField} title="Längenraster in mm für direkte Kantenlängen-Eingaben">
+          L-Snap
+          <input
+            className={styles.settingInput}
+            type="number"
+            min="0"
+            step="10"
+            value={state.settings.lengthSnapStepMm}
+            onChange={(event) => {
+              const value = Number(event.target.value)
+              if (!Number.isFinite(value) || value < 0) return
+              onUpdateSettings({ lengthSnapStepMm: Math.round(value) })
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className={`${magnetismIndicatorClassName} ${styles.settingMetaButton}`}
+          title={effectiveMagnetismTooltip}
+          onClick={handleToggleSnapToleranceMode}
+        >
+          Fang: {effectiveMagnetismLabel}
+        </button>
+        <button
+          type="button"
+          className={`${styles.settingMeta} ${styles.settingMetaSubtle} ${styles.settingMetaButton}`}
+          title="Aktuelle Zoom-Stufe auf dem Canvas. Klick: auf 100% zurücksetzen"
+          onClick={handleResetZoom}
+        >
+          Zoom: {zoomLabel}
+        </button>
         <label className={styles.toolBtn} title="Grundriss laden">
           📷 Laden
           <input
@@ -729,8 +961,14 @@ export function PolygonEditor({
                       const iNext = (i + 1) % state.vertices.length
                       const vI = state.vertices[iV]
                       const vNext = state.vertices[iNext]
-                      onMoveVertex(iV, { x_mm: vI.x_mm + dx, y_mm: vI.y_mm + dy })
-                      onMoveVertex(iNext, { x_mm: vNext.x_mm + dx, y_mm: vNext.y_mm + dy })
+                      onMoveVertex(iV, { x_mm: vI.x_mm + dx, y_mm: vI.y_mm + dy }, {
+                        disableMagnetism: isMagnetismBypassDown,
+                        magnetismToleranceMmOverride: selectedMagnetismToleranceMm,
+                      })
+                      onMoveVertex(iNext, { x_mm: vNext.x_mm + dx, y_mm: vNext.y_mm + dy }, {
+                        disableMagnetism: isMagnetismBypassDown,
+                        magnetismToleranceMmOverride: selectedMagnetismToleranceMm,
+                      })
                       e.target.x(mx)
                       e.target.y(my)
                     }}
@@ -830,6 +1068,71 @@ export function PolygonEditor({
           {/* Bemaßungslinien */}
           {state.closed && (
             <Group>
+              {state.selectedEdgeIndex !== null && edgeLengthPreviewMm !== null && edgeLengthPreviewMm > 0 && (() => {
+                const i = state.selectedEdgeIndex
+                const start = pts[i]
+                const end = pts[(i + 1) % pts.length]
+                if (!start || !end) return null
+
+                const dx = end.x - start.x
+                const dy = end.y - start.y
+                const len = Math.hypot(dx, dy)
+                if (len === 0) return null
+
+                const nx = -dy / len
+                const ny = dx / len
+                const offsetPx = worldToCanvas(100)
+                const x1 = start.x + nx * offsetPx
+                const y1 = start.y + ny * offsetPx
+                const x2 = end.x + nx * offsetPx
+                const y2 = end.y + ny * offsetPx
+                const currentLengthMm = canvasToWorld(len)
+                const isDraft = Math.abs(edgeLengthPreviewMm - currentLengthMm) > 0.5
+                const previewColor = isDraft ? COLOR.edgePreviewDraft : COLOR.edgePreviewCommit
+
+                const dirX = dx / len
+                const dirY = dy / len
+                const targetLenPx = worldToCanvas(edgeLengthPreviewMm)
+                const ghostX = start.x + dirX * targetLenPx
+                const ghostY = start.y + dirY * targetLenPx
+                const showGhost = isDraft && Math.hypot(ghostX - end.x, ghostY - end.y) > worldToCanvas(2)
+                const label = `${Math.round(edgeLengthPreviewMm)} mm${isDraft ? ' (Draft)' : ''}`
+
+                return (
+                  <Group key={`edge-preview-${i}`} listening={false}>
+                    <Line points={[start.x, start.y, x1, y1]} stroke={previewColor} strokeWidth={1} dash={[4, 2]} />
+                    <Line points={[end.x, end.y, x2, y2]} stroke={previewColor} strokeWidth={1} dash={[4, 2]} />
+                    {isDraft && (
+                      <Line
+                        points={[
+                          start.x + nx * worldToCanvas(72),
+                          start.y + ny * worldToCanvas(72),
+                          end.x + nx * worldToCanvas(72),
+                          end.y + ny * worldToCanvas(72),
+                        ]}
+                        stroke={COLOR.edgePreviewCommit}
+                        strokeWidth={1}
+                        opacity={0.7}
+                      />
+                    )}
+                    <Line points={[x1, y1, x2, y2]} stroke={previewColor} strokeWidth={2} dash={isDraft ? [6, 3] : undefined} />
+                    {showGhost && (
+                      <>
+                        <Line points={[end.x, end.y, ghostX, ghostY]} stroke={COLOR.edgePreviewGhost} strokeWidth={1} dash={[3, 3]} />
+                        <Circle x={ghostX} y={ghostY} radius={4} fill={COLOR.edgePreviewGhost} opacity={0.85} />
+                      </>
+                    )}
+                    <Text
+                      x={(x1 + x2) / 2 - 28}
+                      y={(y1 + y2) / 2 - 10}
+                      text={label}
+                      fontSize={11}
+                      fill={previewColor}
+                    />
+                  </Group>
+                )
+              })()}
+
               {dimensions.filter((dimension) => dimension.visible !== false).map((dimension) => {
                 if (dimension.type !== 'linear' || dimension.points.length < 2) return null
 
@@ -1028,10 +1331,19 @@ export function PolygonEditor({
                       setDragLabel(null)
                       return
                     }
-                    setDragLabel(null)
-                    onMoveVertex(i, {
+
+                    const rawPoint = {
                       x_mm: canvasToWorld(e.target.x()),
                       y_mm: canvasToWorld(e.target.y()),
+                    }
+                    const nextPoint = isOrthoModifierDown
+                      ? constrainWithShiftModifier(rawPoint, { x_mm: state.vertices[i].x_mm, y_mm: state.vertices[i].y_mm })
+                      : rawPoint
+
+                    setDragLabel(null)
+                    onMoveVertex(i, nextPoint, {
+                      disableMagnetism: isMagnetismBypassDown,
+                      magnetismToleranceMmOverride: selectedMagnetismToleranceMm,
                     })
                   }}
                   onDragMove={(e) => {
@@ -1040,8 +1352,24 @@ export function PolygonEditor({
                       e.target.y(p.y)
                       return
                     }
-                    const x = e.target.x()
-                    const y = e.target.y()
+
+                    const rawX = e.target.x()
+                    const rawY = e.target.y()
+                    const constrainedCanvas = isOrthoModifierDown
+                      ? (() => {
+                        const constrained = constrainWithShiftModifier(
+                          { x_mm: canvasToWorld(rawX), y_mm: canvasToWorld(rawY) },
+                          { x_mm: state.vertices[i].x_mm, y_mm: state.vertices[i].y_mm },
+                        )
+                        return { x: worldToCanvas(constrained.x_mm), y: worldToCanvas(constrained.y_mm) }
+                      })()
+                      : { x: rawX, y: rawY }
+
+                    e.target.x(constrainedCanvas.x)
+                    e.target.y(constrainedCanvas.y)
+
+                    const x = constrainedCanvas.x
+                    const y = constrainedCanvas.y
                     const nextIdx = (i + 1) % pts.length
                     const prevIdx = (i - 1 + pts.length) % pts.length
                     const toNext = Math.hypot(
@@ -1093,7 +1421,7 @@ export function PolygonEditor({
           <span>Klick: Punkt setzen · Doppelklick oder erster Punkt: Polygon schließen</span>
         )}
         {state.tool === 'select' && (
-          <span>Ziehen: Punkt/Wand verschieben · Doppelklick: löschen · D=Zeichnen · S=Auswählen · Esc=Abwählen · Mausrad=Zoom</span>
+          <span>Ziehen: Punkt/Wand verschieben · Doppelklick: löschen · Shift=Align (H/V + Nachbarwand-Winkel) · Alt=Magnet aus · D=Zeichnen · S=Auswählen · Esc=Abwählen · Mausrad=Zoom · Fangtoleranz passt sich Zoom an</span>
         )}
         {safeEditMode && (
           <span>Safe-Edit aktiv: Geometrieänderungen sind gesperrt.</span>

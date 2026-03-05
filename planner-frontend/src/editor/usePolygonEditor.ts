@@ -1,7 +1,7 @@
-import { useCallback, useReducer } from 'react'
+import { useCallback, useEffect, useReducer } from 'react'
 import type { Point2D, Vertex } from '@shared/types'
 import { validatePolygon } from '@shared/geometry/validatePolygon'
-import { snapPoint } from './snapUtils.js'
+import { buildAllowedAngles, getMagnetizedLength, snapPoint, type SnapSegment } from './snapUtils.js'
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
@@ -19,6 +19,11 @@ export interface ReferenceImageState {
 export interface EditorSettings {
   gridSizeMm: number   // 0 = kein Raster
   angleSnap: boolean
+  angleStepDeg: number
+  magnetismEnabled: boolean
+  axisMagnetismEnabled: boolean
+  magnetismToleranceMm: number
+  lengthSnapStepMm: number
   minEdgeLengthMm: number
 }
 
@@ -37,16 +42,25 @@ export interface EditorState {
   isDirty: boolean
 }
 
+export interface SnapOverrideOptions {
+  disableMagnetism?: boolean
+  magnetismToleranceMmOverride?: number
+}
+
+export interface EdgeLengthSetOptions {
+  fineStep?: boolean
+}
+
 type Action =
   | { type: 'SET_TOOL'; tool: EditorTool }
-  | { type: 'ADD_VERTEX'; point: Point2D }
+  | { type: 'ADD_VERTEX'; point: Point2D; disableMagnetism?: boolean; magnetismToleranceMmOverride?: number }
   | { type: 'CLOSE_POLYGON' }
-  | { type: 'MOVE_VERTEX'; index: number; point: Point2D }
+  | { type: 'MOVE_VERTEX'; index: number; point: Point2D; disableMagnetism?: boolean; magnetismToleranceMmOverride?: number }
   | { type: 'SELECT_VERTEX'; index: number | null }
   | { type: 'SELECT_EDGE'; index: number | null }
   | { type: 'HOVER_VERTEX'; index: number | null }
   | { type: 'DELETE_VERTEX'; index: number }
-  | { type: 'SET_EDGE_LENGTH'; edgeIndex: number; lengthMm: number }
+  | { type: 'SET_EDGE_LENGTH'; edgeIndex: number; lengthMm: number; useFineStep?: boolean }
   | { type: 'LOAD_VERTICES'; vertices: Vertex[] }
   | { type: 'RESET' }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<EditorSettings> }
@@ -67,6 +81,30 @@ function reindex(vertices: Vertex[]): Vertex[] {
 function runValidation(vertices: Vertex[], minEdgeLengthMm: number, closed: boolean): string[] {
   if (!closed || vertices.length < 3) return []
   return validatePolygon(vertices, minEdgeLengthMm).errors
+}
+
+function buildMagnetismSegments(vertices: Vertex[], closed: boolean, excludedVertexIndices: number[] = []): SnapSegment[] {
+  if (vertices.length < 2) return []
+
+  const excluded = new Set(excludedVertexIndices)
+  const segments: SnapSegment[] = []
+  const edgeCount = closed ? vertices.length : vertices.length - 1
+
+  for (let i = 0; i < edgeCount; i += 1) {
+    const nextIndex = (i + 1) % vertices.length
+    if (excluded.has(i) || excluded.has(nextIndex)) {
+      continue
+    }
+
+    const start = vertices[i]
+    const end = vertices[nextIndex]
+    segments.push({
+      start: { x_mm: start.x_mm, y_mm: start.y_mm },
+      end: { x_mm: end.x_mm, y_mm: end.y_mm },
+    })
+  }
+
+  return segments
 }
 
 /** Berechnet Kantenlänge in mm */
@@ -99,10 +137,46 @@ function applySetEdgeLength(vertices: Vertex[], edgeIndex: number, lengthMm: num
 const DEFAULT_SETTINGS: EditorSettings = {
   gridSizeMm: 100,
   angleSnap: true,
+  angleStepDeg: 45,
+  magnetismEnabled: true,
+  axisMagnetismEnabled: true,
+  magnetismToleranceMm: 120,
+  lengthSnapStepMm: 50,
   minEdgeLengthMm: 100,
 }
 
-function initialState(): EditorState {
+const SETTINGS_STORAGE_KEY = 'yakds.polygonEditor.settings.v1'
+
+function readStoredSettings(): Partial<EditorSettings> {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+    if (!raw) {
+      return {}
+    }
+
+    const parsed = JSON.parse(raw) as Partial<EditorSettings>
+    const settings: Partial<EditorSettings> = {}
+
+    if (typeof parsed.gridSizeMm === 'number' && Number.isFinite(parsed.gridSizeMm) && parsed.gridSizeMm >= 0) settings.gridSizeMm = Math.round(parsed.gridSizeMm)
+    if (typeof parsed.angleSnap === 'boolean') settings.angleSnap = parsed.angleSnap
+    if (typeof parsed.angleStepDeg === 'number' && Number.isFinite(parsed.angleStepDeg) && parsed.angleStepDeg > 0) settings.angleStepDeg = Math.round(parsed.angleStepDeg)
+    if (typeof parsed.magnetismEnabled === 'boolean') settings.magnetismEnabled = parsed.magnetismEnabled
+    if (typeof parsed.axisMagnetismEnabled === 'boolean') settings.axisMagnetismEnabled = parsed.axisMagnetismEnabled
+    if (typeof parsed.magnetismToleranceMm === 'number' && Number.isFinite(parsed.magnetismToleranceMm) && parsed.magnetismToleranceMm >= 0) settings.magnetismToleranceMm = Math.round(parsed.magnetismToleranceMm)
+    if (typeof parsed.lengthSnapStepMm === 'number' && Number.isFinite(parsed.lengthSnapStepMm) && parsed.lengthSnapStepMm >= 0) settings.lengthSnapStepMm = Math.round(parsed.lengthSnapStepMm)
+    if (typeof parsed.minEdgeLengthMm === 'number' && Number.isFinite(parsed.minEdgeLengthMm) && parsed.minEdgeLengthMm >= 0) settings.minEdgeLengthMm = Math.round(parsed.minEdgeLengthMm)
+
+    return settings
+  } catch {
+    return {}
+  }
+}
+
+function initialState(settingsOverride: Partial<EditorSettings> = {}): EditorState {
   return {
     tool: 'draw',
     vertices: [],
@@ -111,7 +185,7 @@ function initialState(): EditorState {
     selectedIndex: null,
     selectedEdgeIndex: null,
     hoverIndex: null,
-    settings: DEFAULT_SETTINGS,
+    settings: { ...DEFAULT_SETTINGS, ...settingsOverride },
     referenceImage: null,
     validationErrors: [],
     isDirty: false,
@@ -126,7 +200,19 @@ function reducer(state: EditorState, action: Action): EditorState {
     case 'ADD_VERTEX': {
       if (state.closed || state.tool !== 'draw') return state
       const origin = state.vertices.at(-1) ?? null
-      const snapped = snapPoint(action.point, origin, state.settings.gridSizeMm, state.settings.angleSnap)
+      const magnetismEnabled = state.settings.magnetismEnabled && !action.disableMagnetism
+      const axisMagnetismEnabled = state.settings.axisMagnetismEnabled && !action.disableMagnetism
+      const magnetismToleranceMm = Number.isFinite(action.magnetismToleranceMmOverride) && (action.magnetismToleranceMmOverride ?? 0) > 0
+        ? Math.round(action.magnetismToleranceMmOverride as number)
+        : state.settings.magnetismToleranceMm
+      const snapped = snapPoint(action.point, origin, state.settings.gridSizeMm, state.settings.angleSnap, {
+        allowedAnglesDeg: buildAllowedAngles(state.settings.angleStepDeg),
+        magnetismEnabled,
+        magnetismCandidates: state.vertices.map((vertex) => ({ x_mm: vertex.x_mm, y_mm: vertex.y_mm })),
+        axisMagnetismEnabled,
+        magnetismSegments: buildMagnetismSegments(state.vertices, state.closed),
+        magnetismToleranceMm,
+      })
       const newVertex = buildVertex(snapped, state.vertices.length)
       const vertices = [...state.vertices, newVertex]
       return {
@@ -146,7 +232,20 @@ function reducer(state: EditorState, action: Action): EditorState {
 
     case 'MOVE_VERTEX': {
       if (action.index < 0 || action.index >= state.vertices.length) return state
-      const snapped = snapPoint(action.point, null, state.settings.gridSizeMm, false)
+      const magnetismEnabled = state.settings.magnetismEnabled && !action.disableMagnetism
+      const axisMagnetismEnabled = state.settings.axisMagnetismEnabled && !action.disableMagnetism
+      const magnetismToleranceMm = Number.isFinite(action.magnetismToleranceMmOverride) && (action.magnetismToleranceMmOverride ?? 0) > 0
+        ? Math.round(action.magnetismToleranceMmOverride as number)
+        : state.settings.magnetismToleranceMm
+      const snapped = snapPoint(action.point, null, state.settings.gridSizeMm, false, {
+        magnetismEnabled,
+        magnetismCandidates: state.vertices
+          .filter((_, index) => index !== action.index)
+          .map((vertex) => ({ x_mm: vertex.x_mm, y_mm: vertex.y_mm })),
+        axisMagnetismEnabled,
+        magnetismSegments: buildMagnetismSegments(state.vertices, state.closed, [action.index]),
+        magnetismToleranceMm,
+      })
       const vertices = state.vertices.map((v, i) =>
         i === action.index ? { ...v, x_mm: snapped.x_mm, y_mm: snapped.y_mm } : v,
       )
@@ -185,7 +284,12 @@ function reducer(state: EditorState, action: Action): EditorState {
 
     case 'SET_EDGE_LENGTH': {
       if (!state.closed || action.edgeIndex < 0 || action.edgeIndex >= state.vertices.length) return state
-      const vertices = applySetEdgeLength(state.vertices, action.edgeIndex, action.lengthMm)
+      const baseStep = state.settings.lengthSnapStepMm
+      const effectiveStep = action.useFineStep && baseStep > 0
+        ? Math.max(1, Math.round(baseStep / 2))
+        : baseStep
+      const targetLength = getMagnetizedLength(action.lengthMm, effectiveStep)
+      const vertices = applySetEdgeLength(state.vertices, action.edgeIndex, targetLength)
       return {
         ...state,
         vertices,
@@ -228,6 +332,15 @@ function reducer(state: EditorState, action: Action): EditorState {
   }
 }
 
+// Exported for reducer-level tests that should not rely on React hook runtime.
+export function createInitialEditorState(): EditorState {
+  return initialState()
+}
+
+export function editorReducer(state: EditorState, action: Action): EditorState {
+  return reducer(state, action)
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function usePolygonEditor(initialVertices?: Vertex[]) {
@@ -235,7 +348,7 @@ export function usePolygonEditor(initialVertices?: Vertex[]) {
     reducer,
     undefined,
     () => {
-      const s = initialState()
+      const s = initialState(readStoredSettings())
       if (initialVertices && initialVertices.length >= 3) {
         return reducer(s, { type: 'LOAD_VERTICES', vertices: initialVertices })
       }
@@ -243,14 +356,37 @@ export function usePolygonEditor(initialVertices?: Vertex[]) {
     },
   )
 
-  const addVertex = useCallback((point: Point2D) =>
-    dispatch({ type: 'ADD_VERTEX', point }), [])
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings))
+    } catch {
+      // Ignore write errors (private mode / blocked storage).
+    }
+  }, [state.settings])
+
+  const addVertex = useCallback((point: Point2D, options?: SnapOverrideOptions) =>
+    dispatch({
+      type: 'ADD_VERTEX',
+      point,
+      disableMagnetism: options?.disableMagnetism,
+      magnetismToleranceMmOverride: options?.magnetismToleranceMmOverride,
+    }), [])
 
   const closePolygon = useCallback(() =>
     dispatch({ type: 'CLOSE_POLYGON' }), [])
 
-  const moveVertex = useCallback((index: number, point: Point2D) =>
-    dispatch({ type: 'MOVE_VERTEX', index, point }), [])
+  const moveVertex = useCallback((index: number, point: Point2D, options?: SnapOverrideOptions) =>
+    dispatch({
+      type: 'MOVE_VERTEX',
+      index,
+      point,
+      disableMagnetism: options?.disableMagnetism,
+      magnetismToleranceMmOverride: options?.magnetismToleranceMmOverride,
+    }), [])
 
   const selectVertex = useCallback((index: number | null) =>
     dispatch({ type: 'SELECT_VERTEX', index }), [])
@@ -264,8 +400,8 @@ export function usePolygonEditor(initialVertices?: Vertex[]) {
   const deleteVertex = useCallback((index: number) =>
     dispatch({ type: 'DELETE_VERTEX', index }), [])
 
-  const setEdgeLength = useCallback((edgeIndex: number, lengthMm: number) =>
-    dispatch({ type: 'SET_EDGE_LENGTH', edgeIndex, lengthMm }), [])
+  const setEdgeLength = useCallback((edgeIndex: number, lengthMm: number, options?: EdgeLengthSetOptions) =>
+    dispatch({ type: 'SET_EDGE_LENGTH', edgeIndex, lengthMm, useFineStep: options?.fineStep }), [])
 
   const setTool = useCallback((tool: EditorTool) =>
     dispatch({ type: 'SET_TOOL', tool }), [])

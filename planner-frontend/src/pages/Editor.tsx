@@ -39,6 +39,8 @@ import { cameraPresetsApi, type CameraPreset } from '../api/cameraPresets.js'
 import { visibilityApi, type AutoDollhousePatch, type AutoDollhouseSettings } from '../api/visibility.js'
 import { verticalConnectionsApi, type VerticalConnection, type VerticalConnectionKind } from '../api/verticalConnections.js'
 import { usePolygonEditor, edgeLengthMm, type EditorState } from '../editor/usePolygonEditor.js'
+import { useEditorModeStore } from '../editor/editorModeStore.js'
+import { resolveEditorActionStates } from '../editor/actionStateResolver.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { PopoutWindow } from '../components/editor/PopoutWindow.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
@@ -445,6 +447,13 @@ export function Editor() {
 
   // Editor-State nach oben gehoben, damit RightSidebar darauf zugreifen kann
   const editor = usePolygonEditor()
+  const editorMode = useEditorModeStore({ currentTool: editor.state.tool, setEditorTool: editor.setTool })
+  const { resetToSelection } = editorMode
+  const editorWithMode = useMemo(() => ({
+    ...editor,
+    setTool: editorMode.setTool,
+  }), [editor, editorMode.setTool])
+  const [edgeLengthPreviewMm, setEdgeLengthPreviewMm] = useState<number | null>(null)
 
   // Stabiler Ref auf selectedRoom/openings (kein stale closure in Callbacks)
   const selectedRoomRef = useRef<RoomPayload | null>(null)
@@ -1646,7 +1655,8 @@ export function Editor() {
     })
     setProject(prev => prev ? { ...prev, rooms: [...prev.rooms, newRoom as unknown as ProjectDetail['rooms'][0]] } : prev)
     setSelectedRoomId(newRoom.id)
-  }, [project, activeLevelId, levels])
+    resetToSelection()
+  }, [project, activeLevelId, levels, resetToSelection])
 
   // Raum nach Boundary-Update aktualisieren
   const handleRoomUpdated = useCallback((updated: RoomPayload) => {
@@ -1689,7 +1699,8 @@ export function Editor() {
     setOpenings(updated)
     setSelectedOpeningId(newOpening.id)
     handleSaveOpenings(updated)
-  }, [handleSaveOpenings])
+    resetToSelection()
+  }, [handleSaveOpenings, resetToSelection])
 
   // Öffnung aktualisieren
   const handleUpdateOpening = useCallback((updated: Opening) => {
@@ -1800,7 +1811,8 @@ export function Editor() {
     setPlacements(updated)
     setSelectedPlacementId(newPlacement.id)
     handleSavePlacements(updated)
-  }, [handleSavePlacements, selectedCatalogItem, configuredDimensions, chosenOptions])
+    resetToSelection()
+  }, [handleSavePlacements, selectedCatalogItem, configuredDimensions, chosenOptions, resetToSelection])
 
   const handleUpdatePlacement = useCallback((updated: Placement) => {
     const nextPlacements = placementsRef.current.map((placement) => (
@@ -1999,6 +2011,30 @@ export function Editor() {
 
   const selectedRoom = roomsOnActiveLevel.find(r => r.id === selectedRoomId) ?? null
   selectedRoomRef.current = selectedRoom as unknown as RoomPayload | null
+  const actionStates = useMemo(() => resolveEditorActionStates({
+    compactLayout,
+    hasSelectedRoom: Boolean(selectedRoomId),
+    hasSelectedSectionLine: Boolean(selectedSectionLineId),
+    hasSelectedAlternative: Boolean(selectedAlternativeId),
+    autoCompleteLoading,
+    previewPopoutOpen: isPreviewPopoutOpen,
+    gltfExportLoading,
+    bulkDeliveredLoading,
+    screenshotBusy,
+    export360Busy,
+  }), [
+    autoCompleteLoading,
+    bulkDeliveredLoading,
+    compactLayout,
+    export360Busy,
+    gltfExportLoading,
+    isPreviewPopoutOpen,
+    screenshotBusy,
+    selectedAlternativeId,
+    selectedRoomId,
+    selectedSectionLineId,
+  ])
+
   const lockStateLabel = projectLockState?.locked
     ? `🔒 ${projectLockState.locked_by_user ?? 'Unbekannt'}${projectLockState.locked_by_host ? ` @ ${projectLockState.locked_by_host}` : ''}${projectLockState.locked_at ? ` · ${new Date(projectLockState.locked_at).toLocaleString()}` : ''}`
     : null
@@ -2300,6 +2336,11 @@ export function Editor() {
   const selEdgeLen = state.selectedEdgeIndex !== null
     ? edgeLengthMm(state.vertices, state.selectedEdgeIndex)
     : null
+
+  useEffect(() => {
+    setEdgeLengthPreviewMm(null)
+  }, [state.selectedEdgeIndex, selEdgeLen])
+
   const selectedOpening = openings.find(o => o.id === selectedOpeningId) ?? null
   const selectedPlacement = placements.find(p => p.id === selectedPlacementId) ?? null
   const selectedDrawingGroup = useMemo(
@@ -2602,7 +2643,7 @@ export function Editor() {
     <CanvasArea
       room={selectedRoom as unknown as RoomPayload | null}
       onRoomUpdated={handleRoomUpdated}
-      editor={editor}
+      editor={editorWithMode}
       verticalConnections={verticalConnectionsForSelectedRoom}
       openings={openings}
       selectedOpeningId={selectedOpeningId}
@@ -2620,6 +2661,7 @@ export function Editor() {
       acousticGrid={acousticGrid}
       acousticVisible={acousticEnabled}
       acousticOpacity={acousticOpacityPct / 100}
+      edgeLengthPreviewMm={edgeLengthPreviewMm}
       onReferenceImageUpdate={handleReferenceImageUpdate}
       navigationSettings={navigationSettings}
       safeEditMode={safeEditMode}
@@ -2841,7 +2883,7 @@ export function Editor() {
             Bereiche
           </button>
           {sectionMenuOpen && (
-            <div className={`${styles.moreMenu} ${styles.headerMenu}`} role="menu">
+            <div className={`${styles.moreMenu} ${styles.headerMenu}`} aria-label="Bereiche-Menü">
               <button type="button" className={styles.moreMenuItem} onClick={() => { setSectionMenuOpen(false); navigate('/') }}>Projektindex</button>
               {id && <button type="button" className={styles.moreMenuItem} onClick={() => { setSectionMenuOpen(false); navigate(`/projects/${id}/presentation`) }}>Präsentation</button>}
               {id && <button type="button" className={styles.moreMenuItem} onClick={() => { setSectionMenuOpen(false); navigate(`/projects/${id}/exports`) }}>Exporte</button>}
@@ -2874,8 +2916,8 @@ export function Editor() {
               type="button"
               className={`${styles.modeBtn} ${viewMode === 'split' ? styles.modeBtnActive : ''}`}
               onClick={() => setViewMode('split')}
-              title={compactLayout ? 'Split auf kleinen Displays nicht verfügbar' : '2D und 3D parallel'}
-              disabled={compactLayout}
+              title={actionStates.viewSplit.enabled ? '2D und 3D parallel' : actionStates.viewSplit.reasonIfDisabled}
+              disabled={!actionStates.viewSplit.enabled}
             >
               Split
             </button>
@@ -2890,8 +2932,8 @@ export function Editor() {
               type="button"
               className={`${styles.modeBtn} ${viewMode === 'elevation' ? styles.modeBtnActive : ''}`}
               onClick={() => setViewMode('elevation')}
-              disabled={!selectedRoomId}
-              title={!selectedRoomId ? 'Raum für Elevation auswählen' : 'Elevation bearbeiten'}
+              disabled={!actionStates.viewElevation.enabled}
+              title={actionStates.viewElevation.enabled ? 'Elevation bearbeiten' : actionStates.viewElevation.reasonIfDisabled}
             >
               ELV
             </button>
@@ -2899,12 +2941,15 @@ export function Editor() {
               type="button"
               className={`${styles.modeBtn} ${viewMode === 'section' ? styles.modeBtnActive : ''}`}
               onClick={() => setViewMode('section')}
-              disabled={!selectedRoomId || !selectedSectionLineId}
-              title={!selectedSectionLineId ? 'Sektion auswählen' : 'Section bearbeiten'}
+              disabled={!actionStates.viewSection.enabled}
+              title={actionStates.viewSection.enabled ? 'Section bearbeiten' : actionStates.viewSection.reasonIfDisabled}
             >
               SEC
             </button>
           </div>
+          <span className={styles.editorModeBadge} title="Zentraler Editor-Modus">
+            Modus: {editorMode.modeLabel}
+          </span>
           <label className={styles.visitorToggle}>
             <input
               type="checkbox"
@@ -2948,7 +2993,7 @@ export function Editor() {
               Toolboxen
             </button>
             {toolboxMenuOpen && (
-              <div className={`${styles.moreMenu} ${styles.headerMenu}`} role="menu">
+              <div className={`${styles.moreMenu} ${styles.headerMenu}`} aria-label="Toolbox-Menü">
                 <label className={styles.toolboxItem}><input type="checkbox" checked={leftSidebarVisible} onChange={(event) => setLeftSidebarVisible(event.target.checked)} /> Links</label>
                 <label className={styles.toolboxItem}><input type="checkbox" checked={rightSidebarVisible} onChange={(event) => setRightSidebarVisible(event.target.checked)} /> Rechts</label>
                 <label className={styles.toolboxItem}><input type="checkbox" checked={statusBarVisible} onChange={(event) => setStatusBarVisible(event.target.checked)} /> Statusleiste</label>
@@ -3075,7 +3120,8 @@ export function Editor() {
                     onClick={() => {
                       void handleCaptureScreenshot()
                     }}
-                    disabled={screenshotBusy}
+                    disabled={!actionStates.captureScreenshot.enabled}
+                    title={actionStates.captureScreenshot.reasonIfDisabled}
                   >
                     {screenshotBusy ? 'Screenshot...' : 'Screenshot'}
                   </button>
@@ -3085,7 +3131,8 @@ export function Editor() {
                     onClick={() => {
                       void handleStartExport360()
                     }}
-                    disabled={export360Busy}
+                    disabled={!actionStates.capture360.enabled}
+                    title={actionStates.capture360.reasonIfDisabled}
                   >
                     {export360Busy ? '360...' : '360 Export'}
                   </button>
@@ -3110,8 +3157,10 @@ export function Editor() {
                   type="button"
                   className={styles.moreMenuItem}
                   onClick={() => { setMoreMenuOpen(false); void handleAutoComplete() }}
-                  disabled={autoCompleteLoading || !selectedRoomId}
-                  title="Arbeitsplatten, Sockel und Wangen automatisch generieren"
+                  disabled={!actionStates.autoComplete.enabled}
+                  title={actionStates.autoComplete.enabled
+                    ? 'Arbeitsplatten, Sockel und Wangen automatisch generieren'
+                    : actionStates.autoComplete.reasonIfDisabled}
                 >
                   {autoCompleteLoading ? 'Generiere…' : 'Auto vervollständigen'}
                 </button>
@@ -3120,8 +3169,10 @@ export function Editor() {
                   type="button"
                   className={styles.moreMenuItem}
                   onClick={() => { setMoreMenuOpen(false); setIsPreviewPopoutOpen((prev) => !prev) }}
-                  disabled={!selectedRoom}
-                  title="3D-Ansicht in separatem Fenster öffnen"
+                  disabled={!actionStates.previewPopout.enabled}
+                  title={actionStates.previewPopout.enabled
+                    ? '3D-Ansicht in separatem Fenster öffnen'
+                    : actionStates.previewPopout.reasonIfDisabled}
                 >
                   {isPreviewPopoutOpen ? '3D-Fenster schließen' : '3D in Fenster'}
                 </button>
@@ -3200,7 +3251,8 @@ export function Editor() {
                   type="button"
                   className={styles.moreMenuItem}
                   onClick={() => { setMoreMenuOpen(false); void handleGltfExport() }}
-                  disabled={gltfExportLoading || !selectedAlternativeId}
+                  disabled={!actionStates.gltfExport.enabled}
+                  title={actionStates.gltfExport.reasonIfDisabled}
                 >
                   {gltfExportLoading ? 'GLB exportiere…' : 'GLB exportieren'}
                 </button>
@@ -3209,7 +3261,8 @@ export function Editor() {
                   type="button"
                   className={styles.moreMenuItem}
                   onClick={() => { setMoreMenuOpen(false); void handleMarkAllDelivered() }}
-                  disabled={bulkDeliveredLoading || !selectedAlternativeId}
+                  disabled={!actionStates.markAllDelivered.enabled}
+                  title={actionStates.markAllDelivered.reasonIfDisabled}
                 >
                   {bulkDeliveredLoading ? 'Markiere geliefert…' : 'Alles geliefert'}
                 </button>
@@ -3250,11 +3303,36 @@ export function Editor() {
               type="button"
               aria-current={isActive ? 'step' : undefined}
               className={`${styles.stepTab} ${isActive ? styles.stepTabActive : ''}`}
-              onClick={() => setWorkflowStep(step)}
+              onClick={() => {
+                setWorkflowStep(step)
+                if (step === 'walls') {
+                  editorMode.setMode('wallCreate')
+                } else {
+                  editorMode.setMode('selection')
+                }
+              }}
               onKeyDown={(e: KeyboardEvent<HTMLButtonElement>) => {
                 const steps = ['walls', 'openings', 'furniture'] as const
-                if (e.key === 'ArrowRight') { e.preventDefault(); setWorkflowStep(steps[Math.min(idx + 1, 2)]) }
-                if (e.key === 'ArrowLeft') { e.preventDefault(); setWorkflowStep(steps[Math.max(idx - 1, 0)]) }
+                if (e.key === 'ArrowRight') {
+                  e.preventDefault()
+                  const nextStep = steps[Math.min(idx + 1, 2)]
+                  setWorkflowStep(nextStep)
+                  if (nextStep === 'walls') {
+                    editorMode.setMode('wallCreate')
+                  } else {
+                    editorMode.setMode('selection')
+                  }
+                }
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault()
+                  const nextStep = steps[Math.max(idx - 1, 0)]
+                  setWorkflowStep(nextStep)
+                  if (nextStep === 'walls') {
+                    editorMode.setMode('wallCreate')
+                  } else {
+                    editorMode.setMode('selection')
+                  }
+                }
               }}
             >
               {labels[idx]}
@@ -3413,6 +3491,7 @@ export function Editor() {
           selectedWallLocked={selectedWallLocked}
           onMoveVertex={editor.moveVertex}
           onSetEdgeLength={editor.setEdgeLength}
+          onEdgeLengthDraftChange={setEdgeLengthPreviewMm}
           onUpdateOpening={handleUpdateOpening}
           onDeleteOpening={handleDeleteOpening}
           onUpdatePlacement={handleUpdatePlacement}

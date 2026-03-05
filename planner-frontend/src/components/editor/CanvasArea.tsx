@@ -34,6 +34,7 @@ interface Props {
   acousticGrid: GeoJsonGrid | null
   acousticVisible: boolean
   acousticOpacity: number
+  edgeLengthPreviewMm?: number | null
   onReferenceImageUpdate: (img: NonNullable<RoomPayload['reference_image']>) => void
   navigationSettings: NavigationSettings
   safeEditMode: boolean
@@ -48,7 +49,7 @@ interface Props {
   onRepositionVisitor?: (point: { x_mm: number; y_mm: number }) => void
 }
 
-export function CanvasArea({ room, onRoomUpdated, editor, verticalConnections, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, dimensions, centerlines, selectedPlacementId, onSelectPlacement, highlightedOpeningIds = [], highlightedPlacementIds = [], canAddPlacement, onAddPlacement, acousticGrid, acousticVisible, acousticOpacity, onReferenceImageUpdate, navigationSettings, safeEditMode, showCompass = false, northAngleDeg = 0, virtualVisitor = null, onRepositionVisitor }: Props) {
+export function CanvasArea({ room, onRoomUpdated, editor, verticalConnections, openings, selectedOpeningId, onSelectOpening, onAddOpening, placements, dimensions, centerlines, selectedPlacementId, onSelectPlacement, highlightedOpeningIds = [], highlightedPlacementIds = [], canAddPlacement, onAddPlacement, acousticGrid, acousticVisible, acousticOpacity, edgeLengthPreviewMm = null, onReferenceImageUpdate, navigationSettings, safeEditMode, showCompass = false, northAngleDeg = 0, virtualVisitor = null, onRepositionVisitor }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
   const [saving, setSaving] = useState(false)
@@ -120,6 +121,7 @@ export function CanvasArea({ room, onRoomUpdated, editor, verticalConnections, o
             onSelectEdge={editor.selectEdge}
             onHoverVertex={editor.hoverVertex}
             onDeleteVertex={editor.deleteVertex}
+            onUpdateSettings={editor.updateSettings}
             onSetTool={editor.setTool}
             onReset={editor.reset}
             onSave={handleSave}
@@ -143,6 +145,7 @@ export function CanvasArea({ room, onRoomUpdated, editor, verticalConnections, o
             acousticGrid={acousticGrid}
             acousticVisible={acousticVisible}
             acousticOpacity={acousticOpacity}
+            edgeLengthPreviewMm={edgeLengthPreviewMm}
             onReferenceImageUpdate={onReferenceImageUpdate}
             navigationSettings={navigationSettings}
             safeEditMode={safeEditMode}

@@ -151,6 +151,19 @@
   cursor: not-allowed;
 }
 
+.editorModeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--editor-border);
+  background: var(--editor-surface-alt);
+  color: var(--editor-text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
 .visitorToggle {
   display: inline-flex;
   align-items: center;
