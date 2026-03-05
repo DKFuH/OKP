@@ -4,10 +4,15 @@ export interface ResolvedActionState {
 }
 
 export interface EditorActionContext {
+  hasProjectId: boolean
   compactLayout: boolean
   hasSelectedRoom: boolean
   hasSelectedSectionLine: boolean
   hasSelectedAlternative: boolean
+  presentationEnabled: boolean
+  daylightEnabled: boolean
+  hasProjectEnvironment: boolean
+  materialsEnabled: boolean
   autoCompleteLoading: boolean
   previewPopoutOpen: boolean
   gltfExportLoading: boolean
@@ -20,6 +25,13 @@ export interface EditorActionStates {
   viewSplit: ResolvedActionState
   viewElevation: ResolvedActionState
   viewSection: ResolvedActionState
+  panelNavigation: ResolvedActionState
+  panelCamera: ResolvedActionState
+  panelCapture: ResolvedActionState
+  panelRenderEnvironment: ResolvedActionState
+  panelDaylight: ResolvedActionState
+  panelMaterial: ResolvedActionState
+  presentationMode: ResolvedActionState
   autoComplete: ResolvedActionState
   previewPopout: ResolvedActionState
   gltfExport: ResolvedActionState
@@ -57,6 +69,26 @@ export function resolveEditorActionStates(context: EditorActionContext): EditorA
       : 'Sektion auswaehlen',
   )
 
+  const panelNavigation = state(true)
+  const panelCamera = state(true)
+  const panelCapture = state(true)
+  const panelRenderEnvironment = state(context.hasProjectId, 'Projekt ist noch nicht geladen')
+  const panelDaylight = state(
+    context.daylightEnabled && context.hasProjectEnvironment,
+    !context.daylightEnabled
+      ? 'Tageslicht-Plugin nicht aktiv'
+      : 'Tageslichtdaten werden geladen',
+  )
+  const panelMaterial = state(
+    context.materialsEnabled && context.hasSelectedRoom,
+    !context.materialsEnabled
+      ? 'Material-Plugin nicht aktiv'
+      : 'Bitte zuerst einen Raum auswaehlen',
+  )
+  const presentationMode = state(context.presentationEnabled && context.hasProjectId, !context.presentationEnabled
+    ? 'Praesentationsmodus nicht aktiv'
+    : 'Projekt ist noch nicht geladen')
+
   const autoComplete = state(
     context.hasSelectedRoom && !context.autoCompleteLoading,
     !context.hasSelectedRoom
@@ -87,6 +119,13 @@ export function resolveEditorActionStates(context: EditorActionContext): EditorA
     viewSplit,
     viewElevation,
     viewSection,
+    panelNavigation,
+    panelCamera,
+    panelCapture,
+    panelRenderEnvironment,
+    panelDaylight,
+    panelMaterial,
+    presentationMode,
     autoComplete,
     previewPopout,
     gltfExport,

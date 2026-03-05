@@ -1,80 +1,114 @@
 import { describe, expect, it } from 'vitest'
-import { resolveEditorActionStates, resolvePolygonShortcutStates } from './actionStateResolver.js'
+import {
+  resolveEditorActionStates,
+  resolvePolygonShortcutStates,
+  type EditorActionContext,
+} from './actionStateResolver.js'
+
+function buildActionContext(overrides: Partial<EditorActionContext> = {}): EditorActionContext {
+  return {
+    hasProjectId: true,
+    compactLayout: false,
+    hasSelectedRoom: true,
+    hasSelectedSectionLine: true,
+    hasSelectedAlternative: true,
+    presentationEnabled: true,
+    daylightEnabled: true,
+    hasProjectEnvironment: true,
+    materialsEnabled: true,
+    autoCompleteLoading: false,
+    previewPopoutOpen: false,
+    gltfExportLoading: false,
+    bulkDeliveredLoading: false,
+    screenshotBusy: false,
+    export360Busy: false,
+    ...overrides,
+  }
+}
 
 describe('actionStateResolver', () => {
   it('disables room-bound actions when no room is selected', () => {
-    const states = resolveEditorActionStates({
-      compactLayout: false,
+    const states = resolveEditorActionStates(buildActionContext({
       hasSelectedRoom: false,
       hasSelectedSectionLine: false,
       hasSelectedAlternative: false,
-      autoCompleteLoading: false,
-      previewPopoutOpen: false,
-      gltfExportLoading: false,
-      bulkDeliveredLoading: false,
-      screenshotBusy: false,
-      export360Busy: false,
-    })
+    }))
 
     expect(states.viewElevation.enabled).toBe(false)
     expect(states.viewSection.enabled).toBe(false)
     expect(states.autoComplete.enabled).toBe(false)
     expect(states.previewPopout.enabled).toBe(false)
+    expect(states.panelMaterial.enabled).toBe(false)
   })
 
   it('disables split view on compact layouts', () => {
-    const states = resolveEditorActionStates({
+    const states = resolveEditorActionStates(buildActionContext({
       compactLayout: true,
-      hasSelectedRoom: true,
-      hasSelectedSectionLine: true,
-      hasSelectedAlternative: true,
-      autoCompleteLoading: false,
-      previewPopoutOpen: false,
-      gltfExportLoading: false,
-      bulkDeliveredLoading: false,
-      screenshotBusy: false,
-      export360Busy: false,
-    })
+    }))
 
     expect(states.viewSplit.enabled).toBe(false)
     expect(states.viewSplit.reasonIfDisabled).toContain('Split')
   })
 
   it('disables export actions without selected alternative', () => {
-    const states = resolveEditorActionStates({
-      compactLayout: false,
-      hasSelectedRoom: true,
-      hasSelectedSectionLine: true,
+    const states = resolveEditorActionStates(buildActionContext({
       hasSelectedAlternative: false,
-      autoCompleteLoading: false,
-      previewPopoutOpen: false,
-      gltfExportLoading: false,
-      bulkDeliveredLoading: false,
-      screenshotBusy: false,
-      export360Busy: false,
-    })
+    }))
 
     expect(states.gltfExport.enabled).toBe(false)
     expect(states.markAllDelivered.enabled).toBe(false)
   })
 
+  it('disables daylight panel action when plugin is inactive', () => {
+    const states = resolveEditorActionStates(buildActionContext({
+      daylightEnabled: false,
+      hasProjectEnvironment: false,
+    }))
+
+    expect(states.panelDaylight.enabled).toBe(false)
+    expect(states.panelDaylight.reasonIfDisabled).toContain('Plugin')
+  })
+
+  it('disables daylight panel action while daylight data is unavailable', () => {
+    const states = resolveEditorActionStates(buildActionContext({
+      hasProjectEnvironment: false,
+    }))
+
+    expect(states.panelDaylight.enabled).toBe(false)
+    expect(states.panelDaylight.reasonIfDisabled).toContain('geladen')
+  })
+
+  it('disables presentation mode when plugin is inactive', () => {
+    const states = resolveEditorActionStates(buildActionContext({
+      presentationEnabled: false,
+    }))
+
+    expect(states.presentationMode.enabled).toBe(false)
+    expect(states.presentationMode.reasonIfDisabled).toContain('Praesentationsmodus')
+  })
+
+  it('disables render-environment panel action without project id', () => {
+    const states = resolveEditorActionStates(buildActionContext({
+      hasProjectId: false,
+    }))
+
+    expect(states.panelRenderEnvironment.enabled).toBe(false)
+    expect(states.panelRenderEnvironment.reasonIfDisabled).toContain('Projekt')
+  })
+
   it('returns all actions enabled in happy path', () => {
-    const states = resolveEditorActionStates({
-      compactLayout: false,
-      hasSelectedRoom: true,
-      hasSelectedSectionLine: true,
-      hasSelectedAlternative: true,
-      autoCompleteLoading: false,
-      previewPopoutOpen: false,
-      gltfExportLoading: false,
-      bulkDeliveredLoading: false,
-      screenshotBusy: false,
-      export360Busy: false,
-    })
+    const states = resolveEditorActionStates(buildActionContext())
 
     expect(states.viewSplit.enabled).toBe(true)
     expect(states.viewElevation.enabled).toBe(true)
     expect(states.viewSection.enabled).toBe(true)
+    expect(states.panelNavigation.enabled).toBe(true)
+    expect(states.panelCamera.enabled).toBe(true)
+    expect(states.panelCapture.enabled).toBe(true)
+    expect(states.panelRenderEnvironment.enabled).toBe(true)
+    expect(states.panelDaylight.enabled).toBe(true)
+    expect(states.panelMaterial.enabled).toBe(true)
+    expect(states.presentationMode.enabled).toBe(true)
     expect(states.autoComplete.enabled).toBe(true)
     expect(states.previewPopout.enabled).toBe(true)
     expect(states.gltfExport.enabled).toBe(true)

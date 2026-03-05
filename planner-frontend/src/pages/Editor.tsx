@@ -41,6 +41,7 @@ import { verticalConnectionsApi, type VerticalConnection, type VerticalConnectio
 import { usePolygonEditor, edgeLengthMm, type EditorState } from '../editor/usePolygonEditor.js'
 import { useEditorModeStore } from '../editor/editorModeStore.js'
 import { resolveEditorActionStates } from '../editor/actionStateResolver.js'
+import { getEditorModeForWorkflowStep, useWorkflowStateStore } from '../editor/workflowStateStore.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
 import { PopoutWindow } from '../components/editor/PopoutWindow.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
@@ -393,7 +394,6 @@ export function Editor() {
   const [acousticBusy, setAcousticBusy] = useState(false)
   const [acousticMin, setAcousticMin] = useState<number | null>(null)
   const [acousticMax, setAcousticMax] = useState<number | null>(null)
-  const [workflowStep, setWorkflowStep] = useState<'walls' | 'openings' | 'furniture'>('walls')
   const [activeLayoutSheetId, setActiveLayoutSheetId] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [presentationEnabled, setPresentationEnabled] = useState(false)
@@ -448,12 +448,17 @@ export function Editor() {
   // Editor-State nach oben gehoben, damit RightSidebar darauf zugreifen kann
   const editor = usePolygonEditor()
   const editorMode = useEditorModeStore({ currentTool: editor.state.tool, setEditorTool: editor.setTool })
+  const workflow = useWorkflowStateStore({ initialStep: 'walls' })
   const { resetToSelection } = editorMode
   const editorWithMode = useMemo(() => ({
     ...editor,
     setTool: editorMode.setTool,
   }), [editor, editorMode.setTool])
   const [edgeLengthPreviewMm, setEdgeLengthPreviewMm] = useState<number | null>(null)
+
+  useEffect(() => {
+    editorMode.setMode(getEditorModeForWorkflowStep(workflow.step))
+  }, [editorMode.setMode, workflow.step])
 
   // Stabiler Ref auf selectedRoom/openings (kein stale closure in Callbacks)
   const selectedRoomRef = useRef<RoomPayload | null>(null)
@@ -2012,10 +2017,15 @@ export function Editor() {
   const selectedRoom = roomsOnActiveLevel.find(r => r.id === selectedRoomId) ?? null
   selectedRoomRef.current = selectedRoom as unknown as RoomPayload | null
   const actionStates = useMemo(() => resolveEditorActionStates({
+    hasProjectId: Boolean(id),
     compactLayout,
     hasSelectedRoom: Boolean(selectedRoomId),
     hasSelectedSectionLine: Boolean(selectedSectionLineId),
     hasSelectedAlternative: Boolean(selectedAlternativeId),
+    presentationEnabled,
+    daylightEnabled,
+    hasProjectEnvironment: Boolean(projectEnvironment),
+    materialsEnabled,
     autoCompleteLoading,
     previewPopoutOpen: isPreviewPopoutOpen,
     gltfExportLoading,
@@ -2026,9 +2036,14 @@ export function Editor() {
     autoCompleteLoading,
     bulkDeliveredLoading,
     compactLayout,
+    daylightEnabled,
     export360Busy,
     gltfExportLoading,
+    id,
     isPreviewPopoutOpen,
+    materialsEnabled,
+    presentationEnabled,
+    projectEnvironment,
     screenshotBusy,
     selectedAlternativeId,
     selectedRoomId,
@@ -2974,6 +2989,8 @@ export function Editor() {
               type='button'
               className={styles.btnSecondary}
               onClick={() => setNavigationPanelOpen((prev) => !prev)}
+              disabled={!actionStates.panelNavigation.enabled}
+              title={actionStates.panelNavigation.reasonIfDisabled}
             >
               Navigation
             </button>
@@ -2998,12 +3015,12 @@ export function Editor() {
                 <label className={styles.toolboxItem}><input type="checkbox" checked={rightSidebarVisible} onChange={(event) => setRightSidebarVisible(event.target.checked)} /> Rechts</label>
                 <label className={styles.toolboxItem}><input type="checkbox" checked={statusBarVisible} onChange={(event) => setStatusBarVisible(event.target.checked)} /> Statusleiste</label>
                 <label className={styles.toolboxItem}><input type="checkbox" checked={showAreasPanel} onChange={(event) => setShowAreasPanel(event.target.checked)} /> Bereiche-Panel</label>
-                <label className={styles.toolboxItem}><input type="checkbox" checked={navigationPanelOpen} onChange={(event) => setNavigationPanelOpen(event.target.checked)} /> Navigation</label>
-                <label className={styles.toolboxItem}><input type="checkbox" checked={cameraPresetPanelOpen} onChange={(event) => setCameraPresetPanelOpen(event.target.checked)} /> Kamera</label>
-                <label className={styles.toolboxItem}><input type="checkbox" checked={screenshotPanelOpen} onChange={(event) => setScreenshotPanelOpen(event.target.checked)} /> Capture</label>
-                <label className={styles.toolboxItem}><input type="checkbox" checked={renderEnvironmentPanelOpen} onChange={(event) => setRenderEnvironmentPanelOpen(event.target.checked)} /> Render-Umgebung</label>
-                {daylightEnabled && <label className={styles.toolboxItem}><input type="checkbox" checked={daylightPanelOpen} onChange={(event) => setDaylightPanelOpen(event.target.checked)} /> Tageslicht</label>}
-                {materialsEnabled && <label className={styles.toolboxItem}><input type="checkbox" checked={materialPanelOpen} onChange={(event) => setMaterialPanelOpen(event.target.checked)} /> Materialien</label>}
+                <label className={styles.toolboxItem}><input type="checkbox" checked={navigationPanelOpen} onChange={(event) => setNavigationPanelOpen(event.target.checked)} disabled={!actionStates.panelNavigation.enabled} title={actionStates.panelNavigation.reasonIfDisabled} /> Navigation</label>
+                <label className={styles.toolboxItem}><input type="checkbox" checked={cameraPresetPanelOpen} onChange={(event) => setCameraPresetPanelOpen(event.target.checked)} disabled={!actionStates.panelCamera.enabled} title={actionStates.panelCamera.reasonIfDisabled} /> Kamera</label>
+                <label className={styles.toolboxItem}><input type="checkbox" checked={screenshotPanelOpen} onChange={(event) => setScreenshotPanelOpen(event.target.checked)} disabled={!actionStates.panelCapture.enabled} title={actionStates.panelCapture.reasonIfDisabled} /> Capture</label>
+                <label className={styles.toolboxItem}><input type="checkbox" checked={renderEnvironmentPanelOpen} onChange={(event) => setRenderEnvironmentPanelOpen(event.target.checked)} disabled={!actionStates.panelRenderEnvironment.enabled} title={actionStates.panelRenderEnvironment.reasonIfDisabled} /> Render-Umgebung</label>
+                {daylightEnabled && <label className={styles.toolboxItem}><input type="checkbox" checked={daylightPanelOpen} onChange={(event) => setDaylightPanelOpen(event.target.checked)} disabled={!actionStates.panelDaylight.enabled} title={actionStates.panelDaylight.reasonIfDisabled} /> Tageslicht</label>}
+                {materialsEnabled && <label className={styles.toolboxItem}><input type="checkbox" checked={materialPanelOpen} onChange={(event) => setMaterialPanelOpen(event.target.checked)} disabled={!actionStates.panelMaterial.enabled} title={actionStates.panelMaterial.reasonIfDisabled} /> Materialien</label>}
               </div>
             )}
           </div>
@@ -3012,6 +3029,8 @@ export function Editor() {
               type='button'
               className={styles.btnSecondary}
               onClick={() => setCameraPresetPanelOpen((prev) => !prev)}
+              disabled={!actionStates.panelCamera.enabled}
+              title={actionStates.panelCamera.reasonIfDisabled}
             >
               Kamera
             </button>
@@ -3035,6 +3054,8 @@ export function Editor() {
               type="button"
               className={styles.btnSecondary}
               onClick={() => setScreenshotPanelOpen((prev) => !prev)}
+              disabled={!actionStates.panelCapture.enabled}
+              title={actionStates.panelCapture.reasonIfDisabled}
             >
               Capture
             </button>
@@ -3198,6 +3219,8 @@ export function Editor() {
                     type="button"
                     className={styles.moreMenuItem}
                     onClick={() => { setMoreMenuOpen(false); navigate(`/projects/${id}/presentation?source=split-view`) }}
+                    disabled={!actionStates.presentationMode.enabled}
+                    title={actionStates.presentationMode.reasonIfDisabled}
                   >
                     Präsentationsmodus
                   </button>
@@ -3208,6 +3231,8 @@ export function Editor() {
                     type="button"
                     className={styles.moreMenuItem}
                     onClick={() => { setMoreMenuOpen(false); setDaylightPanelOpen((prev) => !prev) }}
+                    disabled={!actionStates.panelDaylight.enabled}
+                    title={actionStates.panelDaylight.reasonIfDisabled}
                   >
                     {daylightPanelOpen ? 'Tageslichtpanel schließen' : 'Tageslichtpanel'}
                   </button>
@@ -3217,6 +3242,8 @@ export function Editor() {
                   type="button"
                   className={styles.moreMenuItem}
                   onClick={() => { setMoreMenuOpen(false); setRenderEnvironmentPanelOpen((prev) => !prev) }}
+                  disabled={!actionStates.panelRenderEnvironment.enabled}
+                  title={actionStates.panelRenderEnvironment.reasonIfDisabled}
                 >
                   {renderEnvironmentPanelOpen ? 'Render-Umgebung schließen' : 'Render-Umgebung'}
                 </button>
@@ -3226,6 +3253,8 @@ export function Editor() {
                     type="button"
                     className={styles.moreMenuItem}
                     onClick={() => { setMoreMenuOpen(false); setMaterialPanelOpen((prev) => !prev) }}
+                    disabled={!actionStates.panelMaterial.enabled}
+                    title={actionStates.panelMaterial.reasonIfDisabled}
                   >
                     {materialPanelOpen ? 'Materialpanel schließen' : 'Materialpanel'}
                   </button>
@@ -3294,9 +3323,13 @@ export function Editor() {
 
       {/* Workflow step tabs */}
       <nav className={styles.stepBar} aria-label="Arbeitsschritte">
-        {(['walls', 'openings', 'furniture'] as const).map((step, idx) => {
-          const labels = ['1 · Wände', '2 · Öffnungen', '3 · Möbelierung'] as const
-          const isActive = workflowStep === step
+        {(['walls', 'openings', 'furniture'] as const).map((step) => {
+          const labelByStep = {
+            walls: '1 · Wände',
+            openings: '2 · Öffnungen',
+            furniture: '3 · Möbelierung',
+          } as const
+          const isActive = workflow.step === step
           return (
             <button
               key={step}
@@ -3304,38 +3337,20 @@ export function Editor() {
               aria-current={isActive ? 'step' : undefined}
               className={`${styles.stepTab} ${isActive ? styles.stepTabActive : ''}`}
               onClick={() => {
-                setWorkflowStep(step)
-                if (step === 'walls') {
-                  editorMode.setMode('wallCreate')
-                } else {
-                  editorMode.setMode('selection')
-                }
+                workflow.setStep(step)
               }}
               onKeyDown={(e: KeyboardEvent<HTMLButtonElement>) => {
-                const steps = ['walls', 'openings', 'furniture'] as const
                 if (e.key === 'ArrowRight') {
                   e.preventDefault()
-                  const nextStep = steps[Math.min(idx + 1, 2)]
-                  setWorkflowStep(nextStep)
-                  if (nextStep === 'walls') {
-                    editorMode.setMode('wallCreate')
-                  } else {
-                    editorMode.setMode('selection')
-                  }
+                  workflow.goToNextStep()
                 }
                 if (e.key === 'ArrowLeft') {
                   e.preventDefault()
-                  const nextStep = steps[Math.max(idx - 1, 0)]
-                  setWorkflowStep(nextStep)
-                  if (nextStep === 'walls') {
-                    editorMode.setMode('wallCreate')
-                  } else {
-                    editorMode.setMode('selection')
-                  }
+                  workflow.goToPreviousStep()
                 }
               }}
             >
-              {labels[idx]}
+              {labelByStep[step]}
             </button>
           )
         })}
@@ -3437,7 +3452,7 @@ export function Editor() {
           onAddRoom={handleAddRoom}
           selectedCatalogItem={selectedCatalogItem}
           onSelectCatalogItem={setSelectedCatalogItem}
-          workflowStep={workflowStep}
+          workflowStep={workflow.step}
         />}
 
         <div className={styles.editorViewport} ref={captureRootRef}>
