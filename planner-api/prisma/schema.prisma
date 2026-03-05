@@ -2340,3 +2340,169 @@ model DiscountProfile {
 
   @@map("discount_profiles")
 }
+
+enum WorkflowEntityType {
+  project
+  quote
+  production_order
+}
+
+model WorkflowDefinition {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String   @db.VarChar(200)
+  version    Int      @default(1)
+  is_active  Boolean  @default(false)
+  graph_json Json
+  created_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  instances  WorkflowInstance[]
+
+  @@index([tenant_id, name, version])
+  @@index([tenant_id, is_active])
+  @@map("workflow_definitions")
+}
+
+model WorkflowInstance {
+  id              String             @id @default(uuid())
+  tenant_id       String
+  definition_id   String
+  entity_type     WorkflowEntityType
+  entity_id       String
+  current_node_id String             @db.VarChar(120)
+  metadata_json   Json               @default("{}")
+  started_at      DateTime           @default(now())
+  finished_at     DateTime?
+  created_at      DateTime           @default(now())
+  updated_at      DateTime           @updatedAt
+
+  definition      WorkflowDefinition @relation(fields: [definition_id], references: [id], onDelete: Cascade)
+  events          WorkflowEvent[]
+
+  @@index([tenant_id, entity_type, entity_id])
+  @@index([tenant_id, definition_id])
+  @@map("workflow_instances")
+}
+
+model WorkflowEvent {
+  id               String           @id @default(uuid())
+  tenant_id        String
+  instance_id      String
+  from_node_id     String?          @db.VarChar(120)
+  to_node_id       String           @db.VarChar(120)
+  transition_label String?
+  reason           String?
+  guard_result     Json?
+  actor_user_id    String?
+  created_at       DateTime         @default(now())
+
+  instance         WorkflowInstance @relation(fields: [instance_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id, instance_id, created_at])
+  @@map("workflow_events")
+}
+
+enum MasterDataEntityType {
+  customer
+  supplier
+  location
+}
+
+enum MasterSyncConflictStatus {
+  open
+  resolved
+  dismissed
+}
+
+model MasterCustomer {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  external_ref String?
+  payload_json Json     @default("{}")
+  version      Int      @default(1)
+  is_deleted   Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([tenant_id, updated_at])
+  @@index([tenant_id, external_ref])
+  @@map("master_customers")
+}
+
+model MasterSupplier {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  external_ref String?
+  payload_json Json     @default("{}")
+  version      Int      @default(1)
+  is_deleted   Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([tenant_id, updated_at])
+  @@index([tenant_id, external_ref])
+  @@map("master_suppliers")
+}
+
+model MasterLocation {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  external_ref String?
+  payload_json Json     @default("{}")
+  version      Int      @default(1)
+  is_deleted   Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([tenant_id, updated_at])
+  @@index([tenant_id, external_ref])
+  @@map("master_locations")
+}
+
+model MasterSyncSubscription {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  target_system    String   @db.VarChar(120)
+  scope_json       Json     @default("{}")
+  last_sync_cursor DateTime?
+  status           String   @default("active")
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@unique([tenant_id, target_system])
+  @@map("master_sync_subscriptions")
+}
+
+model MasterSyncCheckpoint {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  target_system    String   @db.VarChar(120)
+  last_sync_cursor DateTime?
+  status           String   @default("active")
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@unique([tenant_id, target_system])
+  @@map("master_sync_checkpoints")
+}
+
+model MasterSyncConflict {
+  id               String                   @id @default(uuid())
+  tenant_id        String
+  entity_type      MasterDataEntityType
+  entity_id        String
+  expected_version Int?
+  actual_version   Int?
+  incoming_payload Json?
+  status           MasterSyncConflictStatus @default(open)
+  resolved_by      String?
+  resolved_at      DateTime?
+  created_at       DateTime                 @default(now())
+  updated_at       DateTime                 @updatedAt
+
+  @@index([tenant_id, status, created_at])
+  @@index([tenant_id, entity_type, entity_id])
+  @@map("master_sync_conflicts")
+}
