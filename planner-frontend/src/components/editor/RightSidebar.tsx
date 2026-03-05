@@ -9,6 +9,7 @@ import type { BuildingLevel } from '../../api/levels.js'
 import type { AcousticGridMeta } from '../../api/acoustics.js'
 import type { UnifiedCatalogItem, CatalogArticle } from '../../api/catalog.js'
 import type { ValidateResponse } from '../../api/validate.js'
+import type { AutoDollhousePatch, AutoDollhouseSettings } from '../../api/visibility.js'
 import { previewBom, toQuoteBomLines, type BomPreviewRequest } from '../../api/bom.js'
 import { QuoteExportPanel } from '../quotes/QuoteExportPanel.js'
 import { ProtectPanel } from './ProtectPanel.js'
@@ -91,6 +92,9 @@ interface Props {
   onSetDimensionsVisible: (next: boolean) => void
   onSetPlacementsVisible: (next: boolean) => void
   onSetSelectedWallVisible: (next: boolean) => void
+  autoDollhouse: AutoDollhouseSettings | null
+  autoDollhouseSaving: boolean
+  onSaveAutoDollhouse: (patch: AutoDollhousePatch) => void
   onSetActiveLevelLocked: (next: boolean) => void
   onSetDimensionsLocked: (next: boolean) => void
   onSetSelectedPlacementLocked: (next: boolean) => void
@@ -158,6 +162,9 @@ export function RightSidebar({
   onSetDimensionsVisible,
   onSetPlacementsVisible,
   onSetSelectedWallVisible,
+  autoDollhouse,
+  autoDollhouseSaving,
+  onSaveAutoDollhouse,
   onSetActiveLevelLocked,
   onSetDimensionsLocked,
   onSetSelectedPlacementLocked,
@@ -256,10 +263,13 @@ export function RightSidebar({
         dimensionsVisible={dimensionsVisible}
         placementsVisible={placementsVisible}
         selectedWallVisible={selectedWallVisible}
+        autoDollhouse={autoDollhouse}
+        autoDollhouseSaving={autoDollhouseSaving}
         onToggleActiveLevelVisibility={onToggleActiveLevelVisibility}
         onSetDimensionsVisible={onSetDimensionsVisible}
         onSetPlacementsVisible={onSetPlacementsVisible}
         onSetSelectedWallVisible={onSetSelectedWallVisible}
+        onSaveAutoDollhouse={onSaveAutoDollhouse}
       />
 
       <LockPanel

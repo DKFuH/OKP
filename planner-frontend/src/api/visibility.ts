@@ -18,6 +18,21 @@ export interface LocksApplyPayload {
   walls?: Array<{ room_id: string; wall_id: string; locked: boolean; lock_scope?: LockScope }>
 }
 
+export interface AutoDollhouseSettings {
+  project_id: string
+  enabled: boolean
+  alpha_front_walls: number
+  distance_threshold: number
+  angle_threshold_deg: number
+}
+
+export interface AutoDollhousePatch {
+  enabled?: boolean
+  alpha_front_walls?: number
+  distance_threshold?: number
+  angle_threshold_deg?: number
+}
+
 export const visibilityApi = {
   applyVisibility: (projectId: string, payload: VisibilityApplyPayload) =>
     api.post<{ updated: Record<string, number> }>(
@@ -29,6 +44,19 @@ export const visibilityApi = {
   applyLocks: (projectId: string, payload: LocksApplyPayload) =>
     api.post<{ updated: Record<string, number> }>(
       `/projects/${projectId}/locks/apply`,
+      payload,
+      { 'X-Tenant-Id': TENANT_ID_PLACEHOLDER },
+    ),
+
+  getAutoDollhouse: (projectId: string) =>
+    api.get<AutoDollhouseSettings>(
+      `/projects/${projectId}/visibility/auto-dollhouse`,
+      { 'X-Tenant-Id': TENANT_ID_PLACEHOLDER },
+    ),
+
+  updateAutoDollhouse: (projectId: string, payload: AutoDollhousePatch) =>
+    api.patch<AutoDollhouseSettings>(
+      `/projects/${projectId}/visibility/auto-dollhouse`,
       payload,
       { 'X-Tenant-Id': TENANT_ID_PLACEHOLDER },
     ),

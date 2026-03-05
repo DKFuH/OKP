@@ -3,11 +3,19 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { RoomPayload } from '../../api/rooms.js'
 import type { VerticalConnection } from '../../api/verticalConnections.js'
+import type { AutoDollhouseSettings } from '../../api/visibility.js'
+import { resolveAutoDollhouseOpacities } from './autoDollhouse.js'
 import { profileZoomFactor, type NavigationSettings } from './navigationSettings.js'
 import styles from './Preview3D.module.css'
 
 type VertexLike = { id: string; x_mm: number; y_mm: number }
-type WallLike = { id: string; start_vertex_id?: string; end_vertex_id?: string }
+type WallLike = {
+  id: string
+  start_vertex_id?: string
+  end_vertex_id?: string
+  visible?: boolean
+  is_hidden?: boolean
+}
 type OpeningLike = { wall_id: string; offset_mm: number; width_mm: number }
 type PlacementLike = {
   id: string
@@ -49,6 +57,7 @@ type WallSegmentResolved = {
   id: string
   start: { x_mm: number; y_mm: number }
   end: { x_mm: number; y_mm: number }
+  manualVisible: boolean
 }
 
 type SunlightPreview = {
@@ -82,6 +91,7 @@ interface Props {
   }) => void
   sunlight?: SunlightPreview | null
   navigationSettings: NavigationSettings
+  autoDollhouseSettings?: AutoDollhouseSettings | null
 }
 
 const MM_TO_M = 0.001
@@ -289,6 +299,16 @@ function resolveVerticalConnectionBbox(connection: VerticalConnection): Bbox2dMm
   }
 }
 
+function resolveWallManualVisible(wall: WallLike): boolean {
+  if (typeof wall.visible === 'boolean') {
+    return wall.visible
+  }
+  if (typeof wall.is_hidden === 'boolean') {
+    return !wall.is_hidden
+  }
+  return true
+}
+
 function resolveWalls(vertices: VertexLike[], walls: WallLike[]): WallSegmentResolved[] {
   const byId = new Map(vertices.map((vertex) => [vertex.id, vertex]))
 
@@ -304,6 +324,7 @@ function resolveWalls(vertices: VertexLike[], walls: WallLike[]): WallSegmentRes
           id: wall.id,
           start: { x_mm: start.x_mm, y_mm: start.y_mm },
           end: { x_mm: end.x_mm, y_mm: end.y_mm },
+          manualVisible: resolveWallManualVisible(wall),
         }
       })
       .filter((wall): wall is WallSegmentResolved => wall !== null)
@@ -315,6 +336,7 @@ function resolveWalls(vertices: VertexLike[], walls: WallLike[]): WallSegmentRes
       id: `wall-${index}`,
       start: { x_mm: start.x_mm, y_mm: start.y_mm },
       end: { x_mm: end.x_mm, y_mm: end.y_mm },
+      manualVisible: true,
     }
   })
 }
@@ -380,7 +402,7 @@ function applyNavigationControls(controls: OrbitControls, settings: NavigationSe
   }
 }
 
-export function Preview3D({ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunlight = null, navigationSettings }: Props) {
+export function Preview3D({ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunlight = null, navigationSettings, autoDollhouseSettings = null }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -389,6 +411,7 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
   const directionalLightRef = useRef<THREE.DirectionalLight | null>(null)
   const cameraStateRef = useRef<Props['cameraState']>(cameraState)
   const onCameraStateChangeRef = useRef<Props['onCameraStateChange']>(onCameraStateChange)
+  const autoDollhouseSettingsRef = useRef<Props['autoDollhouseSettings']>(autoDollhouseSettings)
   const lastEmittedRef = useRef<{
     x_mm: number
     y_mm: number
@@ -400,6 +423,7 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
 
   cameraStateRef.current = cameraState
   onCameraStateChangeRef.current = onCameraStateChange
+  autoDollhouseSettingsRef.current = autoDollhouseSettings
 
   const geometryInput = useMemo(() => {
     if (!room) {
@@ -503,6 +527,12 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
     }
 
     const wallById = new Map<string, WallSegmentResolved>()
+    const wallVisuals: Array<{
+      wall: WallSegmentResolved
+      mesh: THREE.Mesh
+      material: THREE.MeshStandardMaterial
+      currentOpacity: number
+    }> = []
 
     for (const wall of geometryInput.walls) {
       wallById.set(wall.id, wall)
@@ -518,6 +548,8 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
       const wallGeometry = new THREE.BoxGeometry(lengthM, wallHeightM, wallThicknessM)
       const wallMaterial = new THREE.MeshStandardMaterial({
         color: hexColorToThreeColor(geometryInput.wallColor, 0x64748b),
+        transparent: true,
+        opacity: 1,
       })
       const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial)
 
@@ -528,8 +560,15 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
         wallHeightM * 0.5,
         ((wall.start.y_mm + wall.end.y_mm) * 0.5) * MM_TO_M,
       )
+      wallMesh.visible = wall.manualVisible
 
       group.add(wallMesh)
+      wallVisuals.push({
+        wall,
+        mesh: wallMesh,
+        material: wallMaterial,
+        currentOpacity: 1,
+      })
 
       if (showReference) {
         const lineGeom = new THREE.BufferGeometry().setFromPoints([
@@ -701,6 +740,51 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
     const animate = () => {
       if (disposed) return
       controls.update()
+
+      const facingDirection = controls.target.clone().sub(camera.position)
+      if (facingDirection.lengthSq() > 1e-8 && wallVisuals.length > 0) {
+        facingDirection.normalize()
+        const autoConfig = autoDollhouseSettingsRef.current
+        const resolved = resolveAutoDollhouseOpacities({
+          camera: {
+            x_mm: (camera.position.x - group.position.x) / MM_TO_M,
+            y_mm: (camera.position.z - group.position.z) / MM_TO_M,
+            yaw_rad: Math.atan2(facingDirection.z, facingDirection.x),
+          },
+          walls: wallVisuals.map((entry) => ({
+            id: entry.wall.id,
+            start: entry.wall.start,
+            end: entry.wall.end,
+            manualVisible: entry.wall.manualVisible,
+          })),
+          settings: autoConfig
+            ? {
+                enabled: autoConfig.enabled,
+                alpha_front_walls: autoConfig.alpha_front_walls,
+                distance_threshold: autoConfig.distance_threshold,
+                angle_threshold_deg: autoConfig.angle_threshold_deg,
+              }
+            : null,
+        })
+
+        for (const entry of wallVisuals) {
+          entry.mesh.visible = entry.wall.manualVisible
+          if (!entry.wall.manualVisible) {
+            continue
+          }
+
+          const targetOpacity = resolved[entry.wall.id] ?? 1
+          entry.currentOpacity += (targetOpacity - entry.currentOpacity) * 0.18
+          if (Math.abs(targetOpacity - entry.currentOpacity) < 0.008) {
+            entry.currentOpacity = targetOpacity
+          }
+
+          entry.material.opacity = entry.currentOpacity
+          entry.material.transparent = entry.currentOpacity < 0.999
+          entry.material.depthWrite = entry.currentOpacity >= 0.999
+        }
+      }
+
       emitCameraStateIfChanged()
       renderer.render(scene, camera)
       requestAnimationFrame(animate)

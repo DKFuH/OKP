@@ -24,6 +24,10 @@ const { prismaMock } = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    projectEnvironment: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
   },
 }))
 
@@ -75,6 +79,120 @@ describe('visibilityRoutes', () => {
       id: where.id,
       ...data,
     }))
+
+    prismaMock.projectEnvironment.findUnique.mockResolvedValue(null)
+    prismaMock.projectEnvironment.upsert.mockImplementation(async ({ create, update }: { create: Record<string, unknown>; update: Record<string, unknown> }) => ({
+      ...create,
+      ...update,
+    }))
+  })
+
+  it('GET /projects/:id/visibility/auto-dollhouse returns defaults when config is missing', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/visibility/auto-dollhouse`,
+      headers: { 'x-tenant-id': tenantId },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      project_id: projectId,
+      enabled: false,
+      alpha_front_walls: 0.32,
+      distance_threshold: 2400,
+      angle_threshold_deg: 35,
+    })
+
+    await app.close()
+  })
+
+  it('GET /projects/:id/visibility/auto-dollhouse reads values from project environment config', async () => {
+    prismaMock.projectEnvironment.findUnique.mockResolvedValue({
+      config_json: {
+        auto_dollhouse: {
+          enabled: true,
+          alpha_front_walls: 0.25,
+          distance_threshold: 1800,
+          angle_threshold_deg: 28,
+        },
+      },
+    })
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/visibility/auto-dollhouse`,
+      headers: { 'x-tenant-id': tenantId },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      enabled: true,
+      alpha_front_walls: 0.25,
+      distance_threshold: 1800,
+      angle_threshold_deg: 28,
+    })
+
+    await app.close()
+  })
+
+  it('PATCH /projects/:id/visibility/auto-dollhouse updates partial settings and merges existing config', async () => {
+    prismaMock.projectEnvironment.findUnique.mockResolvedValue({
+      north_angle_deg: 0,
+      latitude: null,
+      longitude: null,
+      timezone: null,
+      default_datetime: null,
+      daylight_enabled: true,
+      config_json: {
+        render: { quality: 'balanced' },
+        auto_dollhouse: {
+          enabled: false,
+          alpha_front_walls: 0.3,
+          distance_threshold: 2200,
+          angle_threshold_deg: 32,
+        },
+      },
+    })
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/projects/${projectId}/visibility/auto-dollhouse`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: {
+        enabled: true,
+        alpha_front_walls: 0.2,
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      project_id: projectId,
+      enabled: true,
+      alpha_front_walls: 0.2,
+      distance_threshold: 2200,
+      angle_threshold_deg: 32,
+    })
+    expect(prismaMock.projectEnvironment.upsert).toHaveBeenCalledTimes(1)
+    expect(prismaMock.projectEnvironment.upsert.mock.calls[0][0]).toMatchObject({
+      where: { project_id: projectId },
+      update: {
+        config_json: {
+          render: { quality: 'balanced' },
+          auto_dollhouse: {
+            enabled: true,
+            alpha_front_walls: 0.2,
+            distance_threshold: 2200,
+            angle_threshold_deg: 32,
+          },
+        },
+      },
+    })
+
+    await app.close()
   })
 
   it('POST /projects/:id/visibility/apply updates all entity types', async () => {
@@ -184,6 +302,21 @@ describe('visibilityRoutes', () => {
 
     expect(response.statusCode).toBe(404)
     expect(prismaMock.room.update).not.toHaveBeenCalled()
+    await app.close()
+  })
+
+  it('returns 400 for empty auto-dollhouse patch payload', async () => {
+    const app = await createApp()
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/projects/${projectId}/visibility/auto-dollhouse`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: {},
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(prismaMock.projectEnvironment.upsert).not.toHaveBeenCalled()
     await app.close()
   })
 })

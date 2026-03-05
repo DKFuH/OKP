@@ -33,7 +33,7 @@ import { acousticsApi, type AcousticGridMeta, type GeoJsonGrid } from '../api/ac
 import { getTenantPlugins, getTenantSettings, updateTenantSettings } from '../api/tenantSettings.js'
 import { projectEnvironmentApi } from '../api/projectEnvironment.js'
 import { levelsApi, type BuildingLevel } from '../api/levels.js'
-import { visibilityApi } from '../api/visibility.js'
+import { visibilityApi, type AutoDollhousePatch, type AutoDollhouseSettings } from '../api/visibility.js'
 import { verticalConnectionsApi, type VerticalConnection, type VerticalConnectionKind } from '../api/verticalConnections.js'
 import { usePolygonEditor, edgeLengthMm, type EditorState } from '../editor/usePolygonEditor.js'
 import { CanvasArea } from '../components/editor/CanvasArea.js'
@@ -333,6 +333,8 @@ export function Editor() {
   const [selectedAlternativeId, setSelectedAlternativeId] = useState<string | null>(null)
   const [gltfExportLoading, setGltfExportLoading] = useState(false)
   const [safeEditMode, setSafeEditMode] = useState(false)
+  const [autoDollhouseSettings, setAutoDollhouseSettings] = useState<AutoDollhouseSettings | null>(null)
+  const [autoDollhouseSaving, setAutoDollhouseSaving] = useState(false)
   const [acousticEnabled, setAcousticEnabled] = useState(false)
   const [acousticOpacityPct, setAcousticOpacityPct] = useState(50)
   const [acousticVariable, setAcousticVariable] = useState<'spl_db' | 'spl_dba' | 't20_s' | 'sti'>('spl_db')
@@ -498,6 +500,34 @@ export function Editor() {
       active = false
     }
   }, [id, stairsEnabled])
+
+  useEffect(() => {
+    if (!id) {
+      setAutoDollhouseSettings(null)
+      return
+    }
+
+    let active = true
+    visibilityApi.getAutoDollhouse(id)
+      .then((settings) => {
+        if (!active) return
+        setAutoDollhouseSettings(settings)
+      })
+      .catch(() => {
+        if (!active) return
+        setAutoDollhouseSettings({
+          project_id: id,
+          enabled: false,
+          alpha_front_walls: 0.32,
+          distance_threshold: 2400,
+          angle_threshold_deg: 35,
+        })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [id])
 
   useEffect(() => {
     if (!selectedRoomId || !multilevelDocsEnabled) {
@@ -2124,6 +2154,24 @@ export function Editor() {
       })
   }, [id, patchSelectedRoomWallSegment, selectedRoomId, selectedWallId])
 
+  const handleSaveAutoDollhouse = useCallback((patch: AutoDollhousePatch) => {
+    if (!id) {
+      return
+    }
+
+    setAutoDollhouseSaving(true)
+    void visibilityApi.updateAutoDollhouse(id, patch)
+      .then((settings) => {
+        setAutoDollhouseSettings(settings)
+      })
+      .catch((settingsError: Error) => {
+        console.error('S105: Auto-Dollhouse Einstellungen konnten nicht gespeichert werden:', settingsError)
+      })
+      .finally(() => {
+        setAutoDollhouseSaving(false)
+      })
+  }, [id])
+
   // Wandgeometrie für Dachschrägen-Panel
   const selectedWallGeom = useMemo(() => {
     const i = state.selectedEdgeIndex
@@ -2183,6 +2231,7 @@ export function Editor() {
       onCameraStateChange={handleCameraStateChange}
       sunlight={daylightEnabled ? sunPreview : null}
       navigationSettings={navigationSettings}
+      autoDollhouseSettings={autoDollhouseSettings}
     />
   )
 
@@ -2773,6 +2822,9 @@ export function Editor() {
           onSetDimensionsVisible={handleSetDimensionsVisible}
           onSetPlacementsVisible={handleSetPlacementsVisible}
           onSetSelectedWallVisible={handleSetSelectedWallVisible}
+          autoDollhouse={autoDollhouseSettings}
+          autoDollhouseSaving={autoDollhouseSaving}
+          onSaveAutoDollhouse={handleSaveAutoDollhouse}
           onSetActiveLevelLocked={handleSetActiveLevelLocked}
           onSetDimensionsLocked={handleSetDimensionsLocked}
           onSetSelectedPlacementLocked={handleSetSelectedPlacementLocked}
@@ -2803,6 +2855,7 @@ export function Editor() {
             onCameraStateChange={handleCameraStateChange}
             sunlight={daylightEnabled ? sunPreview : null}
             navigationSettings={navigationSettings}
+            autoDollhouseSettings={autoDollhouseSettings}
           />
         </PopoutWindow>
       )}

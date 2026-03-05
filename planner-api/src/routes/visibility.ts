@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendForbidden, sendNotFound } from '../errors.js'
@@ -46,6 +47,55 @@ const LocksBodySchema = z.object({
   placements: z.array(z.object({ room_id: z.string().uuid(), placement_id: z.string().min(1), locked: z.boolean(), lock_scope: LockScopeSchema.optional() })).default([]),
   walls: z.array(z.object({ room_id: z.string().uuid(), wall_id: z.string().min(1), locked: z.boolean(), lock_scope: LockScopeSchema.optional() })).default([]),
 })
+
+const AutoDollhousePatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  alpha_front_walls: z.number().min(0.05).max(0.95).optional(),
+  distance_threshold: z.number().int().min(300).max(12000).optional(),
+  angle_threshold_deg: z.number().min(5).max(85).optional(),
+}).refine((value) => Object.keys(value).length > 0, {
+  message: 'At least one field must be provided',
+})
+
+type AutoDollhouseSettings = {
+  enabled: boolean
+  alpha_front_walls: number
+  distance_threshold: number
+  angle_threshold_deg: number
+}
+
+const DEFAULT_AUTO_DOLLHOUSE_SETTINGS: AutoDollhouseSettings = {
+  enabled: false,
+  alpha_front_walls: 0.32,
+  distance_threshold: 2400,
+  angle_threshold_deg: 35,
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
+function normalizeAutoDollhouseSettings(value: unknown): AutoDollhouseSettings {
+  const config = asRecord(value)
+  return {
+    enabled: typeof config?.enabled === 'boolean' ? config.enabled : DEFAULT_AUTO_DOLLHOUSE_SETTINGS.enabled,
+    alpha_front_walls:
+      typeof config?.alpha_front_walls === 'number'
+        ? Math.max(0.05, Math.min(0.95, config.alpha_front_walls))
+        : DEFAULT_AUTO_DOLLHOUSE_SETTINGS.alpha_front_walls,
+    distance_threshold:
+      typeof config?.distance_threshold === 'number'
+        ? Math.round(Math.max(300, Math.min(12000, config.distance_threshold)))
+        : DEFAULT_AUTO_DOLLHOUSE_SETTINGS.distance_threshold,
+    angle_threshold_deg:
+      typeof config?.angle_threshold_deg === 'number'
+        ? Math.max(5, Math.min(85, config.angle_threshold_deg))
+        : DEFAULT_AUTO_DOLLHOUSE_SETTINGS.angle_threshold_deg,
+  }
+}
 
 function resolveTenantId(request: {
   tenantId?: string | null
@@ -143,6 +193,95 @@ async function persistMutableRooms(roomCache: Map<string, MutableRoom>) {
 }
 
 export async function visibilityRoutes(app: FastifyInstance) {
+  app.get<{ Params: { id: string } }>('/projects/:id/visibility/auto-dollhouse', async (request, reply) => {
+    const tenantId = resolveTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const project = await resolveScopedProject(request.params.id, tenantId)
+    if (!project) {
+      return sendNotFound(reply, 'Project not found in tenant scope')
+    }
+
+    const environment = await prisma.projectEnvironment.findUnique({
+      where: { project_id: project.id },
+      select: { config_json: true },
+    })
+    const configJson = asRecord(environment?.config_json)
+    const settings = normalizeAutoDollhouseSettings(configJson?.auto_dollhouse)
+
+    return reply.send({
+      project_id: project.id,
+      ...settings,
+    })
+  })
+
+  app.patch<{ Params: { id: string } }>('/projects/:id/visibility/auto-dollhouse', async (request, reply) => {
+    const tenantId = resolveTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = AutoDollhousePatchSchema.safeParse(request.body ?? {})
+    if (!parsed.success) {
+      return sendBadRequest(reply, parsed.error.errors[0]?.message ?? 'Invalid payload')
+    }
+
+    const project = await resolveScopedProject(request.params.id, tenantId)
+    if (!project) {
+      return sendNotFound(reply, 'Project not found in tenant scope')
+    }
+
+    const existingEnvironment = await prisma.projectEnvironment.findUnique({
+      where: { project_id: project.id },
+      select: {
+        config_json: true,
+        north_angle_deg: true,
+        latitude: true,
+        longitude: true,
+        timezone: true,
+        default_datetime: true,
+        daylight_enabled: true,
+      },
+    })
+
+    const currentConfig = asRecord(existingEnvironment?.config_json) ?? {}
+    const currentSettings = normalizeAutoDollhouseSettings(currentConfig.auto_dollhouse)
+    const mergedSettings = normalizeAutoDollhouseSettings({
+      ...currentSettings,
+      ...parsed.data,
+    })
+
+    const nextConfig: Record<string, unknown> = {
+      ...currentConfig,
+      auto_dollhouse: mergedSettings,
+    }
+
+    await prisma.projectEnvironment.upsert({
+      where: { project_id: project.id },
+      update: {
+        config_json: nextConfig as Prisma.InputJsonValue,
+      },
+      create: {
+        tenant_id: tenantId,
+        project_id: project.id,
+        north_angle_deg: existingEnvironment?.north_angle_deg ?? 0,
+        latitude: existingEnvironment?.latitude ?? null,
+        longitude: existingEnvironment?.longitude ?? null,
+        timezone: existingEnvironment?.timezone ?? null,
+        default_datetime: existingEnvironment?.default_datetime ?? null,
+        daylight_enabled: existingEnvironment?.daylight_enabled ?? true,
+        config_json: nextConfig as Prisma.InputJsonValue,
+      },
+    })
+
+    return reply.send({
+      project_id: project.id,
+      ...mergedSettings,
+    })
+  })
+
   app.post<{ Params: { id: string } }>('/projects/:id/visibility/apply', async (request, reply) => {
     const tenantId = resolveTenantId(request)
     if (!tenantId) {
