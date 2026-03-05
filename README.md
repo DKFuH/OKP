@@ -200,3 +200,8 @@ npm run test --workspace planner-api -- src/routes/quotes.test.ts src/routes/ten
 
 Copyright © 2026 Tischlermeister Daniel Klas.
 Licensed under the Apache License 2.0.
+## Contributing
+
+- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Ready starter tasks: [Docs/GOOD_FIRST_ISSUES.md](Docs/GOOD_FIRST_ISSUES.md)
+- Use the GitHub issue and PR templates in `.github/`

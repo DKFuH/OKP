@@ -1,0 +1,37 @@
+name: Task Ticket
+description: Scoped implementation task with clear DoD
+title: "[Task]: "
+labels:
+  - task
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      placeholder: What should be implemented?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      placeholder: Files, routes, components, modules.
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      placeholder: |
+        - [ ] Behavior complete
+        - [ ] Tests added/updated
+        - [ ] Docs updated
+    validations:
+      required: true
+  - type: input
+    id: validation
+    attributes:
+      label: Validation command
+      placeholder: npm run test --workspace planner-api -- src/...test.ts
+    validations:
+      required: true

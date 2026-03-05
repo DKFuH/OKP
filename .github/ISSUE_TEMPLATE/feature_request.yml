@@ -1,5 +1,5 @@
 name: Feature Request
-description: Neues Feature oder Sprint-Idee fuer OKP vorschlagen
+description: Propose a feature or improvement for OKP
 title: "[Feature]: "
 labels:
   - enhancement
@@ -7,42 +7,42 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem oder Bedarf
-      description: Welches konkrete Problem soll geloest werden?
-      placeholder: Beschreibe den Anwendungsfall knapp und konkret.
+      label: Problem to Solve
+      placeholder: What user/problem pain exists?
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Vorschlag
-      description: Wie sollte die Loesung aus deiner Sicht aussehen?
-      placeholder: Feature, Workflow, UI oder API kurz beschreiben.
+      label: Proposed Solution
+      placeholder: Describe expected behavior/API/UI.
     validations:
       required: true
-  - type: textarea
-    id: scope
-    attributes:
-      label: Scope
-      description: Betroffene Bereiche, Plugins oder moegliche Sprints
-      placeholder: z. B. S98, Editor, Plugin materials, Backend + Frontend
   - type: textarea
     id: acceptance
     attributes:
-      label: Akzeptanzkriterien
-      description: Woran erkennt man, dass das Feature fertig ist?
+      label: Acceptance Criteria
       placeholder: |
-        - ...
-        - ...
-        - ...
-  - type: dropdown
-    id: impact
-    attributes:
-      label: Erwarteter Nutzen
-      options:
-        - hoch
-        - mittel
-        - niedrig
+        - [ ] ...
+        - [ ] ...
     validations:
       required: true
-
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      placeholder: Include test command(s) and docs updates.
+  - type: input
+    id: test_command
+    attributes:
+      label: Expected validation command
+      placeholder: npm run test --workspace planner-api -- src/...test.ts
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Estimated Effort
+      options:
+        - XS (under 1h)
+        - S (1-3h)
+        - M (0.5-1 day)
+        - L (1-2 days)

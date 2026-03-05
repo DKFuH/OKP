@@ -1,60 +1,95 @@
-# Beitragen zu OKP
+# Contributing to OKP
 
-Vielen Dank für dein Interesse, zu OKP beizutragen!
+Thanks for your interest in contributing to OpenKitchenPlanner.
 
-## Voraussetzungen
+## Quick Start (First PR in ~30 minutes)
 
-- Node.js >= 20
-- npm >= 10
-- TypeScript-Kenntnisse
-- Grundverständnis von React und Fastify
+1. Pick an issue labeled `good first issue`.
+2. Comment on the issue that you are taking it.
+3. Create a branch from `main`.
+4. Implement only the scoped change.
+5. Run the relevant test command from the issue.
+6. Open a PR with the PR template checklist completed.
 
-## Entwicklungsumgebung einrichten
+## Prerequisites
+
+- Node.js `20+`
+- npm `10+`
+- Git
+
+## Local Setup
 
 ```bash
 git clone https://github.com/DKFuH/OKP.git
 cd OKP
 npm install
-npm test
+npm run db:generate --workspace planner-api
+npm run build --workspace planner-api
 ```
 
-## Workflow
+## Development Workflow
 
-1. **Issue erstellen** – Beschreibe das Problem oder Feature, bevor du mit der Arbeit beginnst.
-2. **Branch anlegen** – Benenne den Branch aussagekräftig, z. B. `feat/polygon-room-editor` oder `fix/dxf-import-encoding`.
-3. **Code schreiben** – Halte dich an die bestehenden Konventionen (TypeScript strict, Zod-Validierung, Vitest-Tests).
-4. **Tests ausführen** – Alle Tests müssen grün sein: `npm test`.
-5. **Pull Request öffnen** – Beschreibe kurz, was geändert wurde und warum.
+1. Create or pick an issue first.
+2. Use a focused branch name:
+   - `feat/<short-topic>`
+   - `fix/<short-topic>`
+   - `docs/<short-topic>`
+3. Keep changes small and reviewable.
+4. Add tests for behavior changes.
+5. Update docs when API, workflow, or setup changes.
+6. Open one PR per concern.
 
-## Code-Konventionen
+## Engineering Rules
 
-- Sprache im Code: Englisch (Bezeichner, Kommentare)
-- Sprache in Commit-Messages: Englisch
-- Kein `any` in TypeScript ohne expliziten Kommentar
-- Neue Datenstrukturen immer mit Zod-Schema in `shared-schemas` absichern
-- Tests für alle neuen Funktionen in Vitest
+- Language in code and commits: English.
+- TypeScript strict mode is mandatory.
+- Avoid `any` unless justified in code comments.
+- Validate API payloads with `zod`.
+- Keep tenant scoping explicit for backend routes.
+- Add or adjust Vitest tests for new behavior.
 
-## Commit-Messages
+## Validation Checklist Before PR
 
-Wir folgen [Conventional Commits](https://www.conventionalcommits.org/):
+Run what is relevant for your change:
 
+```bash
+npm run test --workspace planner-api -- <target-test-file>
+npm run build --workspace planner-api
 ```
-feat: add sloped-ceiling height constraint
-fix: correct DXF coordinate offset on import
-docs: update room model documentation
-test: add unit tests for BOM calculation
+
+For Prisma schema changes:
+
+```bash
+npm run db:generate --workspace planner-api
 ```
 
-## Pull Requests
+## Commit Style
 
-- Einen PR pro Thema / Feature
-- Beschreibung enthält: Was wurde geändert? Warum? Wie wurde getestet?
-- Verweise auf das zugehörige Issue (`Closes #42`)
+Use Conventional Commits:
 
-## Verhaltenskodex
+- `feat: ...`
+- `fix: ...`
+- `docs: ...`
+- `test: ...`
+- `refactor: ...`
 
-Bitte lies unseren [Code of Conduct](CODE_OF_CONDUCT.md).
+## Pull Request Expectations
 
-## Lizenz
+- Reference the issue (`Closes #123`).
+- Explain what changed and why.
+- Include exact test/build commands you ran.
+- Call out risks and follow-ups.
+- Keep unrelated changes out of scope.
 
-Mit deinem Beitrag stimmst du zu, dass dein Code unter der [Apache License 2.0](LICENSE) veröffentlicht wird.
+## Starter Tasks
+
+See ready-to-pick tasks:
+- `Docs/GOOD_FIRST_ISSUES.md`
+
+## Code of Conduct
+
+Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## License
+
+By contributing, you agree your contributions are licensed under [Apache License 2.0](LICENSE).

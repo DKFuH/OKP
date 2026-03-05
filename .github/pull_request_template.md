@@ -1,41 +1,42 @@
-## Zweck
+## Summary
 
-Kurze Beschreibung, was dieser PR in OKP aendert.
+Shortly describe what this PR changes and why.
 
 ## Scope
 
-- Betroffene Sprints:
-- Betroffene Bereiche:
-- Backend / Frontend / Docs:
+- Issue: Closes #
+- Area: Backend / Frontend / Docs / Infra
+- Sprint (if applicable):
 
-## Umsetzung
+## Changes
 
 - 
 
-## Verifikation
+## Validation
 
-- [ ] Relevante Tests ausgefuehrt
-- [ ] Build erfolgreich
-- [ ] Manuell geprueft
+- [ ] Relevant tests were run
+- [ ] Build is green for affected workspace(s)
+- [ ] Prisma generate/migration was run if schema changed
 
-Details:
+Commands and results:
 
 ```text
-Test-/Build-Kommandos und Ergebnisse
+npm run test --workspace planner-api -- <test-file>
+npm run build --workspace planner-api
 ```
 
-## Risiken
+## Risks
 
 - 
 
-## Doku
+## Docs
 
-- [ ] README aktualisiert
-- [ ] ROADMAP aktualisiert
-- [ ] STATUS aktualisiert
-- [ ] Sprint-Doku aktualisiert
+- [ ] README updated (if needed)
+- [ ] ROADMAP/STATUS updated (if needed)
+- [ ] Sprint doc updated (if needed)
+- [ ] API contract changes documented
 
-## Review-Hinweise
+## Reviewer Notes
 
-- Besondere Stellen fuer Review:
-- Offene Punkte / bewusst verschobener Scope:
+- Focus review on:
+- Known follow-up (out of scope):

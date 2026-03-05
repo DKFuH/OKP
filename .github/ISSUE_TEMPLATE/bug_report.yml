@@ -1,5 +1,5 @@
 name: Bug Report
-description: Fehler oder Regression in OKP melden
+description: Report a defect or regression in OKP
 title: "[Bug]: "
 labels:
   - bug
@@ -7,56 +7,58 @@ body:
   - type: textarea
     id: summary
     attributes:
-      label: Kurzbeschreibung
-      description: Was ist kaputt oder unerwartet?
-      placeholder: Kurze, konkrete Beschreibung des Problems.
+      label: Summary
+      description: What is broken?
+      placeholder: One clear sentence.
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Reproduktionsschritte
-      description: Wie kann man den Fehler reproduzieren?
+      label: Reproduction Steps
       placeholder: |
-        1. Zu ...
-        2. Auf ...
-        3. Fehler sehen
+        1. Go to ...
+        2. Click ...
+        3. Observe ...
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Erwartetes Verhalten
-      placeholder: Was sollte stattdessen passieren?
+      label: Expected Behavior
+      placeholder: What should happen?
     validations:
       required: true
   - type: textarea
     id: actual
     attributes:
-      label: Tatsaechliches Verhalten
-      placeholder: Was passiert aktuell?
+      label: Actual Behavior
+      placeholder: What happens now?
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Betroffener Bereich
-      description: Betroffene Sprints, Plugins, Seiten, Routen oder Dateien
-      placeholder: z. B. S87, Navigation, planner-frontend/src/pages/Editor.tsx
+      label: Scope
+      description: Affected files/routes/pages/plugins
+      placeholder: planner-api/src/routes/..., planner-frontend/src/...
   - type: textarea
     id: logs
     attributes:
-      label: Logs, Screenshots, Testfehler
-      description: Relevante Ausgaben, Screenshots oder Fehlermeldungen
+      label: Logs / Screenshots / Errors
       render: shell
   - type: dropdown
     id: severity
     attributes:
-      label: Prioritaet
+      label: Severity
       options:
-        - hoch
-        - mittel
-        - niedrig
+        - high
+        - medium
+        - low
     validations:
       required: true
-
+  - type: input
+    id: test_command
+    attributes:
+      label: Failing test command (if available)
+      placeholder: npm run test --workspace planner-api -- src/...test.ts
