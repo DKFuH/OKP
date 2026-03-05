@@ -3,8 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { projectsApi, type ProjectDetail } from '../api/projects.js'
 import { presentationApi, type PresentationSession } from '../api/presentation.js'
 import { projectEnvironmentApi } from '../api/projectEnvironment.js'
+import { cameraPresetsApi, type CameraPreset } from '../api/cameraPresets.js'
 import { getTenantPlugins } from '../api/tenantSettings.js'
 import { Preview3D } from '../components/editor/Preview3D.js'
+import { clampPresetFov, presetToCameraState, type SyncedCameraState } from '../components/editor/cameraPresetState.js'
 import { defaultsForNavigationProfile } from '../components/editor/navigationSettings.js'
 import { DaylightPanel } from '../components/editor/DaylightPanel.js'
 import type { RoomPayload } from '../api/rooms.js'
@@ -54,12 +56,28 @@ export function PresentationModePage() {
   const [sunPreview, setSunPreview] = useState<SunPreview | null>(null)
   const [daylightSaving, setDaylightSaving] = useState(false)
   const [sunPreviewLoading, setSunPreviewLoading] = useState(false)
+  const [cameraPresets, setCameraPresets] = useState<CameraPreset[]>([])
+  const [activeCameraPresetId, setActiveCameraPresetId] = useState<string | null>(null)
+  const [cameraState, setCameraState] = useState<SyncedCameraState>({
+    x_mm: 0,
+    y_mm: 0,
+    yaw_rad: 0,
+    pitch_rad: -0.12,
+    camera_height_mm: 1650,
+  })
+  const [cameraFovDeg, setCameraFovDeg] = useState(55)
 
   const [exporting, setExporting] = useState(false)
   const [renderStatus, setRenderStatus] = useState<string | null>(null)
   const [renderImageUrl, setRenderImageUrl] = useState<string | null>(null)
 
   const activeRoom = useMemo(() => project?.rooms[0] ?? null, [project])
+
+  function applyPresetLocally(preset: CameraPreset) {
+    const nextState = presetToCameraState(preset)
+    setCameraState(nextState)
+    setCameraFovDeg(clampPresetFov(preset.fov))
+  }
 
   async function refreshSunPreview(projectId: string, environment: ProjectEnvironment | null) {
     if (!environment) return
@@ -158,6 +176,40 @@ export function PresentationModePage() {
         setDaylightEnabled(false)
         setProjectEnvironment(null)
         setSunPreview(null)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [id])
+
+  useEffect(() => {
+    if (!id) {
+      setCameraPresets([])
+      setActiveCameraPresetId(null)
+      return
+    }
+
+    let active = true
+    cameraPresetsApi.list(id)
+      .then((result) => {
+        if (!active) return
+        setCameraPresets(result.presets)
+        setActiveCameraPresetId(result.active_preset_id)
+
+        const preferred = result.active_preset_id
+          ? result.presets.find((entry) => entry.id === result.active_preset_id)
+          : result.presets.find((entry) => entry.is_default)
+
+        if (preferred) {
+          applyPresetLocally(preferred)
+          setActiveCameraPresetId(preferred.id)
+        }
+      })
+      .catch(() => {
+        if (!active) return
+        setCameraPresets([])
+        setActiveCameraPresetId(null)
       })
 
     return () => {
@@ -350,6 +402,53 @@ export function PresentationModePage() {
             </select>
           </label>
 
+          <label className={styles.field}>
+            <span>Kamera-Preset</span>
+            <select
+              value={activeCameraPresetId ?? ''}
+              onChange={(event) => {
+                const presetId = event.target.value
+                if (!presetId || !id) {
+                  setActiveCameraPresetId(null)
+                  return
+                }
+
+                const localPreset = cameraPresets.find((entry) => entry.id === presetId)
+                if (localPreset) {
+                  applyPresetLocally(localPreset)
+                }
+
+                void cameraPresetsApi.apply(id, presetId)
+                  .then((result) => {
+                    setActiveCameraPresetId(result.active_preset_id)
+                    applyPresetLocally(result.preset)
+                  })
+                  .catch(() => {
+                    // preview keeps local preset if server apply fails
+                  })
+              }}
+            >
+              <option value="">Kein Preset</option>
+              {cameraPresets.map((presetItem) => (
+                <option key={presetItem.id} value={presetItem.id}>
+                  {presetItem.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.field}>
+            <span>FOV ({cameraFovDeg}°)</span>
+            <input
+              type="range"
+              min={20}
+              max={110}
+              step={1}
+              value={cameraFovDeg}
+              onChange={(event) => setCameraFovDeg(clampPresetFov(Number(event.target.value)))}
+            />
+          </label>
+
           <label className={styles.checkboxRow}>
             <input
               type="checkbox"
@@ -411,8 +510,10 @@ export function PresentationModePage() {
         <div className={styles.previewWrap}>
           <Preview3D
             room={activeRoom as unknown as RoomPayload | null}
+            cameraState={cameraState}
             sunlight={daylightEnabled ? sunPreview : null}
             navigationSettings={presentationNavigation}
+            fovDeg={cameraFovDeg}
           />
         </div>
       </section>

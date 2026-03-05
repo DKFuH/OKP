@@ -92,6 +92,7 @@ interface Props {
   sunlight?: SunlightPreview | null
   navigationSettings: NavigationSettings
   autoDollhouseSettings?: AutoDollhouseSettings | null
+  fovDeg?: number
 }
 
 const MM_TO_M = 0.001
@@ -402,7 +403,7 @@ function applyNavigationControls(controls: OrbitControls, settings: NavigationSe
   }
 }
 
-export function Preview3D({ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunlight = null, navigationSettings, autoDollhouseSettings = null }: Props) {
+export function Preview3D({ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunlight = null, navigationSettings, autoDollhouseSettings = null, fovDeg = 55 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -412,6 +413,7 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
   const cameraStateRef = useRef<Props['cameraState']>(cameraState)
   const onCameraStateChangeRef = useRef<Props['onCameraStateChange']>(onCameraStateChange)
   const autoDollhouseSettingsRef = useRef<Props['autoDollhouseSettings']>(autoDollhouseSettings)
+  const fovRef = useRef<number>(fovDeg)
   const lastEmittedRef = useRef<{
     x_mm: number
     y_mm: number
@@ -424,6 +426,7 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
   cameraStateRef.current = cameraState
   onCameraStateChangeRef.current = onCameraStateChange
   autoDollhouseSettingsRef.current = autoDollhouseSettings
+  fovRef.current = fovDeg
 
   const geometryInput = useMemo(() => {
     if (!room) {
@@ -463,7 +466,7 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0f172a)
 
-    const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 200)
+    const camera = new THREE.PerspectiveCamera(fovRef.current, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 200)
     camera.position.set(3.5, 2.8, 3.5)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -825,6 +828,16 @@ export function Preview3D({ room, verticalConnections = [], cameraState = null, 
     controls.target.copy(position.clone().add(direction.multiplyScalar(1.2)))
     controls.update()
   }, [cameraState])
+
+  useEffect(() => {
+    const camera = cameraRef.current
+    if (!camera) {
+      return
+    }
+
+    camera.fov = Math.max(20, Math.min(110, fovDeg))
+    camera.updateProjectionMatrix()
+  }, [fovDeg])
 
   useEffect(() => {
     const ambient = ambientLightRef.current
