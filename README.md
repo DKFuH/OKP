@@ -1,98 +1,202 @@
-OpenKitchenPlanner (OKP)
+# OpenKitchenPlanner (OKP)
 
-English | Deutsch
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-v0.1.0--rc1-green.svg)]()
+[![Node](https://img.shields.io/badge/Node-v20%20%7C%20v22-green)](https://nodejs.org/)
 
+[English](#english) | [Deutsch](#deutsch)
 
+---
 
 <a name="english"></a>
-🇬🇧 English
-OpenKitchenPlanner is a web-based planning platform for carpentry workshops and kitchen studios. It combines room modeling, catalog and CAD workflows, pricing, quote generation, and export pipelines in one monorepo.
-🚀 Release Status
- * Current Channel: v0.1.0-rc1 (2026-03-04)
- * Stabilization Focus: Sprint 98 (Core-path hardening, tenant-scope checks, regression cleanup).
- * Verification: Full build & test suite green.
-🛠 Core Capabilities
- * Modeling: Polygonal rooms with wall-based constraints, sloped ceilings, and curved walls (Phase 13).
- * Business: 9-step pricing engine, BOM calculation, and professional PDF quote generation with company branding (Phase 10).
- * Project Management: Kanban boards, Gantt charts, document management (DMS), and tenant-aware CRM light.
- * Production: Cutlists, CNC nesting (DXF export), and internal production orders (Phase 11).
- * Interop: IFC (BIM), DXF/DWG, SketchUp import, and GLTF/GLB exports for AR/VR (Phase 7).
- * AI Integration: Full MCP (Model Context Protocol) support for AI-assisted planning (e.g., via Claude).
-🏗 Roadmap Overview
-The project has evolved through several key phases:
- * MVP (Sprints 0-19): Core geometry, catalog, and basic pricing.
- * Professionalization (Sprints 20-60): Multi-tenancy, high-end room interactions, and ground-plan tracing.
- * Industry Excellence (Sprints 61-83): Building levels (multi-floor), staircases, and room acoustics visualization.
- * Refinement (Sprints 84-98): Internationalization (i18n), CAD-like navigation, and deep stabilization.
-💻 Tech Stack
- * Frontend: React + TypeScript + Vite + Konva.js / Three.js
- * Backend: Node.js + Fastify + TypeScript
- * Database: PostgreSQL via Prisma ORM
- * Validation: Zod + shared-schemas
- * Testing: Vitest
+## 🇬🇧 English: Project Overview
+
+OpenKitchenPlanner is a web-based planning platform specifically designed for carpentry workshops and kitchen studios. It combines room modeling, catalog-based CAD workflows, pricing, professional quote generation, and production export pipelines within a single monorepo.
+
+### 🚀 Release Status
+* **Current Channel:** `v0.1.0-rc1` (2026-03-04)
+* **Stabilization Focus:** Sprint 98 (Core-path hardening, tenant-scope checks, regression cleanup).
+* **Verification:** Full build & test suite status: **Green**.
+
+### 🛠 Core Capabilities
+* **Modeling:** Advanced polygonal rooms with wall-based constraints, sloped ceilings, and curved walls.
+* **Business:** 9-step pricing engine, automatic Bill of Materials (BOM) calculation, and professional PDF quote generation with custom branding.
+* **Project Management:** Integrated Kanban boards, Gantt charts, Document Management (DMS), and tenant-aware CRM features.
+* **Production:** Automated cutlists, CNC nesting (DXF export), and internal production order management.
+* **Interoperability:** Support for IFC (BIM), DXF/DWG, SketchUp import, and GLTF/GLB exports for AR/VR applications.
+* **AI Integration:** Native **MCP (Model Context Protocol)** support for AI-assisted planning and automation.
+
+### 🏗 Roadmap Overview
+* **Phase 1: MVP (Sprints 0-19):** Basic geometry, catalog system, and initial pricing logic.
+* **Phase 2: Professionalization (Sprints 20-60):** Multi-tenancy, high-end room interactions, and floor plan tracing.
+* **Phase 3: Industry Excellence (Sprints 61-83):** Multi-floor support, staircase modeling, and room acoustics visualization.
+* **Phase 4: Refinement (Sprints 84-98):** Internationalization (i18n), CAD-standard navigation, and deep system stabilization.
+
+---
+
+### 📦 Detailed Installation Guide (EN)
+
+#### 📋 Prerequisites
+* **Node.js:** version `20.x` or `22.x` (LTS)
+* **Package Manager:** `npm` version `10+`
+* **Docker:** Docker Desktop or Engine + Compose (for Option A)
+* **Database:** PostgreSQL `15+` (if not using Docker)
+
+#### 🐳 Setup Option A: Docker (Recommended)
+The fastest way to get the API and Database running in an isolated environment.
+
+1.  **Clone & Enter:**
+    ```bash
+    git clone https://github.com/<owner>/open-kitchen-planner.git
+    cd open-kitchen-planner
+    ```
+2.  **Spin up Services:**
+    ```bash
+    docker-compose up -d --build
+    ```
+3.  **Database Migration:**
+    ```bash
+    # Push the Prisma schema to the Docker-Postgres instance
+    docker-compose exec api npm run db:push
+    ```
+4.  **Start Frontend:**
+    The frontend runs locally for better development performance (HMR).
+    ```bash
+    npm install
+    npm run dev --workspace planner-frontend
+    ```
+
+#### 💻 Setup Option B: Native Local Development
+1.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
+2.  **Environment Configuration:**
+    Create a `.env` file in `packages/planner-api/`:
+    ```dotenv
+    DATABASE_URL="postgresql://user:password@localhost:5432/okp_db?schema=public"
+    PORT=3000
+    HOST=0.0.0.0
+    FRONTEND_URL=http://localhost:5173
+    ```
+3.  **Initialize Database:**
+    ```bash
+    npm run db:generate
+    npm run db:push --workspace planner-api
+    ```
+4.  **Run Development Servers:**
+    ```bash
+    # Terminal 1: API
+    npm run dev --workspace planner-api
+
+    # Terminal 2: Frontend
+    npm run dev --workspace planner-frontend
+    ```
+
+---
+
 <a name="deutsch"></a>
-🇩🇪 Deutsch
+## 🇩🇪 Deutsch: Projektübersicht
+
 OpenKitchenPlanner ist eine webbasierte Planungsplattform für Schreinereien und Küchenstudios. Es vereint Raumplanung, Katalog- und CAD-Workflows, Kalkulation, Angebotserstellung und Export-Pipelines in einem Monorepo.
-🚀 Release-Status
- * Aktueller Kanal: v0.1.0-rc1 (04.03.2026)
- * Stabilisierungsschwerpunkt: Sprint 98 (Härtung der Kernpfade, Mandanten-Prüfungen, Regression-Cleanup).
- * Verifizierungsstand: Full Build & Test-Suite grün.
-🛠 Kernfunktionen
- * Modellierung: Polygonale Räume mit Wand-Constraints, Dachschrägen und gebogenen Wänden (Phase 13).
- * Business: 9-stufige Kalkulations-Engine, Stücklisten (BOM) und PDF-Angebotserstellung mit Firmenbranding (Phase 10).
- * Projektsteuerung: Kanban-Boards, Gantt-Charts, Dokumentenmanagement (DMS) und mandantenfähiges CRM-Light.
- * Produktion: Zuschnittlisten, CNC-Nesting (DXF-Export) und interne Produktionsaufträge (Phase 11).
- * Interop: IFC (BIM), DXF/DWG, SketchUp-Import und GLTF/GLB-Exporte für AR/VR (Phase 7).
- * KI-Integration: Volle MCP-Unterstützung (Model Context Protocol) für KI-gestützte Planung (z.B. via Claude).
-🏗 Roadmap-Überblick
-Das Projekt wurde durch verschiedene Phasen entwickelt:
- * MVP (Sprints 0-19): Kerngeometrie, Katalog und Basis-Kalkulation.
- * Professionalisierung (Sprints 20-60): Mehrmandantenfähigkeit, High-End Wand-Interaktoren und Grundriss-Nachzeichnen.
- * Branchen-Exzellenz (Sprints 61-83): Ebenen-Management (Mehrgeschossig), Treppenbau und Raumakustik-Visualisierung.
- * Refinement (Sprints 84-98): Internationalisierung (i18n), CAD-Navigation und Tiefenstabilisierung.
-📂 Monorepo Structure
+
+### 🚀 Release-Status
+* **Aktueller Kanal:** `v0.1.0-rc1` (04.03.2026)
+* **Stabilisierungsschwerpunkt:** Sprint 98 (Härtung der Kernpfade, Mandanten-Prüfungen, Bereinigung von Regressionen).
+
+### 🛠 Kernfunktionen
+* **Modellierung:** Polygonale Räume mit Wand-Constraints, Dachschrägen und gebogenen Wänden.
+* **Business:** 9-stufige Kalkulations-Engine, Stücklisten (BOM) und PDF-Angebotserstellung mit Firmenbranding.
+* **Projektmanagement:** Kanban-Boards, Gantt-Diagramme, Dokumentenmanagement (DMS) und mandantenfähiges CRM.
+* **Produktion:** Zuschnittlisten, CNC-Nesting (DXF-Export) und interne Produktionsaufträge.
+* **Interop:** IFC (BIM), DXF/DWG, SketchUp-Import und GLTF/GLB-Exporte für AR/VR.
+* **KI-Integration:** Volle MCP-Unterstützung (Model Context Protocol) für KI-gestützte Planung.
+
+---
+
+### 📦 Ausführliche Installationsanweisung (DE)
+
+#### 📋 Voraussetzungen
+* **Node.js:** Version `20.x` oder `22.x` (LTS)
+* **Package Manager:** `npm` Version `10+`
+* **Docker:** Docker Desktop oder Compose (für Option A)
+* **Datenbank:** PostgreSQL `15+` (falls Docker nicht genutzt wird)
+
+#### 🐳 Setup Option A: Docker (Empfohlen)
+Der schnellste Weg für API und Datenbank in einer isolierten Umgebung.
+
+1.  **Repository klonen:**
+    ```bash
+    git clone https://github.com/<owner>/open-kitchen-planner.git
+    cd open-kitchen-planner
+    ```
+2.  **Container starten:**
+    ```bash
+    docker-compose up -d --build
+    ```
+3.  **Datenbank-Migration:**
+    ```bash
+    docker-compose exec api npm run db:push
+    ```
+4.  **Frontend starten:**
+    ```bash
+    npm install
+    npm run dev --workspace planner-frontend
+    ```
+
+#### 💻 Setup Option B: Lokale native Entwicklung
+1.  **Abhängigkeiten installieren:**
+    ```bash
+    npm install
+    ```
+2.  **Datenbank-Konfiguration:**
+    Erstellen Sie eine `.env` Datei in `packages/planner-api/`:
+    ```dotenv
+    DATABASE_URL="postgresql://nutzer:passwort@localhost:5432/okp_db?schema=public"
+    PORT=3000
+    HOST=0.0.0.0
+    FRONTEND_URL=http://localhost:5173
+    ```
+3.  **Prisma initialisieren:**
+    ```bash
+    npm run db:generate
+    npm run db:push --workspace planner-api
+    ```
+4.  **Server starten:**
+    ```bash
+    # Terminal 1: API starten
+    npm run dev --workspace planner-api
+
+    # Terminal 2: Frontend starten
+    npm run dev --workspace planner-frontend
+    ```
+
+---
+
+## 📂 Monorepo Structure
+
+```text
 open-kitchen-planner/
 ├── planner-frontend/      # React app (Konva/Three.js)
 ├── planner-api/           # Fastify REST API & MCP Server
 ├── shared-schemas/        # Shared domain types (Zod)
 ├── interop-cad/           # DXF/DWG import & export
-├── interop-ifc/           # BIM/IFC integration (Phase 7)
+├── interop-ifc/           # BIM/IFC integration
 ├── interop-sketchup/      # SKP import
 └── Docs/                  # Architecture, Roadmap, Sprint Docs
+```
 
-🛠 Setup & Installation
-Prerequisites / Voraussetzungen
- * Node.js: 20+ (22.x recommended)
- * Docker Desktop: Recommended for Database & API runtime.
-Option A: Docker (Recommended / Empfohlen)
-# Build and start PostgreSQL + API
-docker-compose up -d --build postgres api
+## 🧪 Testing & Verification
 
-# Apply Prisma schema
-docker-compose exec api npm run db:push
-
-# Start Frontend locally
-npm run dev --workspace planner-frontend
-
-Option B: Local Node.js
-npm install
-npm run db:generate
-# Configure .env in planner-api/
-npm run dev --workspace planner-api
-npm run dev --workspace planner-frontend
-
-🧪 Testing & Security
+```bash
 # Full monorepo tests
 npm test
 
-# Security-focused smoke suite (Tenants & Quotes)
+# Security-focused smoke suite
 npm run test --workspace planner-api -- src/routes/quotes.test.ts src/routes/tenantSettings.test.ts
+```
 
-📄 Documentation / Dokumentation
- * Architecture
- * Roadmap Details
- * Interop Guide (IFC/DXF)
- * S98 Stabilization
-⚖️ License / Lizenz
-Copyright 2026 Tischlermeister Daniel Klas.
+## ⚖️ License / Lizenz
+
+Copyright © 2026 Tischlermeister Daniel Klas.
 Licensed under the Apache License 2.0.
