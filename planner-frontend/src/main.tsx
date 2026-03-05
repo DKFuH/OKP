@@ -30,6 +30,7 @@ import { ExportsPage } from './pages/ExportsPage.js'
 import { CutlistPage } from './pages/CutlistPage'
 import { NestingPage } from './pages/NestingPage'
 import { CaptureDialogHarnessPage } from './pages/CaptureDialogHarnessPage.js'
+import { AppShell } from './components/layout/AppShell.js'
 import { getTenantPlugins } from './api/tenantSettings.js'
 import { bootstrapOfflinePwa } from './pwa/offlineBootstrap.js'
 import './i18n/index.js'
@@ -106,48 +107,50 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<ProjectList />} />
-        <Route path="/catalog" element={<CatalogPage />} />
-        <Route path="/bi" element={<BIDashboard />} />
-        <Route path="/contacts" element={<ContactsPage />} />
-        <Route path="/documents" element={<DocumentsPage />} />
-        <Route path="/projects/archive" element={<ProjectArchivePage />} />
-        <Route path="/webplanner" element={<WebplannerPage />} />
-        <Route path="/projects/:id" element={<Editor />} />
-        <Route path="/projects/:id/panorama-tours" element={<PanoramaToursPage />} />
-        <Route
-          path="/projects/:id/presentation"
-          element={<TenantPluginRoute pluginId="presentation"><PresentationModePage /></TenantPluginRoute>}
-        />
-        <Route
-          path="/projects/:id/exports"
-          element={<TenantPluginRoute pluginId="viewer-export"><ExportsPage /></TenantPluginRoute>}
-        />
-        <Route path="/projects/:id/specification-packages" element={<SpecificationPackagesPage />} />
-        <Route path="/share/panorama/:token" element={<PublicPanoramaTourPage />} />
-        <Route path="/projects/:id/quote-lines" element={<QuoteLinesPage />} />
-        <Route path="/production-orders" element={<ProductionOrdersPage />} />
-        <Route path="/site-surveys" element={<SiteSurveyPage />} />
-        <Route path="/supplier-portal" element={<SupplierPortalPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/compliance" element={<CompliancePage />} />
-        <Route path="/settings/mcp" element={<McpInfoPage />} />
-        <Route
-          path="/projects/:id/cutlist"
-          element={<TenantPluginRoute pluginId="tischler"><CutlistPage /></TenantPluginRoute>}
-        />
-        <Route
-          path="/projects/:id/nesting"
-          element={<TenantPluginRoute pluginId="tischler"><NestingPage /></TenantPluginRoute>}
-        />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/settings/language-packs" element={<LanguagePacksPage />} />
-        <Route path="/settings/company" element={<TenantSettingsPage />} />
-        <Route path="/settings/project-defaults" element={<ProjectDefaultsPage />} />
-        <Route path="/settings/plugins" element={<PluginsSettingsPage />} />
-        <Route path="/settings/layout-styles" element={<LayoutStylesPage />} />
-        <Route path="/__e2e/capture-dialog" element={<CaptureDialogHarnessPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route element={<AppShell />}>
+          <Route path="/" element={<ProjectList />} />
+          <Route path="/catalog" element={<CatalogPage />} />
+          <Route path="/bi" element={<BIDashboard />} />
+          <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/documents" element={<DocumentsPage />} />
+          <Route path="/projects/archive" element={<ProjectArchivePage />} />
+          <Route path="/webplanner" element={<WebplannerPage />} />
+          <Route path="/projects/:id" element={<Editor />} />
+          <Route path="/projects/:id/panorama-tours" element={<PanoramaToursPage />} />
+          <Route
+            path="/projects/:id/presentation"
+            element={<TenantPluginRoute pluginId="presentation"><PresentationModePage /></TenantPluginRoute>}
+          />
+          <Route
+            path="/projects/:id/exports"
+            element={<TenantPluginRoute pluginId="viewer-export"><ExportsPage /></TenantPluginRoute>}
+          />
+          <Route path="/projects/:id/specification-packages" element={<SpecificationPackagesPage />} />
+          <Route path="/share/panorama/:token" element={<PublicPanoramaTourPage />} />
+          <Route path="/projects/:id/quote-lines" element={<QuoteLinesPage />} />
+          <Route path="/production-orders" element={<ProductionOrdersPage />} />
+          <Route path="/site-surveys" element={<SiteSurveyPage />} />
+          <Route path="/supplier-portal" element={<SupplierPortalPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/compliance" element={<CompliancePage />} />
+          <Route path="/settings/mcp" element={<McpInfoPage />} />
+          <Route
+            path="/projects/:id/cutlist"
+            element={<TenantPluginRoute pluginId="tischler"><CutlistPage /></TenantPluginRoute>}
+          />
+          <Route
+            path="/projects/:id/nesting"
+            element={<TenantPluginRoute pluginId="tischler"><NestingPage /></TenantPluginRoute>}
+          />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/language-packs" element={<LanguagePacksPage />} />
+          <Route path="/settings/company" element={<TenantSettingsPage />} />
+          <Route path="/settings/project-defaults" element={<ProjectDefaultsPage />} />
+          <Route path="/settings/plugins" element={<PluginsSettingsPage />} />
+          <Route path="/settings/layout-styles" element={<LayoutStylesPage />} />
+          <Route path="/__e2e/capture-dialog" element={<CaptureDialogHarnessPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
       </Routes>
     </BrowserRouter>
     </ErrorBoundary>

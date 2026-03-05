@@ -1,0 +1,46 @@
+.shell {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.45rem 0.9rem;
+  background: color-mix(in srgb, var(--surface-default) 88%, transparent);
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.link {
+  text-decoration: none;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+}
+
+.link:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.linkActive {
+  background: var(--primary-light);
+  color: var(--primary-color);
+  font-weight: 600;
+}
