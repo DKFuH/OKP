@@ -1,6 +1,6 @@
-# AGENT_SPRINTS - Sprint Index
+﻿# AGENT_SPRINTS - Sprint Index
 
-Stand: 2026-03-05
+Stand: 2026-03-06
 
 ---
 
