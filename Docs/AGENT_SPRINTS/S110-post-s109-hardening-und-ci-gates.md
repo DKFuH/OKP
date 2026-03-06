@@ -181,3 +181,57 @@ Bewusst offen gelassen (weiter aktiv genutzt):
 Naechster Umsetzungsschritt:
 
 - Ribbon-Menueband (Tab-/Gruppenstruktur) global einziehen und die migrierten Seiten an die finale Ribbon-Navigation anbinden.
+
+---
+
+## Fortschritt (Ribbon-Implementierung abgeschlossen)
+
+Umgesetzt in dieser Runde:
+
+### Ribbon Foundation (Phase 1 abgeschlossen)
+
+- `ribbonStateResolver.ts` - zentraler State-Resolver fuer alle Ribbon-Tabs, -Gruppen, -Commands und Kontext-Tabs
+  - 8 primaere Tabs: Datei, Start, Einfuegen, CAD, Ansicht, Render, Daten, Plugins
+  - 4 Kontext-Tabs: Wandtools, Oeffnung, Objekt, Presentation (dynamisch nach Modus/Selektion)
+  - Quick-Access-Leiste (Undo, Redo, Speichern, Weiter, Screenshot)
+  - Action-Matrix vollstaendig angebunden (enabled/disabled + reason)
+  - MCP-Aktionen als Ribbon-Commands in Plugins-Tab
+  - Plugin-IDs als Ribbon-Commands
+- `RibbonCommand.tsx` - einzelner Command-Button mit Tooltip fuer Disabled-Reason
+- `RibbonGroup.tsx` - Gruppenkomponente mit Label und Command-Liste
+- `RibbonTabBar.tsx` - Tab-Strip fuer primaere + Kontext-Tabs, Content-Area fuer aktive Gruppen
+- `RibbonOverflow.tsx` - Overflow-Menue fuer Commands die nicht in die Breite passen
+- `QuickAccessBar.tsx` - Schnellzugriff-Leiste im Top-Bar
+- `RibbonShell.tsx` - Haupt-Shell-Wrapper (ersetzt AppHeader in AppShell)
+
+### Integration (Phase 2+3 abgeschlossen)
+
+- `AppShell.tsx` aktualisiert: `AppHeader` durch `RibbonShell` ersetzt
+- Alle Hauptseiten erhalten Ribbon automatisch ueber AppShell
+- Workflow-Navigation (Weiter/Zurueck) als Ribbon-Commands integriert
+- CAD-Moduswechsel als Ribbon-Commands in CAD-Tab
+- Navigationslinks als Ribbon-Commands in Daten/Render/Datei-Tabs
+
+### i18n (DE/EN vollstaendig)
+
+- Alle Ribbon-Labels, Gruppen, Reasons in `de.ts` und `en.ts` ergaenzt
+- Kein hardcoded String in Ribbon-Komponenten
+- Disabled-Reasons vollstaendig abgedeckt
+
+### Tests
+
+- `ribbonStateResolver.test.ts` mit 21 Unit-Tests grueen:
+  - 8 primaere Tabs vorhanden und korrekt benamst
+  - Quick-Access korrekt aktiviert/deaktiviert je Workflow-Schritt
+  - Kontext-Tabs korrekt aktiv je Workflow-Schritt und Editor-Modus
+  - Action-Matrix-Anbindung verifiziert (Split, Screenshot, Presentation, Workflow-Steps)
+  - MCP-Action-Integration in Plugins-Tab
+  - i18n Key-Coverage (alle Commands referenzieren ribbon.*/shell.* Keys)
+- Alle 144 Frontend-Tests weiterhin grueen
+
+### Offen / Naechste Schritte
+
+- E2E-Tests fuer Ribbon-Navigation (Playwright)
+- Accessibility-Haertung (Keyboard-Navigation, ARIA-Labels verfeinern)
+- Performance-/Bundle-Analyse
+- AppHeader.tsx koennte bei Bedarf entfernt werden (derzeit noch vorhanden)

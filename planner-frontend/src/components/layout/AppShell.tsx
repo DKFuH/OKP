@@ -2,7 +2,7 @@ import { makeStyles, tokens } from '@fluentui/react-components'
 import { useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAppShellState } from '../../editor/appShellState.js'
-import { AppHeader } from './AppHeader.js'
+import { RibbonShell } from '../ribbon/RibbonShell.js'
 import {
   AppShellEditorBridgeProvider,
   type AppShellEditorBridgeState,
@@ -63,7 +63,7 @@ export function AppShell() {
       setEditorBridgeState={setEditorBridgeState}
     >
       <div className={styles.root}>
-        <AppHeader shellState={mergedShellState} editorBridgeState={editorBridgeState} />
+        <RibbonShell shellState={mergedShellState} editorBridgeState={editorBridgeState} />
         <main className={styles.content}>
           <Outlet />
         </main>
