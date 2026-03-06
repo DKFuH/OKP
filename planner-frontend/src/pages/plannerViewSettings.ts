@@ -3,7 +3,7 @@ import {
   type NavigationSettings,
 } from '../components/editor/navigationSettings.js'
 
-export type PlannerViewMode = '2d' | 'split' | '3d' | 'elevation' | 'section'
+export type PlannerViewMode = '2d' | 'split' | 'split3' | '3d' | 'elevation' | 'section'
 
 export interface PlannerViewSettings extends NavigationSettings {
   mode: PlannerViewMode
@@ -23,7 +23,7 @@ export function clampNumber(value: number, min: number, max: number): number {
 }
 
 function isPlannerViewMode(value: unknown): value is PlannerViewMode {
-  return value === '2d' || value === 'split' || value === '3d' || value === 'elevation' || value === 'section'
+  return value === '2d' || value === 'split' || value === 'split3' || value === '3d' || value === 'elevation' || value === 'section'
 }
 
 function parsePlannerViewSettings(raw: string): PlannerViewSettings {

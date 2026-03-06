@@ -2167,7 +2167,7 @@ export function Editor() {
     ? `🔒 ${projectLockState.locked_by_user ?? 'Unbekannt'}${projectLockState.locked_by_host ? ` @ ${projectLockState.locked_by_host}` : ''}${projectLockState.locked_at ? ` · ${new Date(projectLockState.locked_at).toLocaleString()}` : ''}`
     : null
 
-  const effectiveViewMode: PlannerViewMode = compactLayout && viewMode === 'split' ? '2d' : viewMode
+  const effectiveViewMode: PlannerViewMode = compactLayout && (viewMode === 'split' || viewMode === 'split3') ? '2d' : viewMode
   const elevationsForSelectedRoom = useMemo(
     () => projectElevations.filter((entry) => entry.room_id === selectedRoomId),
     [projectElevations, selectedRoomId],
@@ -3127,6 +3127,15 @@ export function Editor() {
             </button>
             <button
               type="button"
+              className={`${styles.modeBtn} ${viewMode === 'split3' ? styles.modeBtnActive : ''}`}
+              onClick={() => setViewMode('split3')}
+              title={actionStates.viewSplit.enabled ? '2D + 3D + Elevation' : actionStates.viewSplit.reasonIfDisabled}
+              disabled={!actionStates.viewSplit.enabled}
+            >
+              3-Pan
+            </button>
+            <button
+              type="button"
               className={`${styles.modeBtn} ${viewMode === '3d' ? styles.modeBtnActive : ''}`}
               onClick={() => setViewMode('3d')}
             >
@@ -3674,6 +3683,20 @@ export function Editor() {
               />
               <div className={`${styles.splitPane} ${styles.splitPaneSecondary}`}>
                 {previewPanel}
+              </div>
+            </div>
+          )}
+
+          {effectiveViewMode === 'split3' && (
+            <div className={styles.split3Layout}>
+              <div className={styles.split3Left}>
+                {canvasPanel}
+              </div>
+              <div className={styles.split3TopRight}>
+                {previewPanel}
+              </div>
+              <div className={styles.split3BottomRight}>
+                {elevationPanel ?? sectionProjectionPanel ?? previewPanel}
               </div>
             </div>
           )}

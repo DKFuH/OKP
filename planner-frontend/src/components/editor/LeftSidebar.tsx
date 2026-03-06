@@ -27,7 +27,7 @@ import type { PluginSlotEntry } from '../../plugins/pluginUiContract.js'
 import { AssetBrowser } from '../catalog/AssetBrowser.js'
 import { AssetImportDialog } from '../catalog/AssetImportDialog.js'
 import { McpQuickActions } from '../mcp/McpQuickActions.js'
-import styles from './LeftSidebar.module.css'
+import { makeStyles, tokens } from '@fluentui/react-components'
 
 interface Props {
   levelsPanel?: ReactNode
@@ -65,6 +65,262 @@ const ASSET_CATEGORY_VALUES: AssetCategory[] = ['base', 'wall', 'appliance', 'de
 
 const ASSET_SORT_VALUES: AssetLibrarySort[] = ['updated', 'name', 'favorites']
 
+
+const useStyles = makeStyles({
+sidebar: {
+    width: '220px',
+    flexShrink: 0,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderRight: '1px solid ' + tokens.colorNeutralStroke1,
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  section: {
+    padding: tokens.spacingVerticalS,
+    borderBottom: '1px solid ' + tokens.colorNeutralStroke2,
+  },
+  sectionTitle: {
+    margin: '0',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    color: tokens.colorNeutralForeground3,
+    letterSpacing: '0.05em',
+  },
+  list: {
+    listStyle: 'none',
+    margin: '0 0 4px',
+    padding: '0',
+  },
+item: {
+    padding: '4px 8px',
+    borderRadius: tokens.borderRadiusSmall,
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    color: tokens.colorNeutralForeground1,
+  },
+  active: {
+    backgroundColor: tokens.colorBrandBackground2,
+    color: tokens.colorBrandForeground1,
+    fontWeight: '600',
+  },
+  pluginSlotList: {
+    listStyle: 'none',
+    margin: '0',
+    padding: '0',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  pluginSlotButton: {
+    width: '100%',
+    textAlign: 'left',
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    fontSize: '0.76rem',
+    padding: '4px 6px',
+    cursor: 'pointer',
+  },
+  mcpPanel: {
+    marginTop: tokens.spacingVerticalS,
+    display: 'grid',
+    gap: tokens.spacingVerticalXS,
+  },
+  empty: {
+    fontSize: '0.8rem',
+    color: tokens.colorNeutralForeground3,
+    margin: '0 0 4px',
+  },
+  error: {
+    fontSize: '0.8rem',
+    color: tokens.colorPaletteRedForeground1,
+    margin: '0 0 4px',
+  },
+  addBtn: {
+    width: '100%',
+    background: 'none',
+    border: '1px dashed ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    padding: tokens.spacingVerticalXS,
+    fontSize: '0.8rem',
+    color: tokens.colorNeutralForeground3,
+    cursor: 'pointer',
+  },
+  addRoomForm: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    marginTop: tokens.spacingVerticalXXS,
+  },
+  addRoomInput: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '2px 8px',
+    border: '1px solid ' + tokens.colorBrandStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: '0.85rem',
+    backgroundColor: tokens.colorNeutralBackground1,
+    outline: 'none',
+  },
+  addRoomActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
+  },
+  cancelBtn: {
+    background: 'none',
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    padding: '2px 8px',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+    color: tokens.colorNeutralForeground3,
+  },
+catalogSection: {
+    padding: tokens.spacingVerticalS,
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1',
+    minHeight: '0',
+    borderTop: '1px solid ' + tokens.colorNeutralStroke2,
+  },
+  catalogHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: tokens.spacingVerticalXS,
+  },
+  modeToggle: {
+    display: 'flex',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusSmall,
+    padding: '2px',
+  },
+  modeBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '0.65rem',
+    padding: '2px 6px',
+    borderRadius: tokens.borderRadiusSmall,
+    cursor: 'pointer',
+    color: tokens.colorNeutralForeground3,
+  },
+  modeBtnActive: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    boxShadow: tokens.shadow2,
+  },
+  mfrSelect: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '2px 4px',
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: '0.8rem',
+    marginBottom: tokens.spacingVerticalXS,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  searchInput: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '2px 8px',
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: '0.8rem',
+    marginBottom: tokens.spacingVerticalXS,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  typeSelect: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '2px 4px',
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: '0.8rem',
+    marginBottom: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  inlineControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    marginBottom: tokens.spacingVerticalXS,
+  },
+  checkboxLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    fontSize: '0.72rem',
+    color: tokens.colorNeutralForeground3,
+    whiteSpace: 'nowrap',
+  },
+  typeSelectInline: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '2px 4px',
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: '0.76rem',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  smallBtn: {
+    border: '1px dashed ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground3,
+    fontSize: '0.7rem',
+    padding: '2px 4px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  catalogList: {
+    listStyle: 'none',
+    margin: '0',
+    padding: '0',
+    overflowY: 'auto',
+    flex: '1',
+  },
+  catalogItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalXS,
+    padding: '2px 4px',
+    borderRadius: tokens.borderRadiusSmall,
+    cursor: 'default',
+    fontSize: '0.8rem',
+  },
+  catalogItemActive: {
+    backgroundColor: tokens.colorBrandBackground2,
+    cursor: 'pointer',
+  },
+  catalogName: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: tokens.colorNeutralForeground1,
+  },
+  catalogBadge: {
+    flexShrink: 0,
+    fontSize: '0.65rem',
+    padding: '1px 4px',
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorBrandBackground2,
+    color: tokens.colorBrandForeground1,
+  },
+  stepHint: {
+    fontSize: '0.8rem',
+    color: tokens.colorNeutralForeground3,
+    margin: '4px 0',
+    padding: '4px 8px',
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorNeutralBackground3,
+    lineHeight: '1.4',
+  },
+})
+
 export function LeftSidebar({
   levelsPanel,
   stairsPanel,
@@ -80,6 +336,7 @@ export function LeftSidebar({
   pluginSlotEntries = [],
   onNavigateToPath,
 }: Props) {
+  const styles = useStyles()
   const { t } = useTranslation()
   const [addingRoom, setAddingRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')

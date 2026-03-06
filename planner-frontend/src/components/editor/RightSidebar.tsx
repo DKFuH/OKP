@@ -22,7 +22,173 @@ import { VisibilityPanel } from './VisibilityPanel.js'
 import { LockPanel } from './LockPanel.js'
 import { GroupsPanel } from './GroupsPanel.js'
 import type { DimensionAssistSegment } from '../../editor/roomTopology.js'
-import styles from './RightSidebar.module.css'
+import { makeStyles, tokens } from '@fluentui/react-components'
+
+
+const useStyles = makeStyles({
+sidebar: {
+    width: '240px',
+    flexShrink: 0,
+    backgroundColor: tokens.colorNeutralBackground1,
+    borderLeft: '1px solid ' + tokens.colorNeutralStroke1,
+    overflowY: 'auto',
+  },
+  section: {
+    padding: tokens.spacingVerticalS,
+    borderBottom: '1px solid ' + tokens.colorNeutralStroke2,
+  },
+  sectionTitle: {
+    margin: '0 0 8px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    color: tokens.colorNeutralForeground3,
+    letterSpacing: '0.05em',
+  },
+  empty: {
+    fontSize: '0.8rem',
+    color: tokens.colorNeutralForeground3,
+    margin: '0',
+  },
+  props: {
+    margin: '0',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '4px 8px',
+    fontSize: '0.875rem',
+  },
+  field: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    marginBottom: '8px',
+  },
+  fieldLabel: {
+    fontSize: '0.75rem',
+    color: tokens.colorNeutralForeground3,
+  },
+  fieldInput: {
+    padding: '4px 8px',
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: '0.875rem',
+    width: '100%',
+    boxSizing: 'border-box',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  hint: {
+    fontSize: '0.75rem',
+    color: tokens.colorNeutralForeground3,
+    margin: '2px 0 0',
+  },
+  assistBlock: {
+    marginTop: '8px',
+    paddingTop: '6px',
+    borderTop: '1px solid ' + tokens.colorNeutralStroke2,
+  },
+  assistList: {
+    margin: '6px 0 0',
+    padding: '0',
+    listStyle: 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  assistItem: {
+    fontSize: '0.72rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '8px',
+    color: tokens.colorNeutralForeground2,
+  },
+  deleteBtn: {
+    marginTop: '8px',
+    padding: '4px 12px',
+    border: '1px solid ' + tokens.colorPaletteRedBorder2,
+    borderRadius: tokens.borderRadiusSmall,
+    background: 'none',
+    color: tokens.colorPaletteRedForeground1,
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    width: '100%',
+  },
+  constraintRow: {
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    padding: '8px',
+    marginBottom: '8px',
+  },
+  addConstraintBtn: {
+    width: '100%',
+    background: 'none',
+    border: '1px dashed ' + tokens.colorNeutralStroke1,
+    borderRadius: tokens.borderRadiusSmall,
+    padding: '4px',
+    fontSize: '0.8rem',
+    color: tokens.colorNeutralForeground3,
+    cursor: 'pointer',
+    marginTop: '4px',
+  },
+  validationResult: {
+    marginTop: '8px',
+  },
+  validOk: {
+    fontSize: '0.8rem',
+    color: tokens.colorPaletteGreenForeground1,
+    margin: '4px 0',
+  },
+  validError: {
+    fontSize: '0.8rem',
+    color: tokens.colorPaletteRedForeground1,
+    margin: '4px 0',
+  },
+  violation: {
+    borderLeft: '3px solid ' + tokens.colorNeutralStroke1,
+    padding: '2px 6px',
+    marginBottom: '4px',
+    fontSize: '0.75rem',
+  },
+  severityError: {
+    borderLeftColor: tokens.colorPaletteRedForeground1,
+  },
+  severityWarning: {
+    borderLeftColor: tokens.colorPaletteYellowForeground2,
+  },
+  severityHint: {
+    borderLeftColor: tokens.colorBrandForeground1,
+  },
+  violationBadge: {
+    display: 'block',
+    fontWeight: '600',
+    fontSize: '0.65rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    color: tokens.colorNeutralForeground3,
+  },
+  violationMsg: {
+    color: tokens.colorNeutralForeground1,
+    lineHeight: '1.3',
+  },
+  konfigName: {
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    color: tokens.colorNeutralForeground1,
+    margin: '0 0 2px',
+  },
+  optionsBlock: {
+    marginTop: '16px',
+    paddingTop: '12px',
+    borderTop: '1px solid ' + tokens.colorNeutralStroke2,
+  },
+  subTitle: {
+    fontSize: '0.7rem',
+    fontWeight: '600',
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    margin: '0 0 8px',
+    letterSpacing: '0.05em',
+  },
+})
 
 export interface CeilingConstraint {
   id?: string
@@ -182,6 +348,7 @@ export function RightSidebar({
   onApplyDrawingGroupTransform,
   onSyncDrawingGroupConfig,
 }: Props) {
+  const styles = useStyles()
   const activeLevel = levels.find((level) => level.id === activeLevelId) ?? null
   const dimensionsVisible = dimensions.length > 0 ? dimensions.every((dimension) => dimension.visible !== false) : null
   const dimensionsLocked = dimensions.length > 0 ? dimensions.every((dimension) => dimension.locked === true) : null
@@ -450,6 +617,7 @@ function OpeningPanel({ opening, onUpdate, onDelete }: {
   onUpdate: (o: Opening) => void
   onDelete: (id: string) => void
 }) {
+  const styles = useStyles()
   const [offset, setOffset] = useState(String(Math.round(opening.offset_mm)))
   const [width, setWidth] = useState(String(Math.round(opening.width_mm)))
   const [height, setHeight] = useState(String(opening.height_mm ? Math.round(opening.height_mm) : ''))
@@ -589,6 +757,7 @@ function VertexPanel({ index, vertex, onMove }: {
   vertex: Vertex
   onMove: (i: number, pos: Point2D) => void
 }) {
+  const styles = useStyles()
   const [xVal, setXVal] = useState(String(Math.round(vertex.x_mm)))
   const [yVal, setYVal] = useState(String(Math.round(vertex.y_mm)))
 
@@ -649,6 +818,7 @@ function EdgePanel({ edgeIndex, lengthMm, dimensionAssistSegments, onSetLength, 
   onSetLength: (i: number, mm: number, options?: { fineStep?: boolean }) => void
   onDraftChange: (mm: number | null) => void
 }) {
+  const styles = useStyles()
   const [lenVal, setLenVal] = useState(String(Math.round(lengthMm)))
   const [isFineStepModifierDown, setIsFineStepModifierDown] = useState(false)
 
@@ -736,11 +906,7 @@ function EdgePanel({ edgeIndex, lengthMm, dimensionAssistSegments, onSetLength, 
 // ─── Validierungs-Panel ───────────────────────────────────────────────────────
 
 const SEVERITY_LABELS = { error: 'Fehler', warning: 'Warnung', hint: 'Hinweis' } as const
-const SEVERITY_CLASS = {
-  error: styles.severityError,
-  warning: styles.severityWarning,
-  hint: styles.severityHint,
-} as const
+
 
 function resolveVariantId(article: CatalogArticle, chosenOptions: Record<string, string>): string | undefined {
   if (!article.variants || article.variants.length === 0) {
@@ -792,6 +958,12 @@ function ValidationPanel({ result, loading, onRun }: {
   loading: boolean
   onRun: () => void
 }) {
+  const styles = useStyles()
+  const SEVERITY_CLASS = {
+    error: styles.severityError,
+    warning: styles.severityWarning,
+    hint: styles.severityHint,
+  } as const
   return (
     <div className={styles.section}>
       <h3 className={styles.sectionTitle}>Prüfungen</h3>
@@ -849,6 +1021,7 @@ function AcousticPanel({
   onSelectGrid: (gridId: string | null) => void
   onDeleteGrid: (gridId: string) => void
 }) {
+  const styles = useStyles()
   return (
     <div className={styles.section}>
       <h3 className={styles.sectionTitle}>Akustik</h3>
@@ -955,6 +1128,7 @@ function PlacementPanel({ placement, onUpdate, onDelete }: {
   onUpdate: (p: Placement) => void
   onDelete: (id: string) => void
 }) {
+  const styles = useStyles()
   const [offset, setOffset] = useState(String(Math.round(placement.offset_mm)))
   const [width, setWidth] = useState(String(Math.round(placement.width_mm)))
   const [depth, setDepth] = useState(String(Math.round(placement.depth_mm)))
@@ -1017,6 +1191,7 @@ function CeilingConstraintPanel({ constraints, wallGeom, onSave }: {
   wallGeom: { id: string; start: Point2D; end: Point2D } | null
   onSave: (constraints: CeilingConstraint[]) => void
 }) {
+  const styles = useStyles()
   const wallConstraints = wallGeom
     ? constraints.filter(c => c.wall_id === wallGeom.id)
     : []
@@ -1076,6 +1251,7 @@ function ConstraintRow({ constraint, onUpdate, onDelete }: {
   onUpdate: (c: CeilingConstraint) => void
   onDelete: () => void
 }) {
+  const styles = useStyles()
   const [kniestock, setKniestock] = useState(String(Math.round(constraint.kniestock_height_mm)))
   const [angle, setAngle] = useState(String(constraint.slope_angle_deg))
   const [depth, setDepth] = useState(String(Math.round(constraint.depth_into_room_mm)))
@@ -1145,6 +1321,7 @@ function KonfiguratorPanel({ item, dimensions, onChange, chosenOptions, onSetOpt
   chosenOptions: Record<string, string>
   onSetOptions: (opts: Record<string, string>) => void
 }) {
+  const styles = useStyles()
   const [w, setW] = useState(String(Math.round(dimensions.width_mm)))
   const [h, setH] = useState(String(Math.round(dimensions.height_mm)))
   const [d, setD] = useState(String(Math.round(dimensions.depth_mm)))

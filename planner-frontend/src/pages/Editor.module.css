@@ -579,3 +579,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+.split3Layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  background-color: #1a1a1a;
+}
+
+.split3Left {
+  grid-row: 1 / 3;
+  overflow: hidden;
+  display: flex;
+  min-width: 0;
+}
+
+.split3TopRight {
+  grid-row: 1 / 2;
+  overflow: hidden;
+  display: flex;
+  min-width: 0;
+}
+
+.split3BottomRight {
+  grid-row: 2 / 3;
+  overflow: hidden;
+  display: flex;
+  min-width: 0;
+}
