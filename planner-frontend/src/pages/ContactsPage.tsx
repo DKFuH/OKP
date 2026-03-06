@@ -1,6 +1,32 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  Badge,
+  Body1,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  DialogTrigger,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Subtitle2,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
+import {
   contactsApi,
   type Contact,
   type ContactLeadSource,
@@ -9,7 +35,6 @@ import {
 } from '../api/contacts.js'
 import { platformApi } from '../api/platform.js'
 import { projectsApi, type Project } from '../api/projects.js'
-import styles from './ContactsPage.module.css'
 
 const LEAD_SOURCE_LABELS: Record<ContactLeadSource, string> = {
   web_planner: 'Webplaner',
@@ -30,7 +55,62 @@ const PARTY_KIND_LABELS: Record<ContactPartyKind, string> = {
   contact_person: 'Ansprechpartner',
 }
 
+const useStyles = makeStyles({
+  page: { display: 'grid', rowGap: tokens.spacingVerticalXL },
+  pageHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  headerActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  toolbar: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  filterField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    minWidth: '160px',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: tokens.spacingVerticalM,
+  },
+  cardBody: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
+  metaRow: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS },
+  kpisRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalL,
+    paddingTop: tokens.spacingVerticalXS,
+    borderTop: '1px solid',
+    borderTopColor: tokens.colorNeutralStroke2,
+  },
+  kpiCell: { display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' },
+  projectChips: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS },
+  attachRow: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-end' },
+  empty: { color: tokens.colorNeutralForeground3, fontStyle: 'italic' },
+  formGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: tokens.spacingVerticalM,
+    '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
+  },
+  formFullWidth: { gridColumn: '1 / -1' },
+})
+
 export function ContactsPage() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [projects, setProjects] = useState<Project[]>([])
@@ -40,7 +120,7 @@ export function ContactsPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | ContactType>('all')
   const [partyKindFilter, setPartyKindFilter] = useState<'all' | ContactPartyKind>('all')
   const [roleFilter, setRoleFilter] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [form, setForm] = useState({
     type: 'end_customer' as ContactType,
     party_kind: 'private_person' as ContactPartyKind,
@@ -69,7 +149,7 @@ export function ContactsPage() {
         projectsApi.list(),
       ])
       setContacts(contactList)
-      setProjects(projectList.filter((project) => project.status === 'active'))
+      setProjects(projectList.filter((p) => p.status === 'active'))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Kontakte konnten nicht geladen werden')
     } finally {
@@ -77,12 +157,9 @@ export function ContactsPage() {
     }
   }
 
-  useEffect(() => {
-    void load()
-  }, [])
+  useEffect(() => { void load() }, [])
 
-  async function handleCreate(event: React.FormEvent) {
-    event.preventDefault()
+  async function handleCreate() {
     try {
       await contactsApi.create({
         type: form.type,
@@ -96,19 +173,8 @@ export function ContactsPage() {
         lead_source: form.lead_source,
         budget_estimate: form.budget_estimate ? Number(form.budget_estimate) : null,
       })
-      setShowCreate(false)
-      setForm({
-        type: 'end_customer',
-        party_kind: 'private_person',
-        contact_role: '',
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        company: '',
-        lead_source: 'other',
-        budget_estimate: '',
-      })
+      setCreateOpen(false)
+      setForm({ type: 'end_customer', party_kind: 'private_person', contact_role: '', first_name: '', last_name: '', email: '', phone: '', company: '', lead_source: 'other', budget_estimate: '' })
       await load(search)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Kontakt konnte nicht erstellt werden')
@@ -117,9 +183,7 @@ export function ContactsPage() {
 
   async function handleAttach(contactId: string) {
     const projectId = attachSelection[contactId]
-    if (!projectId) {
-      return
-    }
+    if (!projectId) return
     try {
       await contactsApi.attachToProject(projectId, contactId)
       await load(search)
@@ -129,144 +193,200 @@ export function ContactsPage() {
   }
 
   if (loading) {
-    return <div className={styles.center}>Lade Kontakte…</div>
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '64px' }}>
+        <Spinner label="Lade Kontakte…" />
+      </div>
+    )
   }
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <div className={styles.pageHeader}>
         <div>
-          <p className={styles.kicker}>Phase 3 · Sprint 27</p>
-          <h1>Kontakte / CRM-Light</h1>
-          <p className={styles.subtitle}>Kontakte, Lead-Herkunft, Projektanzahl, Umsatz und Conversion in einer Übersicht.</p>
+          <Title2>Kontakte</Title2>
+          <Body1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+            Kontakte, Lead-Herkunft, Projektanzahl und Umsatz in einer Übersicht.
+          </Body1>
         </div>
         <div className={styles.headerActions}>
-          <button className={styles.btnSecondary} onClick={() => void platformApi.exportContactsCsv()}>CSV Export</button>
-          <button className={styles.btnPrimary} onClick={() => setShowCreate((prev) => !prev)}>
-            {showCreate ? 'Formular schließen' : '+ Kontakt'}
-          </button>
+          <Button appearance="secondary" onClick={() => void platformApi.exportContactsCsv()}>
+            CSV Export
+          </Button>
+          <Dialog open={createOpen} onOpenChange={(_e, data) => { setCreateOpen(data.open) }}>
+            <DialogTrigger disableButtonEnhancement>
+              <Button appearance="primary">+ Kontakt</Button>
+            </DialogTrigger>
+            <DialogSurface>
+              <DialogBody>
+                <DialogTitle>Neuer Kontakt</DialogTitle>
+                <DialogContent>
+                  <div className={styles.formGrid}>
+                    <div>
+                      <Caption1>Typ</Caption1>
+                      <Select value={form.type} onChange={(_e, d) => setForm((prev) => ({ ...prev, type: d.value as ContactType }))}>
+                        {Object.entries(CONTACT_TYPE_LABELS).map(([v, l]) => <Option key={v} value={v}>{l}</Option>)}
+                      </Select>
+                    </div>
+                    <div>
+                      <Caption1>Kontaktart</Caption1>
+                      <Select value={form.party_kind} onChange={(_e, d) => setForm((prev) => ({ ...prev, party_kind: d.value as ContactPartyKind }))}>
+                        {Object.entries(PARTY_KIND_LABELS).map(([v, l]) => <Option key={v} value={v}>{l}</Option>)}
+                      </Select>
+                    </div>
+                    <Field label="Vorname"><Input value={form.first_name} onChange={(_e, d) => setForm((prev) => ({ ...prev, first_name: d.value }))} /></Field>
+                    <Field label="Nachname" required><Input value={form.last_name} onChange={(_e, d) => setForm((prev) => ({ ...prev, last_name: d.value }))} /></Field>
+                    <Field label="Firma"><Input value={form.company} onChange={(_e, d) => setForm((prev) => ({ ...prev, company: d.value }))} /></Field>
+                    <Field label="Rolle"><Input value={form.contact_role} onChange={(_e, d) => setForm((prev) => ({ ...prev, contact_role: d.value }))} /></Field>
+                    <Field label="E-Mail"><Input type="email" value={form.email} onChange={(_e, d) => setForm((prev) => ({ ...prev, email: d.value }))} /></Field>
+                    <Field label="Telefon"><Input type="tel" value={form.phone} onChange={(_e, d) => setForm((prev) => ({ ...prev, phone: d.value }))} /></Field>
+                    <div>
+                      <Caption1>Lead-Quelle</Caption1>
+                      <Select value={form.lead_source} onChange={(_e, d) => setForm((prev) => ({ ...prev, lead_source: d.value as ContactLeadSource }))}>
+                        {Object.entries(LEAD_SOURCE_LABELS).map(([v, l]) => <Option key={v} value={v}>{l}</Option>)}
+                      </Select>
+                    </div>
+                    <Field label="Budget (€)"><Input type="number" min="0" value={form.budget_estimate} onChange={(_e, d) => setForm((prev) => ({ ...prev, budget_estimate: d.value }))} /></Field>
+                  </div>
+                </DialogContent>
+                <DialogActions>
+                  <DialogTrigger disableButtonEnhancement>
+                    <Button appearance="secondary">Abbrechen</Button>
+                  </DialogTrigger>
+                  <Button appearance="primary" disabled={!form.last_name.trim()} onClick={() => void handleCreate()}>
+                    Anlegen
+                  </Button>
+                </DialogActions>
+              </DialogBody>
+            </DialogSurface>
+          </Dialog>
         </div>
-      </header>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
-
-      <section className={styles.toolbar}>
-        <input
-          type="search"
-          placeholder="Name, Firma, E-Mail oder Telefon suchen"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as 'all' | ContactType)}>
-          <option value="all">Alle Typen</option>
-          {Object.entries(CONTACT_TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        <select value={partyKindFilter} onChange={(event) => setPartyKindFilter(event.target.value as 'all' | ContactPartyKind)}>
-          <option value="all">Alle Kontaktarten</option>
-          {Object.entries(PARTY_KIND_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Rolle (z. B. Einkauf)"
-          value={roleFilter}
-          onChange={(event) => setRoleFilter(event.target.value)}
-        />
-        <button className={styles.btnSecondary} onClick={() => void load(search)}>Suchen</button>
-      </section>
-
-      {showCreate && (
-        <form className={styles.createForm} onSubmit={handleCreate}>
-          <select value={form.type} onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as ContactType }))}>
-            {Object.entries(CONTACT_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <select value={form.party_kind} onChange={(event) => setForm((prev) => ({ ...prev, party_kind: event.target.value as ContactPartyKind }))}>
-            {Object.entries(PARTY_KIND_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <input placeholder="Rolle" value={form.contact_role} onChange={(event) => setForm((prev) => ({ ...prev, contact_role: event.target.value }))} />
-          <input placeholder="Vorname" value={form.first_name} onChange={(event) => setForm((prev) => ({ ...prev, first_name: event.target.value }))} />
-          <input placeholder="Nachname*" value={form.last_name} onChange={(event) => setForm((prev) => ({ ...prev, last_name: event.target.value }))} required />
-          <input placeholder="Firma" value={form.company} onChange={(event) => setForm((prev) => ({ ...prev, company: event.target.value }))} />
-          <input placeholder="E-Mail" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} />
-          <input placeholder="Telefon" value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} />
-          <select value={form.lead_source} onChange={(event) => setForm((prev) => ({ ...prev, lead_source: event.target.value as ContactLeadSource }))}>
-            {Object.entries(LEAD_SOURCE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <input placeholder="Budget" type="number" min="0" value={form.budget_estimate} onChange={(event) => setForm((prev) => ({ ...prev, budget_estimate: event.target.value }))} />
-          <button type="submit" className={styles.btnPrimary}>Kontakt anlegen</button>
-        </form>
+      {error && (
+        <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>
       )}
 
-      <section className={styles.grid}>
+      <div className={styles.toolbar}>
+        <div className={styles.filterField} style={{ flex: 1, minWidth: '200px' }}>
+          <Caption1>Suche</Caption1>
+          <Input
+            type="search"
+            placeholder="Name, Firma, E-Mail oder Telefon"
+            value={search}
+            onChange={(_e, d) => setSearch(d.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void load(search) }}
+          />
+        </div>
+        <div className={styles.filterField}>
+          <Caption1>Typ</Caption1>
+          <Select value={typeFilter} onChange={(_e, d) => setTypeFilter(d.value as 'all' | ContactType)}>
+            <Option value="all">Alle Typen</Option>
+            {Object.entries(CONTACT_TYPE_LABELS).map(([v, l]) => <Option key={v} value={v}>{l}</Option>)}
+          </Select>
+        </div>
+        <div className={styles.filterField}>
+          <Caption1>Kontaktart</Caption1>
+          <Select value={partyKindFilter} onChange={(_e, d) => setPartyKindFilter(d.value as 'all' | ContactPartyKind)}>
+            <Option value="all">Alle Arten</Option>
+            {Object.entries(PARTY_KIND_LABELS).map(([v, l]) => <Option key={v} value={v}>{l}</Option>)}
+          </Select>
+        </div>
+        <div className={styles.filterField}>
+          <Caption1>Rolle</Caption1>
+          <Input
+            placeholder="z. B. Einkauf"
+            value={roleFilter}
+            onChange={(_e, d) => setRoleFilter(d.value)}
+          />
+        </div>
+        <Button appearance="secondary" onClick={() => void load(search)}>Suchen</Button>
+      </div>
+
+      <div className={styles.grid}>
         {contacts.map((contact) => (
-          <article key={contact.id} className={styles.card}>
-            <div className={styles.cardHead}>
-              <div>
-                <strong>{[contact.first_name, contact.last_name].filter(Boolean).join(' ') || contact.last_name}</strong>
-                <p>{contact.company ?? 'Privatkontakt'}</p>
-                <p>{CONTACT_TYPE_LABELS[contact.type]} · {PARTY_KIND_LABELS[contact.party_kind]}{contact.contact_role ? ` · ${contact.contact_role}` : ''}</p>
-              </div>
-              <span className={styles.sourceBadge}>{LEAD_SOURCE_LABELS[contact.lead_source]}</span>
-            </div>
+          <Card key={contact.id} appearance="filled">
+            <CardHeader
+              header={
+                <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>
+                  {[contact.first_name, contact.last_name].filter(Boolean).join(' ') || contact.last_name}
+                </Body1>
+              }
+              description={
+                <Caption1>{contact.company ?? 'Privatkontakt'}</Caption1>
+              }
+              action={
+                <Badge appearance="tint" size="small">{LEAD_SOURCE_LABELS[contact.lead_source]}</Badge>
+              }
+            />
 
-            <div className={styles.meta}>
-              <span>{contact.email ?? 'Keine E-Mail'}</span>
-              <span>{contact.phone ?? 'Kein Telefon'}</span>
-            </div>
-
-            <div className={styles.kpis}>
-              <div>
-                <strong>{contact.project_count}</strong>
-                <span>Projekte</span>
+            <div className={styles.cardBody}>
+              <div className={styles.metaRow}>
+                <Caption1>{CONTACT_TYPE_LABELS[contact.type]}</Caption1>
+                <Caption1>·</Caption1>
+                <Caption1>{PARTY_KIND_LABELS[contact.party_kind]}</Caption1>
+                {contact.contact_role && <><Caption1>·</Caption1><Caption1>{contact.contact_role}</Caption1></>}
               </div>
-              <div>
-                <strong>{contact.revenue_total.toLocaleString('de-DE')} €</strong>
-                <span>Umsatz</span>
+              <div className={styles.metaRow}>
+                <Caption1>{contact.email ?? 'Keine E-Mail'}</Caption1>
+                <Caption1>·</Caption1>
+                <Caption1>{contact.phone ?? 'Kein Telefon'}</Caption1>
               </div>
-              <div>
-                <strong>{contact.conversion_pct}%</strong>
-                <span>Conversion</span>
+
+              <div className={styles.kpisRow}>
+                <div className={styles.kpiCell}>
+                  <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>{contact.project_count}</Body1>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Projekte</Caption1>
+                </div>
+                <div className={styles.kpiCell}>
+                  <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>
+                    {contact.revenue_total.toLocaleString('de-DE')} €
+                  </Body1>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Umsatz</Caption1>
+                </div>
+                <div className={styles.kpiCell}>
+                  <Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>{contact.conversion_pct}%</Body1>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Conversion</Caption1>
+                </div>
+              </div>
+
+              <div className={styles.projectChips}>
+                {contact.projects.length === 0 ? (
+                  <Caption1 className={styles.empty}>Noch keine Projektverknüpfung</Caption1>
+                ) : (
+                  contact.projects.map((project) => (
+                    <Button
+                      key={project.id}
+                      appearance="outline"
+                      size="small"
+                      onClick={() => navigate('/projects/' + project.id)}
+                    >
+                      {project.name}
+                    </Button>
+                  ))
+                )}
+              </div>
+
+              <div className={styles.attachRow}>
+                <div style={{ flex: 1 }}>
+                  <Select
+                    value={attachSelection[contact.id] ?? ''}
+                    onChange={(_e, d) => setAttachSelection((prev) => ({ ...prev, [contact.id]: d.value }))}
+                  >
+                    <Option value="">Projekt auswählen…</Option>
+                    {projects.map((project) => (
+                      <Option key={project.id} value={project.id}>{project.name}</Option>
+                    ))}
+                  </Select>
+                </div>
+                <Button appearance="secondary" onClick={() => void handleAttach(contact.id)}>
+                  Verknüpfen
+                </Button>
               </div>
             </div>
-
-            <div className={styles.projects}>
-              {contact.projects.length === 0 ? (
-                <span className={styles.empty}>Noch keine Projektverknüpfung</span>
-              ) : (
-                contact.projects.map((project) => (
-                  <button key={project.id} className={styles.projectChip} onClick={() => navigate(`/projects/${project.id}`)}>
-                    {project.name}
-                  </button>
-                ))
-              )}
-            </div>
-
-            <div className={styles.attachRow}>
-              <select
-                value={attachSelection[contact.id] ?? ''}
-                onChange={(event) => setAttachSelection((prev) => ({ ...prev, [contact.id]: event.target.value }))}
-              >
-                <option value="">Projekt auswählen…</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>{project.name}</option>
-                ))}
-              </select>
-              <button className={styles.btnSecondary} onClick={() => void handleAttach(contact.id)}>
-                Verknüpfen
-              </button>
-            </div>
-          </article>
+          </Card>
         ))}
-      </section>
+      </div>
     </div>
   )
 }

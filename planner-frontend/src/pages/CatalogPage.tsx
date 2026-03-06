@@ -1,11 +1,30 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import {
+  Badge,
+  Body1,
+  Body1Strong,
+  Button,
+  Card,
+  CardHeader,
+  Caption1,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { catalogApi } from '../api/catalog.js'
 import { catalogIndicesApi, type CatalogIndexRecord } from '../api/catalogIndices.js'
 import { projectsApi, type Project } from '../api/projects.js'
 import { getTenantPlugins } from '../api/tenantSettings.js'
 import { CatalogBrowser } from '../components/catalog/CatalogBrowser.js'
 import { MaterialBrowser } from '../components/catalog/MaterialBrowser.js'
-import styles from './CatalogPage.module.css'
 
 const TENANT_ID_PLACEHOLDER = '00000000-0000-0000-0000-000000000001'
 
@@ -28,26 +47,70 @@ function uid() {
 }
 
 function createBatchRow(overrides?: Partial<BatchRow>): BatchRow {
-  return {
-    id: uid(),
-    catalog_id: '',
-    purchase_index: '1.00',
-    sales_index: '1.00',
-    ...overrides,
-  }
+  return { id: uid(), catalog_id: '', purchase_index: '1.00', sales_index: '1.00', ...overrides }
 }
 
 function createSuggestedRows(options: CatalogOption[]): BatchRow[] {
-  const baseCabinet = options.find((option) => option.type === 'base_cabinet')
-  const worktop = options.find((option) => option.type === 'worktop')
-
+  const baseCabinet = options.find((o) => o.type === 'base_cabinet')
+  const worktop = options.find((o) => o.type === 'worktop')
   return [
     createBatchRow({ catalog_id: baseCabinet?.id ?? '' }),
     createBatchRow({ catalog_id: worktop?.id ?? '' }),
   ]
 }
 
+const useStyles = makeStyles({
+  page: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXL,
+  },
+  header: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS,
+  },
+  toolbar: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  batchRows: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalM,
+  },
+  batchRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr auto auto auto',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'flex-end',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    '@media (max-width: 700px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  batchActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalM,
+  },
+  historyList: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalS,
+  },
+  historyCard: {
+    display: 'grid',
+    rowGap: '2px',
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+})
+
 export function CatalogPage() {
+  const styles = useStyles()
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [catalogOptions, setCatalogOptions] = useState<CatalogOption[]>([])
@@ -59,28 +122,22 @@ export function CatalogPage() {
   const [materialsEnabled, setMaterialsEnabled] = useState(false)
 
   const catalogOptionMap = useMemo(
-    () => Object.fromEntries(catalogOptions.map((option) => [option.id, option])),
+    () => Object.fromEntries(catalogOptions.map((o) => [o.id, o])),
     [catalogOptions],
   )
 
   async function loadCatalogIndexWorkspace(projectId?: string) {
     setLoading(true)
     setError(null)
-
     try {
       const [projectList, catalogItems] = await Promise.all([
         projectsApi.list(),
         catalogApi.list({ limit: 200, offset: 0 }),
       ])
-
-      const activeProjects = projectList.filter((project) => project.status === 'active')
+      const activeProjects = projectList.filter((p) => p.status === 'active')
       const nextCatalogOptions = catalogItems.map((item) => ({
-        id: item.id,
-        sku: item.sku,
-        label: `${item.sku} - ${item.name}`,
-        type: item.type,
+        id: item.id, sku: item.sku, label: `${item.sku} - ${item.name}`, type: item.type,
       }))
-
       setProjects(activeProjects)
       setCatalogOptions(nextCatalogOptions)
       setBatchRows((current) => (
@@ -88,10 +145,8 @@ export function CatalogPage() {
           ? createSuggestedRows(nextCatalogOptions)
           : current
       ))
-
       const nextProjectId = projectId || selectedProjectId || activeProjects[0]?.id || ''
       setSelectedProjectId(nextProjectId)
-
       if (nextProjectId) {
         const indices = await catalogIndicesApi.list(nextProjectId, TENANT_ID_PLACEHOLDER)
         setExistingIndices(indices)
@@ -105,34 +160,19 @@ export function CatalogPage() {
     }
   }
 
-  useEffect(() => {
-    void loadCatalogIndexWorkspace()
-  }, [])
+  useEffect(() => { void loadCatalogIndexWorkspace() }, [])
 
   useEffect(() => {
     let active = true
-
     getTenantPlugins()
-      .then((result) => {
-        if (!active) return
-        setMaterialsEnabled(result.enabled.includes('materials'))
-      })
-      .catch(() => {
-        if (!active) return
-        setMaterialsEnabled(false)
-      })
-
-    return () => {
-      active = false
-    }
+      .then((result) => { if (active) setMaterialsEnabled(result.enabled.includes('materials')) })
+      .catch(() => { if (active) setMaterialsEnabled(false) })
+    return () => { active = false }
   }, [])
 
   async function handleProjectChange(projectId: string) {
     setSelectedProjectId(projectId)
-    if (!projectId) {
-      setExistingIndices([])
-      return
-    }
+    if (!projectId) { setExistingIndices([]); return }
     await loadCatalogIndexWorkspace(projectId)
   }
 
@@ -140,21 +180,14 @@ export function CatalogPage() {
     setBatchRows((current) => current.map((row) => (row.id === rowId ? { ...row, ...patch } : row)))
   }
 
-  function addRow() {
-    setBatchRows((current) => [...current, createBatchRow()])
-  }
-
+  function addRow() { setBatchRows((current) => [...current, createBatchRow()]) }
   function removeRow(rowId: string) {
     setBatchRows((current) => (current.length > 1 ? current.filter((row) => row.id !== rowId) : current))
   }
 
   async function handleApplyBatch(event: FormEvent) {
     event.preventDefault()
-    if (!selectedProjectId) {
-      setError('Bitte zuerst ein Projekt auswaehlen.')
-      return
-    }
-
+    if (!selectedProjectId) { setError('Bitte zuerst ein Projekt ausw\u00e4hlen.'); return }
     const rows = batchRows
       .map((row) => ({
         catalog_id: row.catalog_id.trim(),
@@ -162,23 +195,13 @@ export function CatalogPage() {
         sales_index: Number(row.sales_index),
       }))
       .filter((row) => row.catalog_id !== '')
-
-    if (rows.length === 0) {
-      setError('Mindestens eine Katalogzeile mit Artikel-ID ist erforderlich.')
-      return
-    }
-
+    if (rows.length === 0) { setError('Mindestens eine Katalogzeile mit Artikel-ID ist erforderlich.'); return }
     setSubmitting(true)
     setError(null)
-
     try {
       for (const row of rows) {
-        await catalogIndicesApi.create(selectedProjectId, TENANT_ID_PLACEHOLDER, {
-          ...row,
-          applied_by: 'catalog-index-ui',
-        })
+        await catalogIndicesApi.create(selectedProjectId, TENANT_ID_PLACEHOLDER, { ...row, applied_by: 'catalog-index-ui' })
       }
-
       await loadCatalogIndexWorkspace(selectedProjectId)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Massen-Indexierung fehlgeschlagen.')
@@ -189,112 +212,96 @@ export function CatalogPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>Phase 3 · Sprint 29</p>
-          <h1 className={styles.title}>Katalog & Massen-Indexierung</h1>
-          <p className={styles.description}>Katalogbrowser plus projektbezogene EK-/VK-Indizes fuer mehrere Katalogartikel in einem Durchlauf.</p>
-        </div>
-      </header>
+      <div className={styles.header}>
+        <Title2>Katalog &amp; Massen-Indexierung</Title2>
+        <Subtitle2>Katalogbrowser plus projektbezogene EK-/VK-Indizes f\u00fcr mehrere Katalogartikel in einem Durchlauf.</Subtitle2>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && (
+        <MessageBar intent='error'>
+          <MessageBarBody>{error}</MessageBarBody>
+        </MessageBar>
+      )}
 
-      <section className={styles.indexPanel}>
-        <div className={styles.indexHeader}>
-          <h2>Projektbezogene Katalogindexe</h2>
-          <span>{existingIndices.length} Eintraege</span>
-        </div>
+      <Card>
+        <CardHeader
+          header={<Body1Strong>Projektbezogene Katalogindexe</Body1Strong>}
+          action={<Badge appearance='tint'>{existingIndices.length} Eintr\u00e4ge</Badge>}
+        />
 
-        <div className={styles.indexToolbar}>
-          <label className={styles.field}>
-            <span>Projekt</span>
-            <select value={selectedProjectId} onChange={(event) => void handleProjectChange(event.target.value)}>
-              <option value="">Projekt auswaehlen...</option>
+        <div className={styles.toolbar}>
+          <Field label='Projekt'>
+            <Select value={selectedProjectId} onChange={(_e, d) => void handleProjectChange(d.value)}>
+              <Option value=''>Projekt ausw\u00e4hlen...</Option>
               {projects.map((project) => (
-                <option key={project.id} value={project.id}>{project.name}</option>
+                <Option key={project.id} value={project.id}>{project.name}</Option>
               ))}
-            </select>
-          </label>
-          <p className={styles.indexHint}>Indizes werden gegen die `catalog_item_id` der BOM-Linien angewendet.</p>
+            </Select>
+          </Field>
+          <Caption1>Indizes werden gegen die catalog_item_id der BOM-Linien angewendet.</Caption1>
         </div>
 
-        <form className={styles.batchForm} onSubmit={handleApplyBatch}>
+        <form onSubmit={handleApplyBatch}>
           <div className={styles.batchRows}>
             {batchRows.map((row) => (
               <div key={row.id} className={styles.batchRow}>
-                <label className={styles.field}>
-                  <span>Katalogartikel</span>
-                  <select value={row.catalog_id} onChange={(event) => updateRow(row.id, { catalog_id: event.target.value })}>
-                    <option value="">Artikel auswaehlen...</option>
+                <Field label='Katalogartikel'>
+                  <Select value={row.catalog_id} onChange={(_e, d) => updateRow(row.id, { catalog_id: d.value })}>
+                    <Option value=''>Artikel ausw\u00e4hlen...</Option>
                     {catalogOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
+                      <Option key={option.id} value={option.id}>{option.label}</Option>
                     ))}
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  <span>EK-Index</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="10"
+                  </Select>
+                </Field>
+                <Field label='EK-Index'>
+                  <Input
+                    type='number'
                     value={row.purchase_index}
-                    onChange={(event) => updateRow(row.id, { purchase_index: event.target.value })}
+                    onChange={(_e, d) => updateRow(row.id, { purchase_index: d.value })}
+                    style={{ width: '100px' }}
                   />
-                </label>
-                <label className={styles.field}>
-                  <span>VK-Index</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="10"
+                </Field>
+                <Field label='VK-Index'>
+                  <Input
+                    type='number'
                     value={row.sales_index}
-                    onChange={(event) => updateRow(row.id, { sales_index: event.target.value })}
+                    onChange={(_e, d) => updateRow(row.id, { sales_index: d.value })}
+                    style={{ width: '100px' }}
                   />
-                </label>
-                <button type="button" className={styles.btnGhost} onClick={() => removeRow(row.id)}>
-                  Entfernen
-                </button>
-                <div className={styles.rowMeta}>
-                  {row.catalog_id
-                    ? `${catalogOptionMap[row.catalog_id]?.label ?? row.catalog_id} · ID ${row.catalog_id}`
-                    : 'Noch kein Katalogartikel ausgewaehlt.'}
-                </div>
+                </Field>
+                <Button appearance='subtle' onClick={() => removeRow(row.id)}>Entfernen</Button>
               </div>
             ))}
           </div>
 
           <div className={styles.batchActions}>
-            <button type="button" className={styles.btnSecondary} onClick={addRow}>Zeile hinzufuegen</button>
-            <button type="submit" className={styles.btnPrimary} disabled={!selectedProjectId || submitting}>
-              {submitting ? 'Wird angewendet...' : 'Batch anwenden'}
-            </button>
+            <Button type='button' appearance='secondary' onClick={addRow}>Zeile hinzuf\u00fcgen</Button>
+            <Button type='submit' appearance='primary' disabled={!selectedProjectId || submitting}>
+              {submitting ? <Spinner size='tiny' /> : 'Batch anwenden'}
+            </Button>
           </div>
         </form>
 
-        <div className={styles.historyPanel}>
-          <h3>Verlauf</h3>
+        <div>
+          <Body1Strong>Verlauf</Body1Strong>
           {loading ? (
-            <p className={styles.empty}>Lade Indexhistorie...</p>
+            <Spinner size='small' label='Lade Indexhistorie\u2026' style={{ marginTop: 16 }} />
           ) : existingIndices.length === 0 ? (
-            <p className={styles.empty}>Fuer dieses Projekt wurden noch keine Katalogindexe angelegt.</p>
+            <Body1>F\u00fcr dieses Projekt wurden noch keine Katalogindexe angelegt.</Body1>
           ) : (
-            <div className={styles.historyList}>
+            <div className={styles.historyList} style={{ marginTop: 12 }}>
               {existingIndices.map((record) => (
                 <article key={record.id} className={styles.historyCard}>
-                  <strong>{catalogOptionMap[record.catalog_id]?.label ?? record.catalog_id}</strong>
-                  <span>ID {record.catalog_id}</span>
-                  <span>EK {record.purchase_index.toFixed(2)} · VK {record.sales_index.toFixed(2)}</span>
-                  <span>{new Date(record.applied_at).toLocaleString()} · {record.applied_by}</span>
+                  <Body1Strong>{catalogOptionMap[record.catalog_id]?.label ?? record.catalog_id}</Body1Strong>
+                  <Caption1>ID {record.catalog_id}</Caption1>
+                  <Caption1>EK {record.purchase_index.toFixed(2)} &middot; VK {record.sales_index.toFixed(2)}</Caption1>
+                  <Caption1>{new Date(record.applied_at).toLocaleString()} &middot; {record.applied_by}</Caption1>
                 </article>
               ))}
             </div>
           )}
         </div>
-      </section>
+      </Card>
 
       <CatalogBrowser />
       {materialsEnabled && <MaterialBrowser />}

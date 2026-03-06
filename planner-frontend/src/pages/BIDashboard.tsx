@@ -1,5 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Badge,
+  Body1,
+  Body1Strong,
+  Button,
+  Card,
+  CardHeader,
+  Checkbox,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { contactsApi, type Contact } from '../api/contacts.js'
 import {
   dashboardsApi,
@@ -12,7 +32,6 @@ import {
 } from '../api/dashboards.js'
 import { projectsApi, type Project } from '../api/projects.js'
 import { useLocale } from '../hooks/useLocale.js'
-import styles from './BIDashboard.module.css'
 
 const TENANT_ID_PLACEHOLDER = '00000000-0000-0000-0000-000000000001'
 const USER_ID_PLACEHOLDER = '11111111-1111-1111-1111-111111111111'
@@ -46,6 +65,181 @@ const WIDGET_LABELS: Record<DashboardWidgetId, string> = {
 
 type WidgetWidth = 4 | 6 | 8 | 12
 
+const useStyles = makeStyles({
+  page: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXL,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  headerText: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS,
+  },
+  headerActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  controlBar: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
+  },
+  workspace: {
+    display: 'grid',
+    gridTemplateColumns: '260px 1fr',
+    gap: tokens.spacingHorizontalL,
+    alignItems: 'flex-start',
+    '@media (max-width: 900px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  sidebar: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalM,
+  },
+  sidebarHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  configList: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalS,
+  },
+  configCard: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  configActions: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS,
+    paddingTop: tokens.spacingVerticalXS,
+  },
+  miniButtonRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
+  },
+  widgetGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(12, 1fr)',
+    gap: tokens.spacingVerticalM,
+  },
+  widgetPanel: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalS,
+  },
+  widgetHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  chartWidget: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalS,
+  },
+  widgetMetaRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  chartBars: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: '4px',
+    height: '120px',
+  },
+  chartBarCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    flex: '1 1 0',
+    gap: '4px',
+  },
+  chartBarTrack: {
+    width: '100%',
+    height: '96px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: '4px 4px 0 0',
+    display: 'flex',
+    alignItems: 'flex-end',
+  },
+  chartBarFill: {
+    width: '100%',
+    backgroundColor: tokens.colorBrandBackground,
+    borderRadius: '4px 4px 0 0',
+    transition: 'height 0.3s ease',
+  },
+  kpiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: tokens.spacingVerticalS,
+  },
+  kpiCard: {
+    display: 'grid',
+    rowGap: '4px',
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  listWidget: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS,
+  },
+  listItem: {
+    display: 'grid',
+    rowGap: '2px',
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderRadius: tokens.borderRadiusMedium,
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    textAlign: 'left',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground2Hover,
+    },
+  },
+  pipelineGrid: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+  },
+  pipelineCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    minWidth: '80px',
+  },
+  emptyState: {
+    padding: tokens.spacingVerticalXXL,
+    textAlign: 'center',
+    color: tokens.colorNeutralForeground3,
+  },
+  emptyInline: {
+    color: tokens.colorNeutralForeground3,
+    fontStyle: 'italic',
+  },
+})
+
 function formatEur(value: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -57,9 +251,7 @@ function formatEur(value: number, locale: string): string {
 
 function sortLayoutItems(items: DashboardLayoutItem[]) {
   return [...items].sort((left, right) => {
-    if (left.y !== right.y) {
-      return left.y - right.y
-    }
+    if (left.y !== right.y) return left.y - right.y
     return left.x - right.x
   })
 }
@@ -71,38 +263,19 @@ function packLayout(widgetIds: DashboardWidgetId[], widthByWidget: Partial<Recor
 
   const items = widgetIds.map((widgetId) => {
     const w = widthByWidget[widgetId] ?? 6
-    if (x + w > 12) {
-      x = 0
-      y += rowHeight
-    }
-
+    if (x + w > 12) { x = 0; y += rowHeight }
     const item = { widget_id: widgetId, x, y, w, h: 4 }
     x += w
     rowHeight = Math.max(rowHeight, item.h)
-
-    if (x >= 12) {
-      x = 0
-      y += rowHeight
-      rowHeight = 4
-    }
-
+    if (x >= 12) { x = 0; y += rowHeight; rowHeight = 4 }
     return item
   })
 
-  return {
-    columns: 12,
-    items,
-  }
+  return { columns: 12, items }
 }
 
 function buildDefaultConfig(userId: string, tenantId: string): DashboardConfigResponse {
-  return {
-    id: null,
-    user_id: userId,
-    tenant_id: tenantId,
-    widgets: DEFAULT_WIDGETS,
-    layout: DEFAULT_LAYOUT,
-  }
+  return { id: null, user_id: userId, tenant_id: tenantId, widgets: DEFAULT_WIDGETS, layout: DEFAULT_LAYOUT }
 }
 
 function getWidgetOrder(config: DashboardConfigResponse): DashboardWidgetId[] {
@@ -126,6 +299,7 @@ function getWidgetConfigMap(config: DashboardConfigResponse): Record<DashboardWi
 }
 
 export function BIDashboard() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const { locale } = useLocale()
   const [tenantId, setTenantId] = useState(TENANT_ID_PLACEHOLDER)
@@ -144,10 +318,8 @@ export function BIDashboard() {
       setError('Tenant-ID und User-ID sind erforderlich.')
       return
     }
-
     setLoading(true)
     setError(null)
-
     try {
       const [config, chart, board, contactList] = await Promise.all([
         dashboardsApi.getDashboard(userId.trim(), tenantId.trim()),
@@ -155,7 +327,6 @@ export function BIDashboard() {
         projectsApi.board({ user_id: userId.trim() }),
         contactsApi.list(),
       ])
-
       setDashboardConfig(config)
       setSalesChart(chart)
       setProjects(board)
@@ -186,80 +357,58 @@ export function BIDashboard() {
 
   const kpis = useMemo(() => {
     const activeProjects = projects.length
-    const leadProjects = projects.filter((project) => project.project_status === 'lead').length
-    const totalQuoteValue = projects.reduce((sum, project) => sum + (project.quote_value ?? 0), 0)
+    const leadProjects = projects.filter((p) => p.project_status === 'lead').length
+    const totalQuoteValue = projects.reduce((sum, p) => sum + (p.quote_value ?? 0), 0)
     const avgQuoteValue = activeProjects > 0 ? totalQuoteValue / activeProjects : 0
-
     return [
       { label: 'Aktive Projekte', value: String(activeProjects) },
       { label: 'Leads', value: String(leadProjects) },
       { label: 'Kontakte', value: String(contacts.length) },
-      { label: 'Ø Projektwert', value: formatEur(avgQuoteValue, locale) },
+      { label: '\u00d8 Projektwert', value: formatEur(avgQuoteValue, locale) },
     ]
   }, [projects, contacts, locale])
 
   const salesBars = useMemo(() => {
     const points = salesChart?.points ?? []
-    const maxValue = Math.max(...points.map((point) => point.value_net), 1)
-    return points.map((point) => ({
-      ...point,
-      pct: Math.max(8, Math.round((point.value_net / maxValue) * 100)),
-    }))
+    const maxValue = Math.max(...points.map((p) => p.value_net), 1)
+    return points.map((p) => ({ ...p, pct: Math.max(8, Math.round((p.value_net / maxValue) * 100)) }))
   }, [salesChart])
 
   function updateLayout(nextOrder: DashboardWidgetId[], nextWidths: Partial<Record<DashboardWidgetId, WidgetWidth>>) {
-    const visibleWidgetSet = new Set(nextOrder)
+    const visibleSet = new Set(nextOrder)
     const widgets = nextOrder
-      .filter((widgetId) => visibleWidgetSet.has(widgetId))
-      .map((widgetId) => widgetConfigMap[widgetId] ?? DEFAULT_WIDGETS.find((widget) => widget.id === widgetId)!)
+      .filter((id) => visibleSet.has(id))
+      .map((id) => widgetConfigMap[id] ?? DEFAULT_WIDGETS.find((w) => w.id === id)!)
     const layout = packLayout(nextOrder, nextWidths)
-
     setDashboardConfig((current) => ({
       ...(current ?? buildDefaultConfig(userId, tenantId)),
-      user_id: userId,
-      tenant_id: tenantId,
-      widgets,
-      layout,
+      user_id: userId, tenant_id: tenantId, widgets, layout,
     }))
   }
 
   function moveWidget(widgetId: DashboardWidgetId, direction: -1 | 1) {
-    const currentOrder = [...widgetOrder]
-    const index = currentOrder.indexOf(widgetId)
+    const index = widgetOrder.indexOf(widgetId)
     const nextIndex = index + direction
-    if (index < 0 || nextIndex < 0 || nextIndex >= currentOrder.length) {
-      return
-    }
-
-    const swapped = [...currentOrder]
+    if (index < 0 || nextIndex < 0 || nextIndex >= widgetOrder.length) return
+    const swapped = [...widgetOrder]
     ;[swapped[index], swapped[nextIndex]] = [swapped[nextIndex], swapped[index]]
     updateLayout(swapped, widthMap)
   }
 
   function setWidgetWidth(widgetId: DashboardWidgetId, width: WidgetWidth) {
-    updateLayout(widgetOrder, {
-      ...widthMap,
-      [widgetId]: width,
-    })
+    updateLayout(widgetOrder, { ...widthMap, [widgetId]: width })
   }
 
   function toggleWidget(widgetId: DashboardWidgetId, checked: boolean) {
     if (checked) {
-      if (widgetOrder.includes(widgetId)) {
-        return
-      }
-      updateLayout([...widgetOrder, widgetId], widthMap)
+      if (!widgetOrder.includes(widgetId)) updateLayout([...widgetOrder, widgetId], widthMap)
       return
     }
-
     updateLayout(widgetOrder.filter((id) => id !== widgetId), widthMap)
   }
 
   async function handleSave() {
-    if (!dashboardConfig) {
-      return
-    }
-
+    if (!dashboardConfig) return
     setSaving(true)
     setError(null)
     try {
@@ -284,19 +433,19 @@ export function BIDashboard() {
       return (
         <div className={styles.chartWidget}>
           <div className={styles.widgetMetaRow}>
-            <strong>{formatEur(salesChart?.total_net ?? 0, locale)}</strong>
-            <span>{salesChart?.period ?? period}</span>
+            <Body1Strong>{formatEur(salesChart?.total_net ?? 0, locale)}</Body1Strong>
+            <Body1>{salesChart?.period ?? period}</Body1>
           </div>
           <div className={styles.chartBars}>
             {salesBars.length === 0 ? (
-              <p className={styles.emptyInline}>Noch keine Umsatzdaten im Zeitraum.</p>
+              <Body1 className={styles.emptyInline}>Noch keine Umsatzdaten im Zeitraum.</Body1>
             ) : (
               salesBars.map((bar) => (
                 <div key={bar.date} className={styles.chartBarCol}>
                   <div className={styles.chartBarTrack}>
                     <div className={styles.chartBarFill} style={{ height: `${bar.pct}%` }} />
                   </div>
-                  <span>{bar.date}</span>
+                  <Body1 style={{ fontSize: '11px' }}>{bar.date}</Body1>
                 </div>
               ))
             )}
@@ -310,8 +459,8 @@ export function BIDashboard() {
         <div className={styles.kpiGrid}>
           {kpis.map((kpi) => (
             <div key={kpi.label} className={styles.kpiCard}>
-              <span>{kpi.label}</span>
-              <strong>{kpi.value}</strong>
+              <Body1>{kpi.label}</Body1>
+              <Body1Strong style={{ fontSize: '20px' }}>{kpi.value}</Body1Strong>
             </div>
           ))}
         </div>
@@ -320,18 +469,17 @@ export function BIDashboard() {
 
     if (widgetId === 'current_projects') {
       const topProjects = [...projects]
-        .sort((left, right) => (right.updated_at ?? '').localeCompare(left.updated_at ?? ''))
+        .sort((l, r) => (r.updated_at ?? '').localeCompare(l.updated_at ?? ''))
         .slice(0, 5)
-
       return (
         <div className={styles.listWidget}>
           {topProjects.length === 0 ? (
-            <p className={styles.emptyInline}>Keine Projekte gefunden.</p>
+            <Body1 className={styles.emptyInline}>Keine Projekte gefunden.</Body1>
           ) : (
             topProjects.map((project) => (
-              <button key={project.id} type="button" className={styles.listItem} onClick={() => navigate(`/projects/${project.id}`)}>
-                <strong>{project.name}</strong>
-                <span>{project.project_status} · {project.deadline ? new Date(project.deadline).toLocaleDateString(locale) : 'ohne Frist'}</span>
+              <button key={project.id} type='button' className={styles.listItem} onClick={() => navigate(`/projects/${project.id}`)}>
+                <Body1Strong>{project.name}</Body1Strong>
+                <Body1>{project.project_status} &middot; {project.deadline ? new Date(project.deadline).toLocaleDateString(locale) : 'ohne Frist'}</Body1>
               </button>
             ))
           )}
@@ -341,18 +489,17 @@ export function BIDashboard() {
 
     if (widgetId === 'current_contacts') {
       const topContacts = [...contacts]
-        .sort((left, right) => (right.updated_at ?? '').localeCompare(left.updated_at ?? ''))
+        .sort((l, r) => (r.updated_at ?? '').localeCompare(l.updated_at ?? ''))
         .slice(0, 5)
-
       return (
         <div className={styles.listWidget}>
           {topContacts.length === 0 ? (
-            <p className={styles.emptyInline}>Keine Kontakte gefunden.</p>
+            <Body1 className={styles.emptyInline}>Keine Kontakte gefunden.</Body1>
           ) : (
             topContacts.map((contact) => (
-              <button key={contact.id} type="button" className={styles.listItem} onClick={() => navigate('/contacts')}>
-                <strong>{[contact.first_name, contact.last_name].filter(Boolean).join(' ') || contact.last_name}</strong>
-                <span>{contact.project_count} Projekte · {contact.lead_source}</span>
+              <button key={contact.id} type='button' className={styles.listItem} onClick={() => navigate('/contacts')}>
+                <Body1Strong>{[contact.first_name, contact.last_name].filter(Boolean).join(' ') || contact.last_name}</Body1Strong>
+                <Body1>{contact.project_count} Projekte &middot; {contact.lead_source}</Body1>
               </button>
             ))
           )}
@@ -364,8 +511,8 @@ export function BIDashboard() {
       <div className={styles.pipelineGrid}>
         {Array.from(projectPipeline.entries()).map(([status, count]) => (
           <div key={status} className={styles.pipelineCard}>
-            <span>{status}</span>
-            <strong>{count}</strong>
+            <Body1>{status}</Body1>
+            <Body1Strong style={{ fontSize: '20px' }}>{count}</Body1Strong>
           </div>
         ))}
       </div>
@@ -374,115 +521,109 @@ export function BIDashboard() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>Phase 3 · Sprint 28</p>
-          <h1 className={styles.title}>Personalisierte Dashboards / KPIs</h1>
-          <p className={styles.subtitle}>Widget-Layout, Nutzerkonfiguration und KPI-Ansichten mit gespeichertem DashboardConfig-Stand.</p>
+      <div className={styles.header}>
+        <div className={styles.headerText}>
+          <Title2>Dashboards / KPIs</Title2>
+          <Subtitle2>Widget-Layout, Nutzerkonfiguration und KPI-Ansichten.</Subtitle2>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" className={styles.btnSecondary} onClick={handleReset}>
-            Layout zurücksetzen
-          </button>
-          <button type="button" className={styles.btnPrimary} onClick={() => void handleSave()} disabled={saving || !dashboardConfig}>
-            {saving ? 'Speichere…' : 'Layout speichern'}
-          </button>
+          <Button appearance='subtle' onClick={handleReset}>Layout zur\u00fccksetzen</Button>
+          <Button appearance='primary' disabled={saving || !dashboardConfig} onClick={() => void handleSave()}>
+            {saving ? <Spinner size='tiny' /> : 'Layout speichern'}
+          </Button>
         </div>
-      </header>
+      </div>
 
-      <section className={styles.controlBar}>
-        <label className={styles.field}>
-          <span>Tenant-ID</span>
-          <input value={tenantId} onChange={(event) => setTenantId(event.target.value)} />
-        </label>
-        <label className={styles.field}>
-          <span>User-ID</span>
-          <input value={userId} onChange={(event) => setUserId(event.target.value)} />
-        </label>
-        <label className={styles.field}>
-          <span>Zeitraum</span>
-          <select value={period} onChange={(event) => setPeriod(event.target.value as 'month' | 'last_month' | 'year')}>
-            <option value="month">Aktueller Monat</option>
-            <option value="last_month">Letzter Monat</option>
-            <option value="year">Aktuelles Jahr</option>
-          </select>
-        </label>
-        <button type="button" className={styles.btnSecondary} onClick={() => void loadDashboard()}>
-          Neu laden
-        </button>
-      </section>
+      <div className={styles.controlBar}>
+        <Field label='Tenant-ID'>
+          <Input value={tenantId} onChange={(_e, d) => setTenantId(d.value)} style={{ minWidth: '200px' }} />
+        </Field>
+        <Field label='User-ID'>
+          <Input value={userId} onChange={(_e, d) => setUserId(d.value)} style={{ minWidth: '200px' }} />
+        </Field>
+        <Field label='Zeitraum'>
+          <Select value={period} onChange={(_e, d) => setPeriod(d.value as 'month' | 'last_month' | 'year')}>
+            <Option value='month'>Aktueller Monat</Option>
+            <Option value='last_month'>Letzter Monat</Option>
+            <Option value='year'>Aktuelles Jahr</Option>
+          </Select>
+        </Field>
+        <Button appearance='subtle' onClick={() => void loadDashboard()}>Neu laden</Button>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && (
+        <MessageBar intent='error'>
+          <MessageBarBody>{error}</MessageBarBody>
+        </MessageBar>
+      )}
 
-      <section className={styles.workspace}>
+      <div className={styles.workspace}>
         <aside className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <h2>Widget-Konfiguration</h2>
-            <span>{widgetOrder.length} aktiv</span>
-          </div>
-
-          <div className={styles.configList}>
-            {DEFAULT_WIDGETS.map((widget) => {
-              const active = widgetOrder.includes(widget.id)
-              const widgetConfig = widgetConfigMap[widget.id]
-              return (
-                <article key={widget.id} className={styles.configCard}>
-                  <label className={styles.checkboxRow}>
-                    <input
-                      type="checkbox"
+          <Card>
+            <CardHeader
+              header={<Body1Strong>Widget-Konfiguration</Body1Strong>}
+              action={<Badge appearance='tint'>{widgetOrder.length} aktiv</Badge>}
+            />
+            <div className={styles.configList}>
+              {DEFAULT_WIDGETS.map((widget) => {
+                const active = widgetOrder.includes(widget.id)
+                const widgetConfig = widgetConfigMap[widget.id]
+                return (
+                  <div key={widget.id} className={styles.configCard}>
+                    <Checkbox
                       checked={active}
-                      onChange={(event) => toggleWidget(widget.id, event.target.checked)}
+                      onChange={(_ev, d) => toggleWidget(widget.id, Boolean(d.checked))}
+                      label={widgetConfig?.title ?? widget.title ?? WIDGET_LABELS[widget.id]}
                     />
-                    <span>{widgetConfig?.title ?? widget.title ?? WIDGET_LABELS[widget.id]}</span>
-                  </label>
-
-                  {active && (
-                    <div className={styles.configActions}>
-                      <div className={styles.miniButtonRow}>
-                        <button type="button" className={styles.btnGhost} onClick={() => moveWidget(widget.id, -1)}>Nach oben</button>
-                        <button type="button" className={styles.btnGhost} onClick={() => moveWidget(widget.id, 1)}>Nach unten</button>
+                    {active && (
+                      <div className={styles.configActions}>
+                        <div className={styles.miniButtonRow}>
+                          <Button size='small' appearance='subtle' onClick={() => moveWidget(widget.id, -1)}>Nach oben</Button>
+                          <Button size='small' appearance='subtle' onClick={() => moveWidget(widget.id, 1)}>Nach unten</Button>
+                        </div>
+                        <Field label='Breite'>
+                          <Select
+                            size='small'
+                            value={String(widthMap[widget.id] ?? 6)}
+                            onChange={(_e, d) => setWidgetWidth(widget.id, Number(d.value) as WidgetWidth)}
+                          >
+                            <Option value='4'>Kompakt</Option>
+                            <Option value='6'>Halb</Option>
+                            <Option value='8'>Breit</Option>
+                            <Option value='12'>Voll</Option>
+                          </Select>
+                        </Field>
                       </div>
-                      <label className={styles.fieldCompact}>
-                        <span>Breite</span>
-                        <select value={widthMap[widget.id] ?? 6} onChange={(event) => setWidgetWidth(widget.id, Number(event.target.value) as WidgetWidth)}>
-                          <option value="4">Kompakt</option>
-                          <option value="6">Halb</option>
-                          <option value="8">Breit</option>
-                          <option value="12">Voll</option>
-                        </select>
-                      </label>
-                    </div>
-                  )}
-                </article>
-              )
-            })}
-          </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
         </aside>
 
-        <main className={styles.dashboard}>
+        <main>
           {loading ? (
-            <div className={styles.emptyState}>Dashboard wird geladen…</div>
+            <Spinner label='Dashboard wird geladen\u2026' style={{ marginTop: 64 }} />
           ) : widgetOrder.length === 0 ? (
-            <div className={styles.emptyState}>Keine Widgets aktiv. Wähle links mindestens ein Widget aus.</div>
+            <div className={styles.emptyState}>
+              <Body1>Keine Widgets aktiv. W\u00e4hle links mindestens ein Widget aus.</Body1>
+            </div>
           ) : (
             <div className={styles.widgetGrid}>
               {sortLayoutItems(workingConfig.layout.items).map((item) => (
-                <section
-                  key={item.widget_id}
-                  className={styles.widgetPanel}
-                  style={{ gridColumn: `span ${item.w}` }}
-                >
-                  <header className={styles.widgetHeader}>
-                    <h3>{widgetConfigMap[item.widget_id]?.title ?? WIDGET_LABELS[item.widget_id]}</h3>
-                    <span>{item.w}/12</span>
-                  </header>
+                <Card key={item.widget_id} style={{ gridColumn: `span ${item.w}` }}>
+                  <CardHeader
+                    header={<Body1Strong>{widgetConfigMap[item.widget_id]?.title ?? WIDGET_LABELS[item.widget_id]}</Body1Strong>}
+                    action={<Badge appearance='outline'>{item.w}/12</Badge>}
+                  />
                   {renderWidget(item.widget_id)}
-                </section>
+                </Card>
               ))}
             </div>
           )}
         </main>
-      </section>
+      </div>
     </div>
   )
 }

@@ -1,16 +1,56 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Badge,
+  Body1,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
+  Subtitle2,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { projectsApi, type Project } from '../api/projects.js'
-import styles from './ProjectArchivePage.module.css'
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) {
-    return '—'
-  }
+  if (!value) return '—'
   return new Date(value).toLocaleDateString('de-DE')
 }
 
+const useStyles = makeStyles({
+  page: { display: 'grid', rowGap: tokens.spacingVerticalXL },
+  filters: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'flex-end',
+  },
+  filterField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    minWidth: '160px',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: tokens.spacingVerticalM,
+  },
+  cardBody: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
+  meta: { display: 'flex', flexDirection: 'column', gap: '2px' },
+  actions: { display: 'flex', gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalXS },
+  empty: { textAlign: 'center', color: tokens.colorNeutralForeground3, padding: tokens.spacingVerticalXXL },
+})
+
 export function ProjectArchivePage() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,8 +60,7 @@ export function ProjectArchivePage() {
   const [restoringProjectId, setRestoringProjectId] = useState<string | null>(null)
 
   async function load() {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
       const list = await projectsApi.archiveList({
         search: search.trim() || undefined,
@@ -35,16 +74,13 @@ export function ProjectArchivePage() {
     }
   }
 
-  useEffect(() => {
-    void load()
-  }, [])
+  useEffect(() => { void load() }, [])
 
   async function handleRestore(projectId: string) {
-    setRestoringProjectId(projectId)
-    setError(null)
+    setRestoringProjectId(projectId); setError(null)
     try {
       await projectsApi.restore(projectId)
-      setProjects((prev) => prev.filter((project) => project.id !== projectId))
+      setProjects((prev) => prev.filter((p) => p.id !== projectId))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Projekt konnte nicht wiederhergestellt werden')
     } finally {
@@ -54,76 +90,68 @@ export function ProjectArchivePage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>Phase 14 · Sprint 92</p>
-          <h1>Projektarchiv</h1>
-          <p className={styles.subtitle}>Archivierte Projekte suchen, filtern und inklusive Kontaktverknüpfungen wiederherstellen.</p>
+      <div>
+        <Title2>Projektarchiv</Title2>
+        <Body1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+          Archivierte Projekte suchen, filtern und wiederherstellen.
+        </Body1>
+      </div>
+
+      {error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}
+
+      <div className={styles.filters}>
+        <div className={styles.filterField}>
+          <Caption1>Suche</Caption1>
+          <Input type="search" placeholder="Projektname" value={search} onChange={(_e, d) => setSearch(d.value)} />
         </div>
-      </header>
-
-      {error && <div className={styles.error}>{error}</div>}
-
-      <section className={styles.filters}>
-        <label className={styles.field}>
-          <span>Suche</span>
-          <input
-            type="search"
-            placeholder="Projektname"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-
-        <label className={styles.field}>
-          <span>Archivgrund</span>
-          <input
-            type="text"
-            placeholder="z. B. abgeschlossen"
-            value={reasonFilter}
-            onChange={(event) => setReasonFilter(event.target.value)}
-          />
-        </label>
-
-        <button className={styles.btnPrimary} onClick={() => void load()}>
-          Filter anwenden
-        </button>
-      </section>
+        <div className={styles.filterField}>
+          <Caption1>Archivgrund</Caption1>
+          <Input placeholder="z. B. abgeschlossen" value={reasonFilter} onChange={(_e, d) => setReasonFilter(d.value)} />
+        </div>
+        <Button appearance="primary" onClick={() => void load()}>Filter anwenden</Button>
+      </div>
 
       {loading ? (
-        <div className={styles.center}>Lade Archiv…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
+          <Spinner label="Lade Archiv…" />
+        </div>
       ) : projects.length === 0 ? (
-        <p className={styles.empty}>Keine archivierten Projekte gefunden.</p>
+        <div className={styles.empty}>
+          <Body1>Keine archivierten Projekte gefunden.</Body1>
+        </div>
       ) : (
-        <section className={styles.grid}>
+        <div className={styles.grid}>
           {projects.map((project) => (
-            <article key={project.id} className={styles.card}>
-              <div className={styles.cardHead}>
-                <strong>{project.name}</strong>
-                <span>{project.priority}</span>
+            <Card key={project.id} appearance="filled">
+              <CardHeader
+                header={<Body1 style={{ fontWeight: tokens.fontWeightSemibold }}>{project.name}</Body1>}
+                description={<Caption1>{project.archive_reason ?? 'Kein Archivgrund hinterlegt'}</Caption1>}
+                action={<Badge appearance="tint" size="small">{project.priority}</Badge>}
+              />
+              <div className={styles.cardBody}>
+                <div className={styles.meta}>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Archiviert: {formatDate(project.archived_at)}</Caption1>
+                  <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Aufbewahrung bis: {formatDate(project.retention_until)}</Caption1>
+                  {project.advisor && <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Berater: {project.advisor}</Caption1>}
+                  {project.assigned_to && <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>Bearbeitung: {project.assigned_to}</Caption1>}
+                </div>
+                <div className={styles.actions}>
+                  <Button appearance="secondary" size="small" onClick={() => navigate('/projects/' + project.id)}>
+                    Öffnen
+                  </Button>
+                  <Button
+                    appearance="primary"
+                    size="small"
+                    disabled={restoringProjectId === project.id}
+                    onClick={() => void handleRestore(project.id)}
+                  >
+                    {restoringProjectId === project.id ? <Spinner size="tiny" /> : 'Restore'}
+                  </Button>
+                </div>
               </div>
-              <p className={styles.reason}>{project.archive_reason ?? 'Kein Archivgrund hinterlegt'}</p>
-              <div className={styles.meta}>
-                <span>Archiviert: {formatDate(project.archived_at)}</span>
-                <span>Aufbewahrung bis: {formatDate(project.retention_until)}</span>
-                <span>Berater: {project.advisor ?? '—'}</span>
-                <span>Bearbeitung: {project.assigned_to ?? '—'}</span>
-              </div>
-              <div className={styles.actions}>
-                <button className={styles.btnSecondary} onClick={() => navigate(`/projects/${project.id}`)}>
-                  Öffnen
-                </button>
-                <button
-                  className={styles.btnPrimary}
-                  onClick={() => void handleRestore(project.id)}
-                  disabled={restoringProjectId === project.id}
-                >
-                  {restoringProjectId === project.id ? 'Stelle wieder her…' : 'Restore'}
-                </button>
-              </div>
-            </article>
+            </Card>
           ))}
-        </section>
+        </div>
       )}
     </div>
   )

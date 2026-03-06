@@ -1,8 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  Badge,
+  Body1,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  Checkbox,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { cutlistApi } from '../api/projectFeatures.js'
 import { nestingApi, type NestingJob, type NestingResult } from '../api/nesting.js'
-import styles from './NestingPage.module.css'
 
 type CutlistRecord = {
   id: string
@@ -32,9 +51,67 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+const useStyles = makeStyles({
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  topRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  formGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'end',
+  },
+  kpis: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  kpiCard: {
+    background: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    fontSize: tokens.fontSizeBase300,
+  },
+  sheetGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+  },
+  sheetSvg: {
+    width: '100%',
+    height: 'auto',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusSmall,
+    color: tokens.colorNeutralForeground1,
+    background: tokens.colorNeutralBackground3,
+  },
+  jobList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  jobItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+  },
+})
+
 export function NestingPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const styles = useStyles()
 
   const [cutlists, setCutlists] = useState<CutlistRecord[]>([])
   const [jobs, setJobs] = useState<NestingJob[]>([])
@@ -46,33 +123,27 @@ export function NestingPage() {
   const [allowRotate, setAllowRotate] = useState(true)
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [computing, setComputing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const activeJob = useMemo(() => jobs.find((job) => job.id === activeJobId) ?? null, [jobs, activeJobId])
   const result = getResult(activeJob)
 
-  async function load() {
+  useEffect(() => {
     if (!projectId) return
     setLoading(true)
     setError(null)
-    try {
-      const [cutlistRows, jobRows] = await Promise.all([
-        cutlistApi.list(projectId) as Promise<CutlistRecord[]>,
-        nestingApi.listNestingJobs(projectId),
-      ])
+    Promise.all([
+      cutlistApi.list(projectId) as Promise<CutlistRecord[]>,
+      nestingApi.listNestingJobs(projectId),
+    ]).then(([cutlistRows, jobRows]) => {
       setCutlists(cutlistRows)
       setJobs(jobRows)
       setSelectedCutlistId((prev) => prev || cutlistRows[0]?.id || '')
       setActiveJobId((prev) => prev ?? jobRows[0]?.id ?? null)
-    } catch (e) {
+    }).catch((e) => {
       setError(e instanceof Error ? e.message : 'Fehler beim Laden')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void load()
+    }).finally(() => setLoading(false))
   }, [projectId])
 
   function applyPreset(label: string) {
@@ -87,7 +158,7 @@ export function NestingPage() {
 
   async function onCreateJob() {
     if (!projectId || !selectedCutlistId) return
-    setLoading(true)
+    setComputing(true)
     setError(null)
     try {
       const created = await nestingApi.createNestingJob(projectId, {
@@ -102,7 +173,7 @@ export function NestingPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Nesting fehlgeschlagen')
     } finally {
-      setLoading(false)
+      setComputing(false)
     }
   }
 
@@ -113,9 +184,7 @@ export function NestingPage() {
       await nestingApi.deleteNestingJob(jobId)
       setJobs((prev) => {
         const next = prev.filter((job) => job.id !== jobId)
-        if (activeJobId === jobId) {
-          setActiveJobId(next[0]?.id ?? null)
-        }
+        if (activeJobId === jobId) { setActiveJobId(next[0]?.id ?? null) }
         return next
       })
     } catch (e) {
@@ -134,112 +203,115 @@ export function NestingPage() {
     }
   }
 
-  if (!projectId) {
-    return <div className={styles.page}>Projekt-ID fehlt.</div>
-  }
+  if (!projectId) return <div>Projekt-ID fehlt.</div>
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <h1>Nesting</h1>
-        <div className={styles.actions}>
-          <button className={styles.btnSecondary} onClick={() => navigate(`/projects/${projectId}`)}>Zurueck</button>
-          <button className={styles.btnPrimary} onClick={() => void onCreateJob()} disabled={loading || !selectedCutlistId}>
+      <div className={styles.topRow}>
+        <Title2>Nesting</Title2>
+        <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+          <Button appearance='subtle' onClick={() => navigate(`/projects/${projectId}`)}>Zurueck</Button>
+          <Button
+            appearance='primary'
+            onClick={() => void onCreateJob()}
+            disabled={computing || !selectedCutlistId}
+            icon={computing ? <Spinner size='tiny' /> : undefined}
+          >
             Nesting berechnen
-          </button>
+          </Button>
         </div>
-      </header>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>}
 
-      <section className={styles.section}>
+      <Card>
+        <CardHeader header={<Body1Strong>Konfiguration</Body1Strong>} />
         <div className={styles.formGrid}>
-          <label>
-            Cutlist
-            <select value={selectedCutlistId} onChange={(e) => setSelectedCutlistId(e.target.value)}>
-              <option value="">Bitte waehlen</option>
+          <Field label='Cutlist'>
+            <Select value={selectedCutlistId} onChange={(_e, d) => setSelectedCutlistId(d.value)}>
+              <Option value=''>Bitte waehlen</Option>
               {cutlists.map((cutlist) => (
-                <option key={cutlist.id} value={cutlist.id}>
+                <Option key={cutlist.id} value={cutlist.id}>
                   {new Date(cutlist.generated_at).toLocaleString('de-DE')} ({cutlist.summary?.total_parts ?? 0} Teile)
-                </option>
+                </Option>
               ))}
-            </select>
-          </label>
-
-          <label>
-            Rohplattenformat
-            <select value={selectedPreset} onChange={(e) => applyPreset(e.target.value)}>
-              {presets.map((preset) => (
-                <option key={preset.label} value={preset.label}>{preset.label}</option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Breite (mm)
-            <input
-              type="number"
-              value={sheetWidth}
+            </Select>
+          </Field>
+          <Field label='Rohplattenformat'>
+            <Select value={selectedPreset} onChange={(_e, d) => applyPreset(d.value)}>
+              {presets.map((preset) => <Option key={preset.label} value={preset.label}>{preset.label}</Option>)}
+            </Select>
+          </Field>
+          <Field label='Breite (mm)'>
+            <Input
+              type='number'
+              value={String(sheetWidth)}
               disabled={selectedPreset !== 'Frei definieren'}
-              onChange={(e) => setSheetWidth(Number(e.target.value) || 0)}
+              onChange={(_e, d) => setSheetWidth(Number(d.value) || 0)}
             />
-          </label>
-
-          <label>
-            Hoehe (mm)
-            <input
-              type="number"
-              value={sheetHeight}
+          </Field>
+          <Field label='Hoehe (mm)'>
+            <Input
+              type='number'
+              value={String(sheetHeight)}
               disabled={selectedPreset !== 'Frei definieren'}
-              onChange={(e) => setSheetHeight(Number(e.target.value) || 0)}
+              onChange={(_e, d) => setSheetHeight(Number(d.value) || 0)}
             />
-          </label>
-
-          <label>
-            Kerf (mm)
-            <input type="number" value={kerf} onChange={(e) => setKerf(Number(e.target.value) || 0)} />
-          </label>
-
-          <label>
-            <input type="checkbox" checked={allowRotate} onChange={(e) => setAllowRotate(e.target.checked)} />
-            Rotation erlauben
-          </label>
+          </Field>
+          <Field label='Kerf (mm)'>
+            <Input type='number' value={String(kerf)} onChange={(_e, d) => setKerf(Number(d.value) || 0)} />
+          </Field>
+          <Checkbox
+            checked={allowRotate}
+            onChange={(_e, d) => setAllowRotate(Boolean(d.checked))}
+            label='Rotation erlauben'
+          />
         </div>
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2>Jobs</h2>
-        {loading && jobs.length === 0 ? <p>Lade...</p> : (
-          <ul>
+      <Card>
+        <CardHeader header={<Body1Strong>Jobs</Body1Strong>} />
+        {loading && jobs.length === 0 ? (
+          <Spinner label='Lade...' />
+        ) : (
+          <div className={styles.jobList}>
             {jobs.map((job) => (
-              <li key={job.id}>
-                <button className={styles.btnSecondary} onClick={() => setActiveJobId(job.id)}>
-                  {new Date(job.created_at).toLocaleString('de-DE')} · {job.status}
-                </button>
-                {' '}
-                <button className={styles.btnDanger} onClick={() => void onDeleteJob(job.id)}>Loeschen</button>
-              </li>
+              <div key={job.id} className={styles.jobItem}>
+                <Button
+                  appearance={activeJobId === job.id ? 'primary' : 'subtle'}
+                  size='small'
+                  onClick={() => setActiveJobId(job.id)}
+                >
+                  {new Date(job.created_at).toLocaleString('de-DE')}
+                </Button>
+                <Badge appearance='tint'>{job.status}</Badge>
+                <Button appearance='subtle' size='small' onClick={() => void onDeleteJob(job.id)}>Loeschen</Button>
+              </div>
             ))}
-          </ul>
+            {jobs.length === 0 && <Body1>Noch keine Jobs.</Body1>}
+          </div>
         )}
-      </section>
+      </Card>
 
       {activeJob && (
-        <section className={styles.section}>
-          <h2>Ergebnis</h2>
+        <Card>
+          <CardHeader header={<Body1Strong>Ergebnis</Body1Strong>} />
           <div className={styles.kpis}>
             <div className={styles.kpiCard}>Platten: <strong>{result.sheets.length}</strong></div>
             <div className={styles.kpiCard}>Verschnitt: <strong>{result.waste_pct.toFixed(2)}%</strong></div>
             <div className={styles.kpiCard}>Teile: <strong>{result.placed_parts} / {result.total_parts}</strong></div>
-            <button className={styles.btnPrimary} onClick={() => void onExportDxf()}>DXF exportieren</button>
+            <Button appearance='primary' size='small' onClick={() => void onExportDxf()}>DXF exportieren</Button>
           </div>
 
-          <div className={styles.previewList}>
+          <div className={styles.sheetGrid}>
             {result.sheets.map((sheet) => (
-              <article key={sheet.index} className={styles.sheetPreview}>
-                <h3>Platte {sheet.index}</h3>
-                <svg className={styles.sheetSvg} viewBox={`0 0 ${sheet.width_mm} ${sheet.height_mm}`}>
-                  <rect x="0" y="0" width={sheet.width_mm} height={sheet.height_mm} fill="none" stroke="currentColor" strokeWidth="8" />
+              <article key={sheet.index}>
+                <Caption1>Platte {sheet.index}</Caption1>
+                <svg
+                  className={styles.sheetSvg}
+                  viewBox={`0 0 ${sheet.width_mm} ${sheet.height_mm}`}
+                >
+                  <rect x='0' y='0' width={sheet.width_mm} height={sheet.height_mm} fill='none' stroke='currentColor' strokeWidth='8' />
                   {sheet.placements.map((placement, index) => (
                     <g key={`${placement.part_id}-${index}`}>
                       <rect
@@ -247,11 +319,11 @@ export function NestingPage() {
                         y={placement.y_mm}
                         width={placement.width_mm}
                         height={placement.height_mm}
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="4"
+                        fill='none'
+                        stroke='currentColor'
+                        strokeWidth='4'
                       />
-                      <text x={placement.x_mm + 8} y={placement.y_mm + 28} fontSize="24" fill="currentColor">
+                      <text x={placement.x_mm + 8} y={placement.y_mm + 28} fontSize='24' fill='currentColor'>
                         {placement.part_id}
                       </text>
                     </g>
@@ -260,9 +332,8 @@ export function NestingPage() {
               </article>
             ))}
           </div>
-        </section>
+        </Card>
       )}
     </div>
   )
 }
-

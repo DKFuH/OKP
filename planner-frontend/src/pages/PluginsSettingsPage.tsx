@@ -1,9 +1,54 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Body1,
+  Body1Strong,
+  Button,
+  Card,
+  CardHeader,
+  Checkbox,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { getTenantPlugins, updateTenantPlugins, type TenantPluginInfo } from '../api/tenantSettings.js'
-import styles from './TenantSettingsPage.module.css'
+
+const useStyles = makeStyles({
+  page: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXL,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  headerText: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS,
+  },
+  pluginGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: tokens.spacingVerticalM,
+    padding: `${tokens.spacingVerticalS} 0`,
+  },
+  actions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+  },
+})
 
 export function PluginsSettingsPage() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const [available, setAvailable] = useState<TenantPluginInfo[]>([])
   const [enabled, setEnabled] = useState<string[]>([])
@@ -51,48 +96,51 @@ export function PluginsSettingsPage() {
   }
 
   if (loading) {
-    return <div className={styles.center}>{'Lade Plugins\u2026'}</div>
+    return <Spinner label='Lade Plugins\u2026' style={{ marginTop: 64 }} />
   }
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>Einstellungen</p>
-          <h1>Plugins</h1>
-          <p className={styles.subtitle}>Aktiviere optionale Fachmodule pro Tenant.</p>
+      <div className={styles.header}>
+        <div className={styles.headerText}>
+          <Title2>Plugins</Title2>
+          <Subtitle2>Aktiviere optionale Fachmodule pro Tenant.</Subtitle2>
         </div>
-        <div className={styles.headerActions}>
-          <button type="button" className={styles.btnSecondary} onClick={() => navigate('/settings/company')}>
-            {'\u2190 Firmenprofil'}
-          </button>
-        </div>
-      </header>
+        <Button appearance='subtle' onClick={() => navigate('/settings/company')}>
+          &larr; Firmenprofil
+        </Button>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
-      {success && <div className={styles.success}>Plugin-Einstellungen gespeichert.</div>}
+      {error && (
+        <MessageBar intent='error'>
+          <MessageBarBody>{error}</MessageBarBody>
+        </MessageBar>
+      )}
+      {success && (
+        <MessageBar intent='success'>
+          <MessageBarBody>Plugin-Einstellungen gespeichert.</MessageBarBody>
+        </MessageBar>
+      )}
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{'Verf\u00fcgbare Plugins'}</h2>
-        <div className={styles.grid}>
-          {available.length === 0 && <p>{'Keine Plugins verf\u00fcgbar.'}</p>}
+      <Card>
+        <CardHeader header={<Body1Strong>Verf&uuml;gbare Plugins</Body1Strong>} />
+        {available.length === 0 && <Body1>Keine Plugins verf&uuml;gbar.</Body1>}
+        <div className={styles.pluginGrid}>
           {available.map((plugin) => (
-            <label key={plugin.id} className={styles.field}>
-              <span>{plugin.name}</span>
-              <input
-                type="checkbox"
-                checked={enabledSet.has(plugin.id)}
-                onChange={(event) => togglePlugin(plugin.id, event.target.checked)}
-              />
-            </label>
+            <Checkbox
+              key={plugin.id}
+              checked={enabledSet.has(plugin.id)}
+              onChange={(_ev, data) => togglePlugin(plugin.id, Boolean(data.checked))}
+              label={plugin.name}
+            />
           ))}
         </div>
-      </section>
+      </Card>
 
       <div className={styles.actions}>
-        <button type="button" className={styles.btnPrimary} disabled={saving} onClick={() => void save()}>
+        <Button appearance='primary' disabled={saving} onClick={() => void save()}>
           {saving ? 'Speichern\u2026' : 'Plugins speichern'}
-        </button>
+        </Button>
       </div>
     </div>
   )

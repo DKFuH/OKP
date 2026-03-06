@@ -1,9 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  Body1,
+  Body1Strong,
+  Button,
+  Card,
+  CardHeader,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Textarea,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { panoramaToursApi, type PanoramaPoint, type PanoramaTour } from '../api/panoramaTours.js'
 import { getTenantPlugins } from '../api/tenantSettings.js'
 import { useLocale } from '../hooks/useLocale.js'
-import styles from './TenantSettingsPage.module.css'
 
 const DEFAULT_POINT: PanoramaPoint = {
   id: 'point-1',
@@ -12,7 +30,17 @@ const DEFAULT_POINT: PanoramaPoint = {
   hotspots: [],
 }
 
+const useStyles = makeStyles({
+  page: { maxWidth: '800px', margin: '0 auto', display: 'grid', rowGap: tokens.spacingVerticalXXL },
+  header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
+  headerText: { display: 'grid', rowGap: tokens.spacingVerticalXS },
+  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: tokens.spacingVerticalM },
+  actions: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', marginTop: tokens.spacingVerticalM },
+  shareLink: { fontFamily: 'monospace', fontSize: '13px', wordBreak: 'break-all' },
+})
+
 export function PanoramaToursPage() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const { id: projectId } = useParams<{ id: string }>()
   const { locale } = useLocale()
@@ -28,46 +56,29 @@ export function PanoramaToursPage() {
   const [error, setError] = useState<string | null>(null)
   const [presentationEnabled, setPresentationEnabled] = useState(false)
 
-  const active = useMemo(() => items.find((entry) => entry.id === activeId) ?? null, [items, activeId])
+  const active = useMemo(() => items.find((e) => e.id === activeId) ?? null, [items, activeId])
 
   useEffect(() => {
-    let active = true
-
+    let alive = true
     getTenantPlugins()
-      .then((result) => {
-        if (!active) return
-        setPresentationEnabled(result.enabled.includes('presentation'))
-      })
-      .catch(() => {
-        if (!active) return
-        setPresentationEnabled(false)
-      })
-
-    return () => {
-      active = false
-    }
+      .then((r) => { if (alive) setPresentationEnabled(r.enabled.includes('presentation')) })
+      .catch(() => { if (alive) setPresentationEnabled(false) })
+    return () => { alive = false }
   }, [])
 
   useEffect(() => {
     if (!projectId) return
     panoramaToursApi.list(projectId)
-      .then((data) => {
-        setItems(data)
-        setActiveId(data[0]?.id ?? null)
-      })
+      .then((data) => { setItems(data); setActiveId(data[0]?.id ?? null) })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
   }, [projectId])
 
   useEffect(() => {
     if (!active) {
-      setName('Neue Tour')
-      setShareLocale(locale.startsWith('en') ? 'en' : 'de')
-      setPointsJson(JSON.stringify([DEFAULT_POINT], null, 2))
-      setShareLink(null)
-      return
+      setName('Neue Tour'); setShareLocale(locale.startsWith('en') ? 'en' : 'de')
+      setPointsJson(JSON.stringify([DEFAULT_POINT], null, 2)); setShareLink(null); return
     }
-
     setName(active.name)
     setShareLocale(active.locale_code?.startsWith('en') ? 'en' : 'de')
     setPointsJson(JSON.stringify(active.points_json, null, 2))
@@ -78,179 +89,118 @@ export function PanoramaToursPage() {
     if (!projectId) return
     const data = await panoramaToursApi.list(projectId)
     setItems(data)
-    if (selectId) {
-      setActiveId(selectId)
-      return
-    }
-    if (!data.some((entry) => entry.id === activeId)) {
-      setActiveId(data[0]?.id ?? null)
-    }
+    if (selectId) { setActiveId(selectId); return }
+    if (!data.some((e) => e.id === activeId)) setActiveId(data[0]?.id ?? null)
   }
 
   function parsePoints(): PanoramaPoint[] {
     const parsed = JSON.parse(pointsJson) as PanoramaPoint[]
-    if (!Array.isArray(parsed)) {
-      throw new Error('points_json muss ein Array sein')
-    }
+    if (!Array.isArray(parsed)) throw new Error('points_json muss ein Array sein')
     return parsed
   }
 
   async function createTour() {
     if (!projectId) return
-    setSaving(true)
-    setError(null)
+    setSaving(true); setError(null)
     try {
-      const created = await panoramaToursApi.create(projectId, {
-        name,
-        locale_code: shareLocale,
-        points_json: parsePoints(),
-      })
+      const created = await panoramaToursApi.create(projectId, { name, locale_code: shareLocale, points_json: parsePoints() })
       await refreshList(created.id)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Tour konnte nicht erstellt werden')
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
   async function saveTour() {
     if (!active) return
-    setSaving(true)
-    setError(null)
+    setSaving(true); setError(null)
     try {
-      await panoramaToursApi.update(active.id, {
-        name,
-        locale_code: shareLocale,
-        points_json: parsePoints(),
-      })
+      await panoramaToursApi.update(active.id, { name, locale_code: shareLocale, points_json: parsePoints() })
       await refreshList(active.id)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Tour konnte nicht gespeichert werden')
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
   async function deleteTour() {
-    if (!active) return
-    if (!confirm('Panorama-Tour wirklich löschen?')) return
-
-    setSaving(true)
-    setError(null)
-    try {
-      await panoramaToursApi.remove(active.id)
-      await refreshList(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Tour konnte nicht gelöscht werden')
-    } finally {
-      setSaving(false)
-    }
+    if (!active || !confirm('Panorama-Tour wirklich l\u00f6schen?')) return
+    setSaving(true); setError(null)
+    try { await panoramaToursApi.remove(active.id); await refreshList(null) }
+    catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
   async function createShareLink() {
     if (!active) return
-    setSaving(true)
-    setError(null)
+    setSaving(true); setError(null)
     try {
       const share = await panoramaToursApi.share(active.id, 30, shareLocale)
       setShareLink(`${window.location.origin}${share.share_url}`)
       setShareLocale(share.locale_code.startsWith('en') ? 'en' : 'de')
       await refreshList(active.id)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Share-Link konnte nicht erstellt werden')
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
-  if (loading) return <div className={styles.center}>Lade Panorama-Touren…</div>
+  if (loading) return <Spinner label='Lade Panorama-Touren\u2026' style={{ marginTop: 64 }} />
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>Projekt</p>
-          <h1>Panorama-Touren</h1>
-          <p className={styles.subtitle}>Multi-Point Touren mit Kamera-Viewpoints und Hotspots.</p>
+      <div className={styles.header}>
+        <div className={styles.headerText}>
+          <Title2>Panorama-Touren</Title2>
+          <Subtitle2>Multi-Point Touren mit Kamera-Viewpoints und Hotspots.</Subtitle2>
         </div>
-        <div className={styles.headerActions}>
+        <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
           {presentationEnabled && (
-            <button
-              type='button'
-              className={styles.btnSecondary}
-              onClick={() => navigate(`/projects/${projectId}/presentation${activeId ? `?source=panorama-tour&tourId=${activeId}` : ''}`)}
-            >
-              Präsentationsmodus
-            </button>
+            <Button appearance='subtle' onClick={() => navigate(`/projects/${projectId}/presentation${activeId ? `?source=panorama-tour&tourId=${activeId}` : ''}`)}>
+              Pr\u00e4sentationsmodus
+            </Button>
           )}
-          <button type='button' className={styles.btnSecondary} onClick={() => navigate(`/projects/${projectId}`)}>
-            {'← Zurück zum Editor'}
-          </button>
+          <Button appearance='subtle' onClick={() => navigate(`/projects/${projectId}`)}>
+            \u2190 Zur\u00fcck
+          </Button>
         </div>
-      </header>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>}
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Touren</h2>
-        <div className={styles.grid}>
-          <label className={styles.field}>
-            <span>Tour wählen</span>
-            <select value={activeId ?? ''} onChange={(event) => setActiveId(event.target.value || null)}>
-              <option value=''>Neu erstellen</option>
-              {items.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            <span>Name</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-
-          <label className={styles.field}>
-            <span>Sprache</span>
-            <select value={shareLocale} onChange={(event) => setShareLocale(event.target.value === 'en' ? 'en' : 'de')}>
-              <option value='de'>Deutsch</option>
-              <option value='en'>English</option>
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            <span>points_json</span>
-            <textarea value={pointsJson} onChange={(event) => setPointsJson(event.target.value)} rows={14} />
-          </label>
+      <Card>
+        <CardHeader header={<Body1Strong>Touren</Body1Strong>} />
+        <div className={styles.formGrid}>
+          <Field label='Tour w\u00e4hlen'>
+            <Select value={activeId ?? ''} onChange={(_e, d) => setActiveId(d.value || null)}>
+              <Option value=''>Neu erstellen</Option>
+              {items.map((entry) => <Option key={entry.id} value={entry.id}>{entry.name}</Option>)}
+            </Select>
+          </Field>
+          <Field label='Name'>
+            <Input value={name} onChange={(_e, d) => setName(d.value)} />
+          </Field>
+          <Field label='Sprache'>
+            <Select value={shareLocale} onChange={(_e, d) => setShareLocale(d.value === 'en' ? 'en' : 'de')}>
+              <Option value='de'>Deutsch</Option>
+              <Option value='en'>English</Option>
+            </Select>
+          </Field>
         </div>
+        <Field label='points_json' style={{ marginTop: tokens.spacingVerticalM }}>
+          <Textarea rows={12} value={pointsJson} onChange={(_e, d) => setPointsJson(d.value)} style={{ fontFamily: 'monospace', fontSize: '13px' }} />
+        </Field>
 
         <div className={styles.actions}>
-          <button
-            type='button'
-            className={styles.btnPrimary}
-            disabled={saving}
-            onClick={() => void (active ? saveTour() : createTour())}
-          >
-            {saving ? 'Speichern…' : active ? 'Tour speichern' : 'Tour erstellen'}
-          </button>
-
+          <Button appearance='primary' disabled={saving} onClick={() => void (active ? saveTour() : createTour())}>
+            {saving ? <Spinner size='tiny' /> : active ? 'Tour speichern' : 'Tour erstellen'}
+          </Button>
           {active && (
             <>
-              <button type='button' className={styles.btnSecondary} disabled={saving} onClick={() => void createShareLink()}>
-                Share-Link erstellen
-              </button>
-              <button type='button' className={styles.btnSecondary} disabled={saving} onClick={() => void deleteTour()}>
-                Tour löschen
-              </button>
+              <Button appearance='secondary' disabled={saving} onClick={() => void createShareLink()}>Share-Link erstellen</Button>
+              <Button appearance='secondary' disabled={saving} onClick={() => void deleteTour()}>Tour l\u00f6schen</Button>
             </>
           )}
         </div>
 
         {shareLink && (
-          <div className={styles.success}>
-            Share-Link: <a href={shareLink} target='_blank' rel='noreferrer'>{shareLink}</a>
-          </div>
+          <MessageBar intent='success' style={{ marginTop: tokens.spacingVerticalS }}>
+            <MessageBarBody>
+              Share-Link: <a href={shareLink} target='_blank' rel='noreferrer' className={styles.shareLink}>{shareLink}</a>
+            </MessageBarBody>
+          </MessageBar>
         )}
-      </section>
+      </Card>
     </div>
   )
 }

@@ -1,12 +1,47 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Body1,
+  Button,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Subtitle2,
+  Textarea,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { getTenantSettings, updateTenantSettings, type TenantSettings } from '../api/tenantSettings.js'
 import { useLocale } from '../hooks/useLocale.js'
 import { LanguageSwitcher } from '../components/LanguageSwitcher.js'
 import { SUPPORTED_LOCALES } from '../i18n/resolveLocale.js'
-import styles from './TenantSettingsPage.module.css'
+
+const useStyles = makeStyles({
+  page: { display: 'grid', rowGap: tokens.spacingVerticalXL },
+  pageHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: tokens.spacingHorizontalM,
+  },
+  section: { display: 'grid', rowGap: tokens.spacingVerticalM },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+    gap: tokens.spacingVerticalM,
+  },
+  fullWidth: { gridColumn: '1 / -1' },
+  actions: { display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap', alignItems: 'center' },
+})
 
 export function TenantSettingsPage() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const [form, setForm] = useState<TenantSettings>({})
   const [loading, setLoading] = useState(true)
@@ -28,7 +63,7 @@ export function TenantSettingsPage() {
     void fetch('/api/v1/tenant/locale-settings')
       .then((r) => r.ok ? r.json() as Promise<{ preferred_locale: string | null; fallback_locale: string | null }> : Promise.reject(r))
       .then((data) => { if (data.preferred_locale) setTenantLocale(data.preferred_locale) })
-      .catch(() => { /* locale settings not critical */ })
+      .catch(() => { /* not critical */ })
   }, [])
 
   async function handleSaveTenantLocale() {
@@ -50,14 +85,11 @@ export function TenantSettingsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSaving(true)
-    setError(null)
-    setSuccess(false)
+    setSaving(true); setError(null); setSuccess(false)
     try {
       const { id: _id, tenant_id: _tid, created_at: _ca, updated_at: _ua, ...payload } = form
       const updated = await updateTenantSettings(payload)
-      setForm(updated)
-      setSuccess(true)
+      setForm(updated); setSuccess(true)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
     } finally {
@@ -66,206 +98,86 @@ export function TenantSettingsPage() {
   }
 
   if (loading) {
-    return <div className={styles.center}>Lade Einstellungen…</div>
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '64px' }}>
+        <Spinner label="Lade Einstellungen…" />
+      </div>
+    )
   }
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <div className={styles.pageHeader}>
         <div>
-          <p className={styles.kicker}>Sprint 61 · Einstellungen</p>
-          <h1>Firmenprofil</h1>
-          <p className={styles.subtitle}>Firmendaten für Angebots-PDF, Steuer- und Bankverbindung</p>
+          <Title2>Firmenprofil</Title2>
+          <Body1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+            Firmendaten für Angebots-PDF, Steuer- und Bankverbindung
+          </Body1>
         </div>
-        <div className={styles.headerActions}>
-          <button type="button" className={styles.btnSecondary} onClick={() => navigate('/settings/plugins')}>
-            Plugins
-          </button>
-          <button type="button" className={styles.btnSecondary} onClick={() => navigate('/settings')}>
-            ← Zurück
-          </button>
-        </div>
-      </header>
-
-      {error && <div className={styles.error}>{error}</div>}
-      {success && <div className={styles.success}>Einstellungen gespeichert.</div>}
-
-      <form className={styles.form} onSubmit={(e) => void handleSubmit(e)}>
-        {/* Firmendaten */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Firmendaten</h2>
-          <div className={styles.grid}>
-            <label className={styles.field}>
-              <span>Firmenname</span>
-              <input
-                type="text"
-                maxLength={200}
-                value={form.company_name ?? ''}
-                onChange={(e) => handleChange('company_name', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Straße</span>
-              <input
-                type="text"
-                maxLength={200}
-                value={form.company_street ?? ''}
-                onChange={(e) => handleChange('company_street', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>PLZ</span>
-              <input
-                type="text"
-                maxLength={20}
-                value={form.company_zip ?? ''}
-                onChange={(e) => handleChange('company_zip', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Ort</span>
-              <input
-                type="text"
-                maxLength={100}
-                value={form.company_city ?? ''}
-                onChange={(e) => handleChange('company_city', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Telefon</span>
-              <input
-                type="text"
-                maxLength={50}
-                value={form.company_phone ?? ''}
-                onChange={(e) => handleChange('company_phone', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>E-Mail</span>
-              <input
-                type="email"
-                maxLength={200}
-                value={form.company_email ?? ''}
-                onChange={(e) => handleChange('company_email', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Website</span>
-              <input
-                type="text"
-                maxLength={200}
-                value={form.company_web ?? ''}
-                onChange={(e) => handleChange('company_web', e.target.value)}
-              />
-            </label>
-          </div>
-        </section>
-
-        {/* Steuer & Bank */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Steuer &amp; Bank</h2>
-          <div className={styles.grid}>
-            <label className={styles.field}>
-              <span>USt-IdNr.</span>
-              <input
-                type="text"
-                maxLength={30}
-                placeholder="z. B. DE123456789"
-                value={form.vat_id ?? ''}
-                onChange={(e) => handleChange('vat_id', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Steuernummer</span>
-              <input
-                type="text"
-                maxLength={30}
-                value={form.tax_number ?? ''}
-                onChange={(e) => handleChange('tax_number', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>IBAN</span>
-              <input
-                type="text"
-                maxLength={50}
-                value={form.iban ?? ''}
-                onChange={(e) => handleChange('iban', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>BIC</span>
-              <input
-                type="text"
-                maxLength={20}
-                value={form.bic ?? ''}
-                onChange={(e) => handleChange('bic', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Bank</span>
-              <input
-                type="text"
-                maxLength={100}
-                value={form.bank_name ?? ''}
-                onChange={(e) => handleChange('bank_name', e.target.value)}
-              />
-            </label>
-          </div>
-        </section>
-
-        {/* Angebotsvorlage */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Angebotsvorlage</h2>
-          <div className={styles.grid}>
-            <label className={`${styles.field} ${styles.fieldFull}`}>
-              <span>Fußtext (erscheint auf jedem Angebots-PDF)</span>
-              <textarea
-                rows={4}
-                maxLength={2000}
-                value={form.quote_footer ?? ''}
-                onChange={(e) => handleChange('quote_footer', e.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Währung</span>
-              <input
-                type="text"
-                maxLength={3}
-                placeholder="EUR"
-                value={form.currency_code ?? ''}
-                onChange={(e) => handleChange('currency_code', e.target.value)}
-              />
-            </label>
-          </div>
-        </section>
-
         <div className={styles.actions}>
-          <button type="submit" className={styles.btnPrimary} disabled={saving}>
-            {saving ? t('common.saving') : t('common.save')}
-          </button>
+          <Button appearance="secondary" onClick={() => navigate('/settings')}>← Zurück</Button>
+        </div>
+      </div>
+
+      {error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}
+      {success && <MessageBar intent="success"><MessageBarBody>Einstellungen gespeichert.</MessageBarBody></MessageBar>}
+
+      <form onSubmit={(e) => void handleSubmit(e)}>
+        <section className={styles.section}>
+          <Subtitle2>Firmendaten</Subtitle2>
+          <div className={styles.grid}>
+            <Field label="Firmenname"><Input maxLength={200} value={form.company_name ?? ''} onChange={(e) => handleChange('company_name', e.target.value)} /></Field>
+            <Field label="Straße"><Input maxLength={200} value={form.company_street ?? ''} onChange={(e) => handleChange('company_street', e.target.value)} /></Field>
+            <Field label="PLZ"><Input maxLength={20} value={form.company_zip ?? ''} onChange={(e) => handleChange('company_zip', e.target.value)} /></Field>
+            <Field label="Ort"><Input maxLength={100} value={form.company_city ?? ''} onChange={(e) => handleChange('company_city', e.target.value)} /></Field>
+            <Field label="Telefon"><Input maxLength={50} value={form.company_phone ?? ''} onChange={(e) => handleChange('company_phone', e.target.value)} /></Field>
+            <Field label="E-Mail"><Input type="email" maxLength={200} value={form.company_email ?? ''} onChange={(e) => handleChange('company_email', e.target.value)} /></Field>
+            <Field label="Website"><Input maxLength={200} value={form.company_web ?? ''} onChange={(e) => handleChange('company_web', e.target.value)} /></Field>
+          </div>
+        </section>
+
+        <section className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+          <Subtitle2>Steuer &amp; Bank</Subtitle2>
+          <div className={styles.grid}>
+            <Field label="USt-IdNr."><Input maxLength={30} placeholder="z. B. DE123456789" value={form.vat_id ?? ''} onChange={(e) => handleChange('vat_id', e.target.value)} /></Field>
+            <Field label="Steuernummer"><Input maxLength={30} value={form.tax_number ?? ''} onChange={(e) => handleChange('tax_number', e.target.value)} /></Field>
+            <Field label="IBAN"><Input maxLength={50} value={form.iban ?? ''} onChange={(e) => handleChange('iban', e.target.value)} /></Field>
+            <Field label="BIC"><Input maxLength={20} value={form.bic ?? ''} onChange={(e) => handleChange('bic', e.target.value)} /></Field>
+            <Field label="Bank"><Input maxLength={100} value={form.bank_name ?? ''} onChange={(e) => handleChange('bank_name', e.target.value)} /></Field>
+          </div>
+        </section>
+
+        <section className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+          <Subtitle2>Angebotsvorlage</Subtitle2>
+          <div className={styles.grid}>
+            <Field label="Fußtext (erscheint auf jedem Angebots-PDF)" className={styles.fullWidth}>
+              <Textarea rows={4} maxLength={2000} value={form.quote_footer ?? ''} onChange={(_e, d) => handleChange('quote_footer', d.value)} />
+            </Field>
+            <Field label="Währung"><Input maxLength={3} placeholder="EUR" value={form.currency_code ?? ''} onChange={(e) => handleChange('currency_code', e.target.value)} /></Field>
+          </div>
+        </section>
+
+        <div className={styles.actions} style={{ marginTop: tokens.spacingVerticalL }}>
+          <Button appearance="primary" type="submit" disabled={saving}>
+            {saving ? <Spinner size="tiny" /> : t('common.save')}
+          </Button>
         </div>
       </form>
 
-      {/* Sprint 84 – Tenant Locale */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t('settings.languageSection')}</h2>
-        <p className={styles.subtitle}>{t('settings.languageHint')}</p>
+        <Subtitle2>{t('settings.languageSection')}</Subtitle2>
+        <Body1 style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>{t('settings.languageHint')}</Body1>
         <LanguageSwitcher />
-        <div style={{ marginTop: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <label className={styles.field} style={{ margin: 0 }}>
-            <span>{t('settings.tenantLocale')}</span>
-            <select value={tenantLocale} onChange={(e) => { setTenantLocale(e.target.value); setLocaleSaveMsg(null) }}>
-              <option value="">–</option>
-              {SUPPORTED_LOCALES.map((code) => (
-                <option key={code} value={code}>{code.toUpperCase()}</option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className={styles.btnSecondary} onClick={() => void handleSaveTenantLocale()}>
-            {t('settings.tenantLocaleSave')}
-          </button>
-          {localeSaveMsg && <span style={{ color: 'green' }}>{localeSaveMsg}</span>}
+        <div className={styles.actions}>
+          <div>
+            <Caption1 style={{ display: 'block', marginBottom: '4px' }}>{t('settings.tenantLocale')}</Caption1>
+            <Select value={tenantLocale} onChange={(_e, d) => { setTenantLocale(d.value); setLocaleSaveMsg(null) }}>
+              <Option value="">–</Option>
+              {SUPPORTED_LOCALES.map((code) => <Option key={code} value={code}>{code.toUpperCase()}</Option>)}
+            </Select>
+          </div>
+          <Button appearance="secondary" onClick={() => void handleSaveTenantLocale()}>{t('settings.tenantLocaleSave')}</Button>
+          {localeSaveMsg && <Body1 style={{ color: tokens.colorStatusSuccessForeground1 }}>{localeSaveMsg}</Body1>}
         </div>
       </section>
     </div>

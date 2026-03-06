@@ -1,9 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import {
+  Body1,
+  Body1Strong,
+  Button,
+  Card,
+  CardHeader,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { panoramaToursApi, type PanoramaPoint } from '../api/panoramaTours.js'
-import styles from './TenantSettingsPage.module.css'
+
+const useStyles = makeStyles({
+  page: { maxWidth: '700px', margin: '0 auto', display: 'grid', rowGap: tokens.spacingVerticalXXL },
+  header: { display: 'grid', rowGap: tokens.spacingVerticalXS },
+  hotspots: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', marginTop: tokens.spacingVerticalS },
+  codeBlock: {
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    fontFamily: 'monospace',
+    fontSize: '13px',
+    whiteSpace: 'pre',
+    overflowX: 'auto',
+  },
+})
 
 export function PublicPanoramaTourPage() {
+  const styles = useStyles()
   const { token } = useParams<{ token: string }>()
   const [localeCode, setLocaleCode] = useState<'de' | 'en'>('de')
   const [tourName, setTourName] = useState<string>('')
@@ -13,12 +44,7 @@ export function PublicPanoramaTourPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!token) {
-      setError('Ungueltiger Share-Token')
-      setLoading(false)
-      return
-    }
-
+    if (!token) { setError('Ungueltiger Share-Token'); setLoading(false); return }
     panoramaToursApi.getShared(token)
       .then((tour) => {
         setLocaleCode(tour.locale_code?.startsWith('en') ? 'en' : 'de')
@@ -26,90 +52,61 @@ export function PublicPanoramaTourPage() {
         setPoints(tour.points_json)
         setActivePointId(tour.points_json[0]?.id ?? null)
       })
-      .catch((err: Error) => {
-        setError(err.message)
-      })
+      .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
   }, [token])
 
-  const active = useMemo(() => points.find((point) => point.id === activePointId) ?? null, [points, activePointId])
-
+  const active = useMemo(() => points.find((p) => p.id === activePointId) ?? null, [points, activePointId])
   const copy = localeCode === 'en'
-    ? {
-        loading: 'Loading panorama tour…',
-        publicTour: 'Public tour',
-        subtitle: 'Camera viewpoints and hotspot navigation.',
-        viewpoints: 'Viewpoints',
-        noPoints: 'This tour does not contain any points.',
-        point: 'Point',
-        camera: 'Camera',
-        toPrefix: 'To',
-      }
-    : {
-        loading: 'Lade Panorama-Tour…',
-        publicTour: 'Oeffentliche Tour',
-        subtitle: 'Kamerapunkte und Hotspot-Navigation.',
-        viewpoints: 'Viewpoints',
-        noPoints: 'Diese Tour enthaelt keine Punkte.',
-        point: 'Punkt',
-        camera: 'Kamera',
-        toPrefix: 'Zu',
-      }
+    ? { loading: 'Loading panorama tour\u2026', publicTour: 'Public tour', subtitle: 'Camera viewpoints and hotspot navigation.', viewpoints: 'Viewpoints', noPoints: 'This tour does not contain any points.', point: 'Point', camera: 'Camera', toPrefix: 'To' }
+    : { loading: 'Lade Panorama-Tour\u2026', publicTour: '\u00d6ffentliche Tour', subtitle: 'Kamerapunkte und Hotspot-Navigation.', viewpoints: 'Viewpoints', noPoints: 'Diese Tour enth\u00e4lt keine Punkte.', point: 'Punkt', camera: 'Kamera', toPrefix: 'Zu' }
 
-  if (loading) return <div className={styles.center}>{copy.loading}</div>
-  if (error) return <div className={styles.center}>{error}</div>
+  if (loading) return <Spinner label={copy.loading} style={{ marginTop: 64 }} />
+  if (error) return <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>{copy.publicTour}</p>
-          <h1>{tourName}</h1>
-          <p className={styles.subtitle}>{copy.subtitle}</p>
-        </div>
-      </header>
+      <div className={styles.header}>
+        <Title2>{tourName}</Title2>
+        <Subtitle2>{copy.subtitle}</Subtitle2>
+      </div>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{copy.viewpoints}</h2>
+      <Card>
+        <CardHeader header={<Body1Strong>{copy.viewpoints}</Body1Strong>} />
         {points.length === 0 ? (
-          <p>{copy.noPoints}</p>
+          <Body1>{copy.noPoints}</Body1>
         ) : (
-          <div className={styles.grid}>
-            <label className={styles.field}>
-              <span>{copy.point}</span>
-              <select value={activePointId ?? ''} onChange={(event) => setActivePointId(event.target.value)}>
-                {points.map((point) => (
-                  <option key={point.id} value={point.id}>{point.label}</option>
-                ))}
-              </select>
-            </label>
+          <>
+            <Select
+              aria-label={copy.point}
+              value={activePointId ?? ''}
+              onChange={(_e, d) => setActivePointId(d.value)}
+            >
+              {points.map((point) => (
+                <Option key={point.id} value={point.id}>{point.label}</Option>
+              ))}
+            </Select>
 
             {active && (
-              <div className={styles.field}>
-                <span>{copy.camera}</span>
-                <pre>
-{JSON.stringify(active.camera, null, 2)}
-                </pre>
+              <pre className={styles.codeBlock}>{JSON.stringify(active.camera, null, 2)}</pre>
+            )}
+
+            {active && active.hotspots.length > 0 && (
+              <div className={styles.hotspots}>
+                {active.hotspots.map((hotspot) => (
+                  <Button
+                    key={`${active.id}-${hotspot.target_point_id}`}
+                    appearance='secondary'
+                    onClick={() => setActivePointId(hotspot.target_point_id)}
+                  >
+                    {hotspot.label ?? `${copy.toPrefix} ${hotspot.target_point_id}`}
+                  </Button>
+                ))}
               </div>
             )}
-          </div>
+          </>
         )}
-
-        {active && active.hotspots.length > 0 && (
-          <div className={styles.actions}>
-            {active.hotspots.map((hotspot) => (
-              <button
-                key={`${active.id}-${hotspot.target_point_id}`}
-                type='button'
-                className={styles.btnSecondary}
-                onClick={() => setActivePointId(hotspot.target_point_id)}
-              >
-                {hotspot.label ?? `${copy.toPrefix} ${hotspot.target_point_id}`}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+      </Card>
     </div>
   )
 }

@@ -15,6 +15,7 @@ const { prismaMock } = vi.hoisted(() => {
   const alternativeCreate = vi.fn()
   const alternativeFindFirst = vi.fn()
   const userFindUnique = vi.fn()
+  const userUpsert = vi.fn()
   const tenantSettingFindUnique = vi.fn()
 
   return {
@@ -29,6 +30,7 @@ const { prismaMock } = vi.hoisted(() => {
       },
       user: {
         findUnique: userFindUnique,
+        upsert: userUpsert,
       },
       tenantSetting: {
         findUnique: tenantSettingFindUnique,
@@ -97,6 +99,12 @@ describe('projectRoutes', () => {
     vi.clearAllMocks()
 
     prismaMock.user.findUnique.mockResolvedValue({
+      id: USER_ID,
+      tenant_id: TENANT_ID,
+      branch_id: 'branch-1',
+    })
+
+    prismaMock.user.upsert.mockResolvedValue({
       id: USER_ID,
       tenant_id: TENANT_ID,
       branch_id: 'branch-1',
@@ -249,21 +257,44 @@ describe('projectRoutes', () => {
     await app.close()
   })
 
-  it('POST /projects returns 404 when user does not exist', async () => {
-    prismaMock.user.findUnique.mockResolvedValue(null)
+  it('POST /projects auto-creates user via upsert when user does not pre-exist', async () => {
+    prismaMock.user.upsert.mockResolvedValue({
+      id: USER_ID,
+      tenant_id: TENANT_ID,
+      branch_id: null,
+    })
+    prismaMock.project.create.mockResolvedValue({
+      id: 'project-new',
+      tenant_id: TENANT_ID,
+      name: 'New User Project',
+      status: 'active',
+      project_status: 'lead',
+      assigned_to: null,
+      advisor: null,
+      archived_at: null,
+      retention_until: null,
+      archive_reason: null,
+    })
+    prismaMock.area.create.mockResolvedValue({ id: 'area-new' })
+    prismaMock.alternative.create.mockResolvedValue({ id: 'alt-new' })
 
     const app = makeApp()
     const response = await app.inject({
       method: 'POST',
       url: '/projects',
       payload: {
-        name: 'Unknown User Project',
+        name: 'New User Project',
         user_id: USER_ID,
       },
     })
 
-    expect(response.statusCode).toBe(404)
-    expect(prismaMock.project.create).not.toHaveBeenCalled()
+    expect(response.statusCode).toBe(201)
+    expect(prismaMock.user.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: USER_ID },
+        create: expect.objectContaining({ id: USER_ID }),
+      })
+    )
 
     await app.close()
   })

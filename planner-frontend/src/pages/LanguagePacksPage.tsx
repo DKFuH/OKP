@@ -1,14 +1,77 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  Body1,
+  Body1Strong,
+  Button,
+  Card,
+  CardHeader,
+  Checkbox,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
+  Textarea,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
+import {
   languagePacksApi,
   type LanguagePack,
   type LanguagePackCreateBody,
 } from '../api/languagePacks.js'
 import { useLocale } from '../hooks/useLocale.js'
-import styles from './TenantSettingsPage.module.css'
+
+const useStyles = makeStyles({
+  page: {
+    maxWidth: '900px',
+    margin: '0 auto',
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXL,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  headerText: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXS,
+  },
+  formGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: tokens.spacingVerticalM,
+  },
+  formGridFull: {
+    gridColumn: '1 / -1',
+  },
+  actions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
+  },
+  packMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  packActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
+  },
+})
 
 export function LanguagePacksPage() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const { t } = useLocale()
 
@@ -65,11 +128,7 @@ export function LanguagePacksPage() {
         messages_json: parseJson(messagesText),
         enabled: true,
       }
-
-      if (!payload.name) {
-        throw new Error(t('settings.languagePackNameRequired'))
-      }
-
+      if (!payload.name) throw new Error(t('settings.languagePackNameRequired'))
       await languagePacksApi.create(payload)
       setName('')
       setSuccess(t('settings.languagePackCreated'))
@@ -87,10 +146,7 @@ export function LanguagePacksPage() {
     setSuccess(null)
     try {
       const messages_json = parseJson(draftJson[pack.id] ?? '{}')
-      await languagePacksApi.patch(pack.id, {
-        enabled,
-        messages_json,
-      })
+      await languagePacksApi.patch(pack.id, { enabled, messages_json })
       setSuccess(t('settings.languagePackSaved'))
       await load()
     } catch (e: unknown) {
@@ -116,94 +172,99 @@ export function LanguagePacksPage() {
   }
 
   if (loading) {
-    return <div className={styles.center}>{t('common.loading')}</div>
+    return <Spinner label={t('common.loading')} style={{ marginTop: 64 }} />
   }
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>{t('settings.title')}</p>
-          <h1>{t('settings.languagePacks')}</h1>
-          <p className={styles.subtitle}>{t('settings.languagePacksSubtitle')}</p>
+      <div className={styles.header}>
+        <div className={styles.headerText}>
+          <Title2>{t('settings.languagePacks')}</Title2>
+          <Subtitle2>{t('settings.languagePacksSubtitle')}</Subtitle2>
         </div>
-        <div className={styles.headerActions}>
-          <button type="button" className={styles.btnSecondary} onClick={() => navigate('/settings')}>
-            {t('common.back')}
-          </button>
-        </div>
-      </header>
+        <Button appearance='subtle' onClick={() => navigate('/settings')}>
+          {t('common.back')}
+        </Button>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
-      {success && <div className={styles.success}>{success}</div>}
+      {error && (
+        <MessageBar intent='error'>
+          <MessageBarBody>{error}</MessageBarBody>
+        </MessageBar>
+      )}
+      {success && (
+        <MessageBar intent='success'>
+          <MessageBarBody>{success}</MessageBarBody>
+        </MessageBar>
+      )}
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t('settings.languagePackCreate')}</h2>
-        <div className={styles.grid}>
-          <label className={styles.field}>
-            <span>{t('settings.languagePackLocale')}</span>
-            <input value={localeCode} onChange={(e) => setLocaleCode(e.target.value)} placeholder="de / en / fr / nl" />
-          </label>
-          <label className={styles.field}>
-            <span>{t('settings.languagePackName')}</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
-          <label className={`${styles.field} ${styles.fieldFull}`}>
-            <span>{t('settings.languagePackJson')}</span>
-            <textarea rows={8} value={messagesText} onChange={(e) => setMessagesText(e.target.value)} />
-          </label>
+      <Card>
+        <CardHeader header={<Body1Strong>{t('settings.languagePackCreate')}</Body1Strong>} />
+        <div className={styles.formGrid}>
+          <Field label={t('settings.languagePackLocale')}>
+            <Input value={localeCode} onChange={(_e, d) => setLocaleCode(d.value)} placeholder='de / en / fr / nl' />
+          </Field>
+          <Field label={t('settings.languagePackName')}>
+            <Input value={name} onChange={(_e, d) => setName(d.value)} />
+          </Field>
+          <Field label={t('settings.languagePackJson')} className={styles.formGridFull}>
+            <Textarea
+              rows={8}
+              value={messagesText}
+              onChange={(_e, d) => setMessagesText(d.value)}
+              style={{ fontFamily: 'monospace', fontSize: '13px' }}
+            />
+          </Field>
         </div>
         <div className={styles.actions}>
-          <button type="button" className={styles.btnPrimary} disabled={saving} onClick={() => void handleCreate()}>
+          <Button appearance='primary' disabled={saving} onClick={() => void handleCreate()}>
             {saving ? t('common.saving') : t('settings.languagePackCreate')}
-          </button>
+          </Button>
         </div>
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t('settings.languagePackList')}</h2>
-        {sortedItems.length === 0 && <p>{t('settings.languagePackNoItems')}</p>}
-
-        <div className={styles.grid}>
-          {sortedItems.map((pack) => (
-            <article key={pack.id} className={`${styles.field} ${styles.fieldFull}`}>
-              <span>{pack.name} · {pack.locale_code.toUpperCase()} · {pack.scope}</span>
-              <label className={styles.field}>
-                <input
-                  type="checkbox"
-                  checked={pack.enabled}
-                  onChange={(e) => setItems((prev) => prev.map((item) => item.id === pack.id ? { ...item, enabled: e.target.checked } : item))}
-                />
-                <span>enabled</span>
-              </label>
-              <textarea
-                rows={8}
-                aria-label={t('settings.languagePackJson')}
-                value={draftJson[pack.id] ?? '{}'}
-                onChange={(e) => setDraftJson((prev) => ({ ...prev, [pack.id]: e.target.value }))}
+      <Card>
+        <CardHeader header={<Body1Strong>{t('settings.languagePackList')}</Body1Strong>} />
+        {sortedItems.length === 0 && <Body1>{t('settings.languagePackNoItems')}</Body1>}
+        {sortedItems.map((pack) => (
+          <div key={pack.id} style={{ borderTop: `1px solid ${tokens.colorNeutralStroke2}`, paddingTop: tokens.spacingVerticalM, marginTop: tokens.spacingVerticalM }}>
+            <div className={styles.packMeta}>
+              <Body1Strong>{pack.name}</Body1Strong>
+              <Body1>{pack.locale_code.toUpperCase()}</Body1>
+              <Body1>{pack.scope}</Body1>
+              <Checkbox
+                checked={pack.enabled}
+                label='enabled'
+                onChange={(_e, d) => setItems((prev) => prev.map((item) => item.id === pack.id ? { ...item, enabled: Boolean(d.checked) } : item))}
               />
-              <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  disabled={saving || pack.scope === 'system'}
-                  onClick={() => void handleSave(pack, items.find((entry) => entry.id === pack.id)?.enabled ?? pack.enabled)}
-                >
-                  {t('settings.languagePackSave')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  disabled={saving || pack.scope === 'system'}
-                  onClick={() => void handleDelete(pack.id)}
-                >
-                  {t('settings.languagePackDelete')}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+            </div>
+            <Field label={t('settings.languagePackJson')}>
+              <Textarea
+                rows={8}
+                value={draftJson[pack.id] ?? '{}'}
+                onChange={(_e, d) => setDraftJson((prev) => ({ ...prev, [pack.id]: d.value }))}
+                style={{ fontFamily: 'monospace', fontSize: '13px' }}
+              />
+            </Field>
+            <div className={styles.packActions}>
+              <Button
+                appearance='secondary'
+                disabled={saving || pack.scope === 'system'}
+                onClick={() => void handleSave(pack, items.find((entry) => entry.id === pack.id)?.enabled ?? pack.enabled)}
+              >
+                {t('settings.languagePackSave')}
+              </Button>
+              <Button
+                appearance='secondary'
+                disabled={saving || pack.scope === 'system'}
+                onClick={() => void handleDelete(pack.id)}
+              >
+                {t('settings.languagePackDelete')}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </Card>
     </div>
   )
 }

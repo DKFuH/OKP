@@ -1,12 +1,39 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  Body1Strong,
+  Button,
+  Card,
+  CardHeader,
+  Checkbox,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { specificationPackagesApi, type SpecificationPackage } from '../api/specificationPackages.js'
 import { useLocale } from '../hooks/useLocale.js'
-import styles from './TenantSettingsPage.module.css'
 
 const DEFAULT_SECTIONS = ['quote', 'bom', 'cutlist', 'nesting', 'layout_sheets', 'installation_notes']
 
+const useStyles = makeStyles({
+  page: { maxWidth: '800px', margin: '0 auto', display: 'grid', rowGap: tokens.spacingVerticalXXL },
+  header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
+  headerText: { display: 'grid', rowGap: tokens.spacingVerticalXS },
+  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: tokens.spacingVerticalM },
+  sectionGrid: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalM, marginTop: tokens.spacingVerticalS },
+  actions: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', marginTop: tokens.spacingVerticalM },
+})
+
 export function SpecificationPackagesPage() {
+  const styles = useStyles()
   const navigate = useNavigate()
   const { id: projectId } = useParams<{ id: string }>()
   const { locale } = useLocale()
@@ -22,34 +49,24 @@ export function SpecificationPackagesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const active = useMemo(() => items.find((entry) => entry.id === activeId) ?? null, [items, activeId])
+  const active = useMemo(() => items.find((e) => e.id === activeId) ?? null, [items, activeId])
 
-  useEffect(() => {
-    if (!projectId) return
-    void loadPackages()
-  }, [projectId])
+  useEffect(() => { if (projectId) void loadPackages() }, [projectId])
 
   async function loadPackages() {
     if (!projectId) return
     specificationPackagesApi.list(projectId)
-      .then((data) => {
-        setItems(data)
-        setActiveId(data[0]?.id ?? null)
-      })
+      .then((data) => { setItems(data); setActiveId(data[0]?.id ?? null) })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     if (!active) {
-      setName('Werkstattpaket Standard')
-      setLocaleCode(locale.startsWith('en') ? 'en' : 'de')
+      setName('Werkstattpaket Standard'); setLocaleCode(locale.startsWith('en') ? 'en' : 'de')
       setSelectedSections(['quote', 'bom', 'cutlist', 'layout_sheets'])
-      setIncludeCoverPage(true)
-      setIncludeCompanyProfile(true)
-      return
+      setIncludeCoverPage(true); setIncludeCompanyProfile(true); return
     }
-
     const config = active.config_json ?? {}
     setName(active.name)
     setLocaleCode(active.locale_code?.startsWith('en') ? 'en' : 'de')
@@ -62,205 +79,108 @@ export function SpecificationPackagesPage() {
     if (!projectId) return
     const data = await specificationPackagesApi.list(projectId)
     setItems(data)
-    if (selectId) {
-      setActiveId(selectId)
-      return
-    }
-    if (!data.some((entry) => entry.id === activeId)) {
-      setActiveId(data[0]?.id ?? null)
-    }
+    if (selectId) { setActiveId(selectId); return }
+    if (!data.some((e) => e.id === activeId)) setActiveId(data[0]?.id ?? null)
   }
 
   function toggleSection(section: string) {
-    setSelectedSections((prev) => (
-      prev.includes(section) ? prev.filter((entry) => entry !== section) : [...prev, section]
-    ))
+    setSelectedSections((prev) => prev.includes(section) ? prev.filter((e) => e !== section) : [...prev, section])
   }
 
   async function createPackage() {
     if (!projectId) return
-
-    setSaving(true)
-    setError(null)
+    setSaving(true); setError(null)
     try {
       const created = await specificationPackagesApi.create(projectId, {
-        name,
-        locale_code: localeCode,
-        config_json: {
-          sections: selectedSections,
-          include_cover_page: includeCoverPage,
-          include_company_profile: includeCompanyProfile,
-        },
+        name, locale_code: localeCode,
+        config_json: { sections: selectedSections, include_cover_page: includeCoverPage, include_company_profile: includeCompanyProfile },
       })
       await refreshList(created.id)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Paket konnte nicht erstellt werden')
-    } finally {
-      setSaving(false)
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
   async function generateActive() {
     if (!active) return
-
-    setSaving(true)
-    setError(null)
-    try {
-      await specificationPackagesApi.generate(active.id, localeCode)
-      await refreshList(active.id)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Paket konnte nicht generiert werden')
-    } finally {
-      setSaving(false)
-    }
+    setSaving(true); setError(null)
+    try { await specificationPackagesApi.generate(active.id, localeCode); await refreshList(active.id) }
+    catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
   async function downloadActive() {
     if (!active) return
-
-    setSaving(true)
-    setError(null)
-    try {
-      await specificationPackagesApi.download(active.id, localeCode)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Download fehlgeschlagen')
-    } finally {
-      setSaving(false)
-    }
+    setSaving(true); setError(null)
+    try { await specificationPackagesApi.download(active.id, localeCode) }
+    catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
   async function deleteActive() {
-    if (!active) return
-    if (!confirm('Werkstattpaket wirklich löschen?')) return
-
-    setSaving(true)
-    setError(null)
-    try {
-      await specificationPackagesApi.remove(active.id)
-      await refreshList(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Paket konnte nicht gelöscht werden')
-    } finally {
-      setSaving(false)
-    }
+    if (!active || !confirm('Werkstattpaket wirklich l\u00f6schen?')) return
+    setSaving(true); setError(null)
+    try { await specificationPackagesApi.remove(active.id); await refreshList(null) }
+    catch (err) { setError(err instanceof Error ? err.message : 'Fehler') } finally { setSaving(false) }
   }
 
-  if (loading) return <div className={styles.center}>Lade Werkstattpakete...</div>
+  if (loading) return <Spinner label='Lade Werkstattpakete\u2026' style={{ marginTop: 64 }} />
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>Projekt</p>
-          <h1>Spezifikationspakete</h1>
-          <p className={styles.subtitle}>Quote, BOM, Cutlist, Nesting und Layout-Sheets als Werkstattpaket bündeln.</p>
+      <div className={styles.header}>
+        <div className={styles.headerText}>
+          <Title2>Spezifikationspakete</Title2>
+          <Subtitle2>Quote, BOM, Cutlist, Nesting und Layout-Sheets als Werkstattpaket b\u00fcndeln.</Subtitle2>
         </div>
-        <div className={styles.headerActions}>
-          <button type="button" className={styles.btnSecondary} onClick={() => navigate(`/projects/${projectId}`)}>
-            {'\u2190 Zurück zum Editor'}
-          </button>
-        </div>
-      </header>
+        <Button appearance='subtle' onClick={() => navigate(`/projects/${projectId}`)}>
+          \u2190 Zur\u00fcck
+        </Button>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>}
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Paket konfigurieren</h2>
-
-        <div className={styles.grid}>
-          <label className={styles.field}>
-            <span>Paket wählen</span>
-            <select value={activeId ?? ''} onChange={(event) => setActiveId(event.target.value || null)}>
-              <option value="">Neu erstellen</option>
-              {items.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            <span>Name</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-
-          <label className={styles.field}>
-            <span>Sprache</span>
-            <select value={localeCode} onChange={(event) => setLocaleCode(event.target.value === 'en' ? 'en' : 'de')}>
-              <option value='de'>Deutsch</option>
-              <option value='en'>English</option>
-            </select>
-          </label>
+      <Card>
+        <CardHeader header={<Body1Strong>Paket konfigurieren</Body1Strong>} />
+        <div className={styles.formGrid}>
+          <Field label='Paket w\u00e4hlen'>
+            <Select value={activeId ?? ''} onChange={(_e, d) => setActiveId(d.value || null)}>
+              <Option value=''>Neu erstellen</Option>
+              {items.map((e) => <Option key={e.id} value={e.id}>{e.name}</Option>)}
+            </Select>
+          </Field>
+          <Field label='Name'><Input value={name} onChange={(_e, d) => setName(d.value)} /></Field>
+          <Field label='Sprache'>
+            <Select value={localeCode} onChange={(_e, d) => setLocaleCode(d.value === 'en' ? 'en' : 'de')}>
+              <Option value='de'>Deutsch</Option>
+              <Option value='en'>English</Option>
+            </Select>
+          </Field>
         </div>
 
-        <div className={styles.grid}>
+        <div className={styles.sectionGrid}>
           {DEFAULT_SECTIONS.map((section) => (
-            <label key={section} className={styles.field}>
-              <span>
-                <input
-                  type="checkbox"
-                  checked={selectedSections.includes(section)}
-                  onChange={() => toggleSection(section)}
-                />
-                {' '}
-                {section}
-              </span>
-            </label>
+            <Checkbox key={section} label={section} checked={selectedSections.includes(section)} onChange={() => toggleSection(section)} />
           ))}
-
-          <label className={styles.field}>
-            <span>
-              <input
-                type="checkbox"
-                checked={includeCoverPage}
-                onChange={(event) => setIncludeCoverPage(event.target.checked)}
-              />
-              {' '}Deckblatt
-            </span>
-          </label>
-
-          <label className={styles.field}>
-            <span>
-              <input
-                type="checkbox"
-                checked={includeCompanyProfile}
-                onChange={(event) => setIncludeCompanyProfile(event.target.checked)}
-              />
-              {' '}Firmenprofil
-            </span>
-          </label>
+          <Checkbox label='Deckblatt' checked={includeCoverPage} onChange={(_e, d) => setIncludeCoverPage(Boolean(d.checked))} />
+          <Checkbox label='Firmenprofil' checked={includeCompanyProfile} onChange={(_e, d) => setIncludeCompanyProfile(Boolean(d.checked))} />
         </div>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            disabled={saving}
-            onClick={() => void createPackage()}
-          >
-            {saving ? 'Speichern...' : 'Paket speichern'}
-          </button>
-
+          <Button appearance='primary' disabled={saving} onClick={() => void createPackage()}>
+            {saving ? <Spinner size='tiny' /> : 'Paket speichern'}
+          </Button>
           {active && (
             <>
-              <button type="button" className={styles.btnSecondary} disabled={saving} onClick={() => void generateActive()}>
-                Generieren
-              </button>
-              <button type="button" className={styles.btnSecondary} disabled={saving} onClick={() => void downloadActive()}>
-                Download
-              </button>
-              <button type="button" className={styles.btnSecondary} disabled={saving} onClick={() => void deleteActive()}>
-                Löschen
-              </button>
+              <Button appearance='secondary' disabled={saving} onClick={() => void generateActive()}>Generieren</Button>
+              <Button appearance='secondary' disabled={saving} onClick={() => void downloadActive()}>Download</Button>
+              <Button appearance='secondary' disabled={saving} onClick={() => void deleteActive()}>L\u00f6schen</Button>
             </>
           )}
         </div>
 
         {active?.generated_at && (
-          <div className={styles.success}>
-            Zuletzt generiert: {new Date(active.generated_at).toLocaleString('de-DE')}
-          </div>
+          <MessageBar intent='success' style={{ marginTop: tokens.spacingVerticalS }}>
+            <MessageBarBody>Zuletzt generiert: {new Date(active.generated_at).toLocaleString('de-DE')}</MessageBarBody>
+          </MessageBar>
         )}
-      </section>
+      </Card>
     </div>
   )
 }

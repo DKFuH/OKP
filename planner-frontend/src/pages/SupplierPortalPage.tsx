@@ -1,30 +1,50 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Badge,
+  Body1,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
+import {
   supplierPortalApi,
   type SupplierErpConnector,
   type SupplierPortalOrder,
   type SupplierPortalOrderStatus,
 } from '../api/supplierPortal.js'
-import styles from './SupplierPortalPage.module.css'
 
 const STATUS_LABELS: Record<SupplierPortalOrderStatus, string> = {
-  draft: 'Entwurf',
-  sent: 'Gesendet',
-  confirmed: 'Bestätigt',
-  partially_delivered: 'Teilgeliefert',
-  delivered: 'Geliefert',
-  cancelled: 'Storniert',
+  draft: 'Entwurf', sent: 'Gesendet', confirmed: 'Best\u00e4tigt',
+  partially_delivered: 'Teilgeliefert', delivered: 'Geliefert', cancelled: 'Storniert',
 }
-
 const OPEN_STATUSES: SupplierPortalOrderStatus[] = ['draft', 'sent', 'confirmed']
-
 type StatusFilter = 'all' | SupplierPortalOrderStatus
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+const useStyles = makeStyles({
+  page: { display: 'grid', rowGap: tokens.spacingVerticalXXL },
+  toolbar: { display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap', alignItems: 'flex-end' },
+  tableWrap: { overflowX: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: { textAlign: 'left', padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, backgroundColor: tokens.colorNeutralBackground3, borderBottom: `1px solid ${tokens.colorNeutralStroke2}`, whiteSpace: 'nowrap' },
+  td: { padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`, borderBottom: `1px solid ${tokens.colorNeutralStroke2}` },
+})
+
 export function SupplierPortalPage() {
+  const styles = useStyles()
   const [orders, setOrders] = useState<SupplierPortalOrder[]>([])
   const [connectors, setConnectors] = useState<SupplierErpConnector[]>([])
   const [selectedConnectorByOrder, setSelectedConnectorByOrder] = useState<Record<string, string>>({})
@@ -35,127 +55,102 @@ export function SupplierPortalPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-
+    setLoading(true); setError(null)
     Promise.all([supplierPortalApi.listOpenOrders(), supplierPortalApi.listConnectors()])
       .then(([orderData, connectorData]) => {
         setOrders(orderData)
-        setConnectors(connectorData.filter((connector) => connector.enabled))
+        setConnectors(connectorData.filter((c) => c.enabled))
       })
-      .catch((cause: Error) => {
-        setError(cause.message)
-      })
-      .finally(() => {
-        setLoading(false)
-      })
+      .catch((cause: Error) => setError(cause.message))
+      .finally(() => setLoading(false))
   }, [])
 
-  const filteredOrders = useMemo(() => {
-    if (statusFilter === 'all') {
-      return orders
-    }
-    return orders.filter((order) => order.status === statusFilter)
-  }, [orders, statusFilter])
+  const filteredOrders = useMemo(() => (
+    statusFilter === 'all' ? orders : orders.filter((o) => o.status === statusFilter)
+  ), [orders, statusFilter])
 
   async function handlePushToErp(order: SupplierPortalOrder) {
     const connectorId = selectedConnectorByOrder[order.id]
-    if (!connectorId) {
-      setError('Bitte zuerst einen ERP-Konnektor auswählen.')
-      return
-    }
-
-    setPushingOrderId(order.id)
-    setError(null)
-    setMessage(null)
-
+    if (!connectorId) { setError('Bitte zuerst einen ERP-Konnektor ausw\u00e4hlen.'); return }
+    setPushingOrderId(order.id); setError(null); setMessage(null)
     try {
       const result = await supplierPortalApi.pushToErp(order.id, connectorId)
-      if (!result.success) {
-        throw new Error(result.error ?? 'ERP-Übertragung fehlgeschlagen')
-      }
-      setMessage(`Bestellung ${order.id} wurde ans ERP übertragen${result.erp_order_ref ? ` (Ref: ${result.erp_order_ref})` : ''}.`)
+      if (!result.success) throw new Error(result.error ?? 'ERP-\u00dcbertragung fehlgeschlagen')
+      setMessage(`Bestellung ${order.id} wurde ans ERP \u00fcbertragen${result.erp_order_ref ? ` (Ref: ${result.erp_order_ref})` : ''}.`)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'ERP-Übertragung fehlgeschlagen')
-    } finally {
-      setPushingOrderId(null)
-    }
+      setError(cause instanceof Error ? cause.message : 'ERP-\u00dcbertragung fehlgeschlagen')
+    } finally { setPushingOrderId(null) }
   }
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h1>Lieferantenportal</h1>
-      </div>
+      <Title2>Lieferantenportal</Title2>
 
-      <div className={styles.filterRow}>
-        <label htmlFor="supplier-status-filter">Statusfilter: </label>
-        <select
-          id="supplier-status-filter"
+      <div className={styles.toolbar}>
+        <Select
+          aria-label='Statusfilter'
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+          onChange={(_e, d) => setStatusFilter(d.value as StatusFilter)}
         >
-          <option value="all">Alle offenen</option>
-          {OPEN_STATUSES.map((status) => (
-            <option key={status} value={status}>{STATUS_LABELS[status]}</option>
-          ))}
-        </select>
+          <Option value='all'>Alle offenen</Option>
+          {OPEN_STATUSES.map((status) => <Option key={status} value={status}>{STATUS_LABELS[status]}</Option>)}
+        </Select>
       </div>
 
-      {loading && <p>Lade …</p>}
-      {error && <p>{error}</p>}
-      {message && <p>{message}</p>}
-
-      {!loading && filteredOrders.length === 0 && <p>Keine offenen Bestellungen gefunden.</p>}
+      {loading && <Spinner label='Lade\u2026' />}
+      {error && <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>}
+      {message && <MessageBar intent='success'><MessageBarBody>{message}</MessageBarBody></MessageBar>}
+      {!loading && filteredOrders.length === 0 && <Body1>Keine offenen Bestellungen gefunden.</Body1>}
 
       {!loading && filteredOrders.length > 0 && (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th align="left">Lieferant</th>
-              <th align="left">Referenz</th>
-              <th align="left">Positionen</th>
-              <th align="left">Status</th>
-              <th align="left">Erstellt</th>
-              <th align="left">ERP-Konnektor</th>
-              <th align="left">Aktion</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredOrders.map((order) => (
-              <tr key={order.id}>
-                <td>{order.supplier_name}</td>
-                <td>{order.supplier_ref ?? '–'}</td>
-                <td>{order.items.length}</td>
-                <td>{STATUS_LABELS[order.status]}</td>
-                <td>{formatDate(order.created_at)}</td>
-                <td>
-                  <select
-                    aria-label={`ERP-Konnektor für Bestellung ${order.id}`}
-                    value={selectedConnectorByOrder[order.id] ?? ''}
-                    onChange={(event) => {
-                      setSelectedConnectorByOrder((prev) => ({ ...prev, [order.id]: event.target.value }))
-                    }}
-                  >
-                    <option value="">Konnektor wählen …</option>
-                    {connectors.map((connector) => (
-                      <option key={connector.id} value={connector.id}>{connector.name}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    disabled={pushingOrderId === order.id || !selectedConnectorByOrder[order.id]}
-                    onClick={() => void handlePushToErp(order)}
-                  >
-                    ERP-Push
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Card>
+          <CardHeader
+            header={<Body1Strong>Bestellungen</Body1Strong>}
+            action={<Badge appearance='tint'>{filteredOrders.length}</Badge>}
+          />
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  {['Lieferant', 'Referenz', 'Positionen', 'Status', 'Erstellt', 'ERP-Konnektor', 'Aktion'].map((h) => (
+                    <th key={h} className={styles.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td className={styles.td}><Body1>{order.supplier_name}</Body1></td>
+                    <td className={styles.td}><Caption1>{order.supplier_ref ?? '\u2013'}</Caption1></td>
+                    <td className={styles.td}><Caption1>{order.items.length}</Caption1></td>
+                    <td className={styles.td}><Badge appearance='outline'>{STATUS_LABELS[order.status]}</Badge></td>
+                    <td className={styles.td}><Caption1>{formatDate(order.created_at)}</Caption1></td>
+                    <td className={styles.td}>
+                      <Select
+                        aria-label={`ERP-Konnektor f\u00fcr ${order.id}`}
+                        value={selectedConnectorByOrder[order.id] ?? ''}
+                        onChange={(_e, d) => setSelectedConnectorByOrder((prev) => ({ ...prev, [order.id]: d.value }))}
+                      >
+                        <Option value=''>Konnektor w\u00e4hlen \u2026</Option>
+                        {connectors.map((c) => <Option key={c.id} value={c.id}>{c.name}</Option>)}
+                      </Select>
+                    </td>
+                    <td className={styles.td}>
+                      <Button
+                        appearance='primary'
+                        size='small'
+                        disabled={pushingOrderId === order.id || !selectedConnectorByOrder[order.id]}
+                        onClick={() => void handlePushToErp(order)}
+                      >
+                        {pushingOrderId === order.id ? <Spinner size='tiny' /> : 'ERP-Push'}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   )

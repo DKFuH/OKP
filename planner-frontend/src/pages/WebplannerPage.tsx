@@ -1,40 +1,130 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  Badge,
+  Body1,
+  Button,
+  Card,
+  CardHeader,
+  Checkbox,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { leadsApi, type LeadContact, type LeadRoom, type SimpleCabinet } from '../api/leads.js'
-import styles from './WebplannerPage.module.css'
 
 type Step = 'room' | 'cabinets' | 'contact' | 'done'
 
 const CABINET_TYPES = [
   { value: 'base', label: 'Unterschrank', defaultH: 720, defaultD: 600 },
-  { value: 'wall', label: 'Hängeschrank', defaultH: 600, defaultD: 350 },
+  { value: 'wall', label: 'Haengeschrank', defaultH: 600, defaultD: 350 },
   { value: 'tall', label: 'Hochschrank', defaultH: 2100, defaultD: 600 },
-  { value: 'appliance', label: 'Gerät', defaultH: 850, defaultD: 600 },
+  { value: 'appliance', label: 'Geraet', defaultH: 850, defaultD: 600 },
 ] as const
+
+const useStyles = makeStyles({
+  page: {
+    maxWidth: '640px',
+    margin: '0 auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  stepRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    justifyContent: 'center',
+  },
+  stepDot: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    background: tokens.colorNeutralBackground3,
+    color: tokens.colorNeutralForeground3,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  stepActive: {
+    background: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundInverted,
+  },
+  stepDone: {
+    background: tokens.colorPaletteGreenBackground2,
+    color: tokens.colorNeutralForegroundInverted,
+  },
+  addRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'flex-end',
+  },
+  cabList: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  cabItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderRadius: tokens.borderRadiusMedium,
+    background: tokens.colorNeutralBackground2,
+    fontSize: tokens.fontSizeBase300,
+  },
+  navRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: tokens.spacingVerticalS,
+  },
+  consentBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    margin: `${tokens.spacingVerticalS} 0`,
+  },
+  leadId: {
+    fontFamily: 'monospace',
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
+  doneCard: {
+    textAlign: 'center',
+  },
+})
 
 export function WebplannerPage() {
   const navigate = useNavigate()
+  const styles = useStyles()
   const [step, setStep] = useState<Step>('room')
   const [tenantId, setTenantId] = useState('')
 
-  // Step 1: Room
   const [roomWidth, setRoomWidth] = useState('4000')
   const [roomDepth, setRoomDepth] = useState('3000')
   const [ceilingHeight, setCeilingHeight] = useState('2500')
 
-  // Step 2: Cabinets
   const [cabinets, setCabinets] = useState<SimpleCabinet[]>([])
   const [cabType, setCabType] = useState<SimpleCabinet['type']>('base')
   const [cabWidth, setCabWidth] = useState('600')
 
-  // Step 3: Contact
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [consentMarketing, setConsentMarketing] = useState(false)
   const [consentData, setConsentData] = useState(false)
 
-  // Result
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [leadId, setLeadId] = useState<string | null>(null)
@@ -59,15 +149,9 @@ export function WebplannerPage() {
   }
 
   async function handleSubmit() {
-    if (!consentData) {
-      setError('Einwilligung zur Datenverarbeitung ist erforderlich.')
-      return
-    }
+    if (!consentData) { setError('Einwilligung zur Datenverarbeitung ist erforderlich.'); return }
     const tid = tenantId.trim()
-    if (!tid) {
-      setError('Tenant-ID fehlt. Bitte in der Konfiguration eintragen.')
-      return
-    }
+    if (!tid) { setError('Tenant-ID fehlt.'); return }
 
     const room: LeadRoom = {
       width_mm: parseInt(roomWidth, 10) || 4000,
@@ -76,9 +160,7 @@ export function WebplannerPage() {
       shape: 'rectangle',
     }
     const contact: LeadContact = {
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim() || undefined,
+      name: name.trim(), email: email.trim(), phone: phone.trim() || undefined,
     }
 
     setSubmitting(true)
@@ -86,11 +168,7 @@ export function WebplannerPage() {
     try {
       const lead = await leadsApi.create(tid, {
         contact,
-        consent: {
-          marketing: consentMarketing,
-          data_processing: true,
-          timestamp: new Date().toISOString(),
-        },
+        consent: { marketing: consentMarketing, data_processing: true, timestamp: new Date().toISOString() },
         room,
         cabinets,
       })
@@ -103,161 +181,131 @@ export function WebplannerPage() {
     }
   }
 
+  const stepLabels = ['Raum', 'Schraenke', 'Kontakt']
+  const stepKeys: Step[] = ['room', 'cabinets', 'contact']
+
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Küchen-Webplaner</h1>
-      </header>
+      <Title2>Kuechen-Webplaner</Title2>
 
-      <div className={styles.tenantRow}>
-        <label className={styles.tenantLabel}>
-          Tenant-ID (Dev):
-          <input
-            type="text"
-            className={styles.tenantInput}
-            placeholder="UUID"
-            value={tenantId}
-            onChange={e => setTenantId(e.target.value)}
-          />
-        </label>
+      <Field label='Tenant-ID (Dev)'>
+        <Input placeholder='UUID' value={tenantId} onChange={(_e, d) => setTenantId(d.value)} />
+      </Field>
+
+      <div className={styles.stepRow}>
+        {stepLabels.map((label, i) => {
+          const key = stepKeys[i]
+          const stepIdx = stepKeys.indexOf(step)
+          const isActive = step === key
+          const isDone = stepIdx > i
+          return (
+            <div key={key} className={`${styles.stepDot} ${isActive ? styles.stepActive : ''} ${isDone ? styles.stepDone : ''}`}>
+              {i + 1}
+            </div>
+          )
+        })}
       </div>
 
-      <div className={styles.steps}>
-        {(['room', 'cabinets', 'contact'] as Step[]).map((s, i) => (
-          <div
-            key={s}
-            className={`${styles.stepDot} ${step === s ? styles.stepActive : ''} ${['cabinets', 'contact', 'done'].includes(step) && i === 0 ? styles.stepDone : ''} ${['contact', 'done'].includes(step) && i === 1 ? styles.stepDone : ''}`}
-          >
-            {i + 1}
-          </div>
-        ))}
-      </div>
-
-      {error && <p className={styles.error}>{error}</p>}
-
-      {/* ── Step 1: Raum ── */}
-      {step === 'room' && (
-        <div className={styles.card}>
-          <h2 className={styles.cardTitle}>1. Raummaße</h2>
-
-          <div className={styles.field}>
-            <label>Breite (mm)</label>
-            <input type="number" className={styles.input} min={500} value={roomWidth} onChange={e => setRoomWidth(e.target.value)} />
-          </div>
-          <div className={styles.field}>
-            <label>Tiefe (mm)</label>
-            <input type="number" className={styles.input} min={500} value={roomDepth} onChange={e => setRoomDepth(e.target.value)} />
-          </div>
-          <div className={styles.field}>
-            <label>Raumhöhe (mm)</label>
-            <input type="number" className={styles.input} min={2000} value={ceilingHeight} onChange={e => setCeilingHeight(e.target.value)} />
-          </div>
-
-          <button type="button" className={styles.nextBtn} onClick={() => setStep('cabinets')}>
-            Weiter →
-          </button>
-        </div>
+      {error && (
+        <MessageBar intent='error'>
+          <MessageBarBody>{error}</MessageBarBody>
+        </MessageBar>
       )}
 
-      {/* ── Step 2: Schränke ── */}
+      {step === 'room' && (
+        <Card>
+          <CardHeader header={<Body1><b>1. Raummasze</b></Body1>} />
+          <Field label='Breite (mm)'>
+            <Input type='number' min='500' value={roomWidth} onChange={(_e, d) => setRoomWidth(d.value)} />
+          </Field>
+          <Field label='Tiefe (mm)'>
+            <Input type='number' min='500' value={roomDepth} onChange={(_e, d) => setRoomDepth(d.value)} />
+          </Field>
+          <Field label='Raumhoehe (mm)'>
+            <Input type='number' min='2000' value={ceilingHeight} onChange={(_e, d) => setCeilingHeight(d.value)} />
+          </Field>
+          <Button appearance='primary' onClick={() => setStep('cabinets')}>Weiter</Button>
+        </Card>
+      )}
+
       {step === 'cabinets' && (
-        <div className={styles.card}>
-          <h2 className={styles.cardTitle}>2. Schränke hinzufügen</h2>
-
+        <Card>
+          <CardHeader header={<Body1><b>2. Schraenke hinzufuegen</b></Body1>} />
           <div className={styles.addRow}>
-            <select
-              className={styles.select}
-              value={cabType}
-              onChange={e => setCabType(e.target.value as SimpleCabinet['type'])}
-            >
-              {CABINET_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-            <input
-              type="number"
-              className={styles.input}
-              style={{ width: 100 }}
-              placeholder="Breite mm"
-              value={cabWidth}
-              onChange={e => setCabWidth(e.target.value)}
-            />
-            <button type="button" className={styles.addBtn} onClick={addCabinet}>+ Hinzufügen</button>
+            <Field label='Typ'>
+              <Select value={cabType} onChange={(_e, d) => setCabType(d.value as SimpleCabinet['type'])}>
+                {CABINET_TYPES.map(t => <Option key={t.value} value={t.value}>{t.label}</Option>)}
+              </Select>
+            </Field>
+            <Field label='Breite mm'>
+              <Input type='number' style={{ width: 100 }} value={cabWidth} onChange={(_e, d) => setCabWidth(d.value)} />
+            </Field>
+            <Button appearance='primary' onClick={addCabinet}>+ Hinzufuegen</Button>
           </div>
-
           {cabinets.length === 0 ? (
-            <p className={styles.empty}>Noch keine Schränke — optional.</p>
+            <Body1 style={{ color: tokens.colorNeutralForeground3 }}>Noch keine Schraenke — optional.</Body1>
           ) : (
             <ul className={styles.cabList}>
               {cabinets.map(c => (
                 <li key={c.id} className={styles.cabItem}>
                   <span>{c.label} · {c.width_mm} mm</span>
-                  <button type="button" className={styles.removeBtn} onClick={() => removeCabinet(c.id)}>×</button>
+                  <Button appearance='subtle' size='small' onClick={() => removeCabinet(c.id)}>×</Button>
                 </li>
               ))}
             </ul>
           )}
-
           <div className={styles.navRow}>
-            <button type="button" className={styles.backStepBtn} onClick={() => setStep('room')}>← Zurück</button>
-            <button type="button" className={styles.nextBtn} onClick={() => setStep('contact')}>Weiter →</button>
+            <Button appearance='subtle' onClick={() => setStep('room')}>← Zurueck</Button>
+            <Button appearance='primary' onClick={() => setStep('contact')}>Weiter</Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* ── Step 3: Kontakt ── */}
       {step === 'contact' && (
-        <div className={styles.card}>
-          <h2 className={styles.cardTitle}>3. Kontaktdaten</h2>
-
-          <div className={styles.field}>
-            <label>Name *</label>
-            <input type="text" className={styles.input} value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div className={styles.field}>
-            <label>E-Mail *</label>
-            <input type="email" className={styles.input} value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className={styles.field}>
-            <label>Telefon</label>
-            <input type="tel" className={styles.input} value={phone} onChange={e => setPhone(e.target.value)} />
-          </div>
-
+        <Card>
+          <CardHeader header={<Body1><b>3. Kontaktdaten</b></Body1>} />
+          <Field label='Name *' required>
+            <Input value={name} onChange={(_e, d) => setName(d.value)} />
+          </Field>
+          <Field label='E-Mail *' required>
+            <Input type='email' value={email} onChange={(_e, d) => setEmail(d.value)} />
+          </Field>
+          <Field label='Telefon'>
+            <Input type='tel' value={phone} onChange={(_e, d) => setPhone(d.value)} />
+          </Field>
           <div className={styles.consentBlock}>
-            <label className={styles.checkLabel}>
-              <input type="checkbox" checked={consentData} onChange={e => setConsentData(e.target.checked)} />
-              Ich stimme der Verarbeitung meiner Daten zu. *
-            </label>
-            <label className={styles.checkLabel}>
-              <input type="checkbox" checked={consentMarketing} onChange={e => setConsentMarketing(e.target.checked)} />
-              Ich möchte Angebote und Informationen erhalten (optional).
-            </label>
+            <Checkbox
+              checked={consentData}
+              onChange={(_e, d) => setConsentData(Boolean(d.checked))}
+              label='Ich stimme der Verarbeitung meiner Daten zu. *'
+            />
+            <Checkbox
+              checked={consentMarketing}
+              onChange={(_e, d) => setConsentMarketing(Boolean(d.checked))}
+              label='Ich moechte Angebote und Informationen erhalten (optional).'
+            />
           </div>
-
           <div className={styles.navRow}>
-            <button type="button" className={styles.backStepBtn} onClick={() => setStep('cabinets')}>← Zurück</button>
-            <button
-              type="button"
-              className={styles.submitBtn}
-              onClick={handleSubmit}
+            <Button appearance='subtle' onClick={() => setStep('cabinets')}>← Zurueck</Button>
+            <Button
+              appearance='primary'
+              onClick={() => void handleSubmit()}
               disabled={submitting || !name.trim() || !email.trim() || !consentData}
+              icon={submitting ? <Spinner size='tiny' /> : undefined}
             >
-              {submitting ? 'Sende…' : 'Anfrage absenden'}
-            </button>
+              {submitting ? 'Sende...' : 'Anfrage absenden'}
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* ── Done ── */}
       {step === 'done' && (
-        <div className={`${styles.card} ${styles.doneCard}`}>
-          <h2 className={styles.cardTitle}>Vielen Dank!</h2>
-          <p>Ihre Planung wurde übermittelt. Unser Team meldet sich bei Ihnen.</p>
-          {leadId && <p className={styles.leadId}>Lead-ID: {leadId}</p>}
-          <button type="button" className={styles.nextBtn} onClick={() => navigate('/')}>
-            Zur Startseite
-          </button>
-        </div>
+        <Card className={styles.doneCard}>
+          <CardHeader header={<Body1><b>Vielen Dank!</b></Body1>} />
+          <Body1>Ihre Planung wurde uebermittelt. Unser Team meldet sich bei Ihnen.</Body1>
+          {leadId && <span className={styles.leadId}>Lead-ID: {leadId}</span>}
+          <Button appearance='primary' onClick={() => navigate('/')}>Zur Startseite</Button>
+        </Card>
       )}
     </div>
   )

@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react'
-import styles from './McpInfoPage.module.css'
+import {
+  Badge,
+  Body1,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
+  Title2,
+  Subtitle2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 
 interface McpCapabilities {
   tools: boolean
@@ -17,7 +32,67 @@ interface McpInfo {
 
 const MCP_ENDPOINT = '/api/v1/mcp'
 
+const useStyles = makeStyles({
+  page: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    display: 'grid',
+    rowGap: tokens.spacingVerticalXXL,
+  },
+  header: {
+    display: 'grid',
+    rowGap: tokens.spacingVerticalS,
+  },
+  endpointRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    flexWrap: 'wrap',
+  },
+  endpointUrl: {
+    flex: '1 1 auto',
+    wordBreak: 'break-all',
+    fontFamily: 'monospace',
+  },
+  metaGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'auto 1fr',
+    columnGap: tokens.spacingHorizontalL,
+    rowGap: tokens.spacingVerticalS,
+    alignItems: 'baseline',
+  },
+  toolColumns: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: tokens.spacingVerticalM,
+  },
+  toolList: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  steps: {
+    paddingInlineStart: tokens.spacingHorizontalXL,
+    display: 'grid',
+    rowGap: tokens.spacingVerticalS,
+  },
+  codeSnippet: {
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    fontFamily: 'monospace',
+    fontSize: '13px',
+  },
+})
+
 export function McpInfoPage() {
+  const styles = useStyles()
   const [info, setInfo] = useState<McpInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -47,102 +122,94 @@ export function McpInfoPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.kicker}>Phase 10 · Sprint 62</p>
-          <h1 className={styles.title}>MCP: Claude als Planungsassistent</h1>
-          <p className={styles.subtitle}>
-            Verbinde Claude oder andere KI-Systeme als vollwertigen Planungsassistenten.
-          </p>
-        </div>
-      </header>
+      <div className={styles.header}>
+        <Title2>MCP: Claude als Planungsassistent</Title2>
+        <Subtitle2>Verbinde Claude oder andere KI-Systeme als vollwertigen Planungsassistenten.</Subtitle2>
+      </div>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>MCP-Endpunkt</h2>
+      <Card>
+        <CardHeader header={<Body1Strong>MCP-Endpunkt</Body1Strong>} />
         <div className={styles.endpointRow}>
           <span className={styles.endpointUrl}>
-            {window.location.origin}
-            {MCP_ENDPOINT}
+            {window.location.origin}{MCP_ENDPOINT}
           </span>
-          <button className={styles.copyBtn} onClick={handleCopy}>
+          <Button appearance='primary' size='small' onClick={handleCopy}>
             {copied ? 'Kopiert' : 'URL kopieren'}
-          </button>
+          </Button>
         </div>
-      </section>
+      </Card>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Server-Info</h2>
-        {loading && <p className={styles.loading}>Lade MCP-Info…</p>}
-        {error && <p className={styles.error}>{error}</p>}
+      <Card>
+        <CardHeader header={<Body1Strong>Server-Info</Body1Strong>} />
+        {loading && <Spinner label='Lade MCP-Info\u2026' size='small' />}
+        {error && (
+          <MessageBar intent='error'>
+            <MessageBarBody>{error}</MessageBarBody>
+          </MessageBar>
+        )}
         {info && (
-          <div className={styles.meta}>
-            <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Name</span>
-              <span className={styles.metaValue}>{info.name}</span>
-            </div>
-            <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Version</span>
-              <span className={styles.metaValue}>{info.version}</span>
-            </div>
-            <div className={styles.metaItem}>
-              <span className={styles.metaLabel}>Protokoll</span>
-              <span className={styles.metaValue}>{info.protocol}</span>
-            </div>
+          <div className={styles.metaGrid}>
+            <Caption1>Name</Caption1>
+            <Body1>{info.name}</Body1>
+            <Caption1>Version</Caption1>
+            <Body1>{info.version}</Body1>
+            <Caption1>Protokoll</Caption1>
+            <Body1>{info.protocol}</Body1>
           </div>
         )}
-      </section>
+      </Card>
 
       {info && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Verfügbare Tools</h2>
+        <Card>
+          <CardHeader header={<Body1Strong>Verf\u00fcgbare Tools</Body1Strong>} />
           <div className={styles.toolColumns}>
             {info.capabilities.read_tools && (
-              <div className={styles.toolGroup}>
-                <p className={styles.toolGroupTitle}>Read-Tools ({info.capabilities.read_tools.length})</p>
-                <ul className={styles.toolList}>
+              <div>
+                <Body1Strong>Read-Tools</Body1Strong>
+                {' '}
+                <Badge appearance='tint'>{info.capabilities.read_tools.length}</Badge>
+                <ul className={styles.toolList} style={{ marginTop: '8px' }}>
                   {info.capabilities.read_tools.map((tool) => (
                     <li key={tool}>
-                      <span className={styles.toolChip}>{tool}</span>
+                      <Caption1 className={styles.codeSnippet}>{tool}</Caption1>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
             {info.capabilities.write_tools && (
-              <div className={styles.toolGroup}>
-                <p className={styles.toolGroupTitle}>Write-Tools ({info.capabilities.write_tools.length})</p>
-                <ul className={styles.toolList}>
+              <div>
+                <Body1Strong>Write-Tools</Body1Strong>
+                {' '}
+                <Badge appearance='tint'>{info.capabilities.write_tools.length}</Badge>
+                <ul className={styles.toolList} style={{ marginTop: '8px' }}>
                   {info.capabilities.write_tools.map((tool) => (
                     <li key={tool}>
-                      <span className={styles.toolChip}>{tool}</span>
+                      <Caption1 className={styles.codeSnippet}>{tool}</Caption1>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
           </div>
-        </section>
+        </Card>
       )}
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Schnellstart</h2>
+      <Card>
+        <CardHeader header={<Body1Strong>Schnellstart</Body1Strong>} />
         <ol className={styles.steps}>
-          <li>Öffne Claude Desktop und gehe zu Einstellungen → MCP-Server.</li>
-          <li>Lege einen neuen HTTP/SSE-Server an.</li>
+          <li><Body1>\u00d6ffne Claude Desktop und gehe zu Einstellungen \u2192 MCP-Server.</Body1></li>
+          <li><Body1>Lege einen neuen HTTP/SSE-Server an.</Body1></li>
           <li>
-            Trage als URL ein:
-            <code>
-              {window.location.origin}
-              {MCP_ENDPOINT}
-            </code>
+            <Body1>Trage als URL ein: </Body1>
+            <code className={styles.codeSnippet}>{window.location.origin}{MCP_ENDPOINT}</code>
           </li>
-          <li>Verbinde den Server, damit Claude die verfügbaren Tools laden kann.</li>
+          <li><Body1>Verbinde den Server, damit Claude die verf\u00fcgbaren Tools laden kann.</Body1></li>
           <li>
-            Beispiel:
-            <em> Zeig mir die Räume aus Projekt X und schlage ein Layout vor.</em>
+            <Body1>Beispiel: <em>Zeig mir die R\u00e4ume aus Projekt X und schlage ein Layout vor.</em></Body1>
           </li>
         </ol>
-      </section>
+      </Card>
     </div>
   )
 }

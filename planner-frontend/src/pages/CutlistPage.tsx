@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  Body1,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { cutlistApi } from '../api/projectFeatures.js'
-import styles from './CutlistPage.module.css'
 
 type CutlistPart = {
   label: string
@@ -35,12 +50,62 @@ function grainLabel(value: CutlistPart['grain_direction']) {
   return 'kein'
 }
 
+const useStyles = makeStyles({
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  topRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  filterRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+  },
+  tableWrap: {
+    overflowX: 'auto',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: tokens.fontSizeBase300,
+  },
+  th: {
+    textAlign: 'left',
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
+    fontWeight: tokens.fontWeightSemibold,
+    whiteSpace: 'nowrap',
+  },
+  td: {
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  activeRow: {
+    background: tokens.colorBrandBackground2,
+  },
+  summaryBlock: {
+    padding: tokens.spacingVerticalS,
+    background: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+})
+
 export function CutlistPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const styles = useStyles()
   const [items, setItems] = useState<CutlistRecord[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [roomFilter, setRoomFilter] = useState('all')
   const [materialFilter, setMaterialFilter] = useState('all')
@@ -60,25 +125,19 @@ export function CutlistPage() {
     }
   }
 
-  useEffect(() => {
-    void load()
-  }, [projectId])
+  useEffect(() => { void load() }, [projectId])
 
   const active = useMemo(() => items.find((entry) => entry.id === activeId) ?? null, [items, activeId])
 
   const roomOptions = useMemo(() => {
     const set = new Set<string>()
-    for (const part of active?.parts ?? []) {
-      if (part.room_name) set.add(part.room_name)
-    }
+    for (const part of active?.parts ?? []) { if (part.room_name) set.add(part.room_name) }
     return [...set].sort((a, b) => a.localeCompare(b))
   }, [active])
 
   const materialOptions = useMemo(() => {
     const set = new Set<string>()
-    for (const part of active?.parts ?? []) {
-      set.add(part.material_code)
-    }
+    for (const part of active?.parts ?? []) { set.add(part.material_code) }
     return [...set].sort((a, b) => a.localeCompare(b))
   }, [active])
 
@@ -93,7 +152,7 @@ export function CutlistPage() {
 
   async function onGenerate() {
     if (!projectId) return
-    setLoading(true)
+    setGenerating(true)
     setError(null)
     try {
       const created = await cutlistApi.generate(projectId) as CutlistRecord
@@ -104,7 +163,7 @@ export function CutlistPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Generieren')
     } finally {
-      setLoading(false)
+      setGenerating(false)
     }
   }
 
@@ -115,9 +174,7 @@ export function CutlistPage() {
       await cutlistApi.remove(id)
       setItems((prev) => {
         const next = prev.filter((entry) => entry.id !== id)
-        if (activeId === id) {
-          setActiveId(next[0]?.id ?? null)
-        }
+        if (activeId === id) { setActiveId(next[0]?.id ?? null) }
         return next
       })
     } catch (e) {
@@ -126,137 +183,149 @@ export function CutlistPage() {
   }
 
   if (!projectId) {
-    return <div className={styles.page}>Projekt-ID fehlt.</div>
+    return <div>Projekt-ID fehlt.</div>
   }
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <div className={styles.topRow}>
         <div>
-          <h1>Zuschnittliste</h1>
-          <p className={styles.subtitle}>Projekt {projectId.slice(0, 8)}...</p>
+          <Title2>Zuschnittliste</Title2>
+          <Caption1>Projekt {projectId.slice(0, 8)}...</Caption1>
         </div>
-        <div className={styles.actions}>
-          <button type="button" className={styles.btnSecondary} onClick={() => navigate(`/projects/${projectId}`)}>
-            Zurueck
-          </button>
-          <button type="button" className={styles.btnPrimary} onClick={() => void onGenerate()} disabled={loading}>
+        <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+          <Button appearance='subtle' onClick={() => navigate(`/projects/${projectId}`)}>Zurueck</Button>
+          <Button
+            appearance='primary'
+            onClick={() => void onGenerate()}
+            disabled={generating}
+            icon={generating ? <Spinner size='tiny' /> : undefined}
+          >
             Zuschnittliste generieren
-          </button>
+          </Button>
         </div>
-      </header>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>}
 
-      <section className={styles.section}>
-        <h2>Gespeicherte Listen</h2>
+      <Card>
+        <CardHeader header={<Body1Strong>Gespeicherte Listen</Body1Strong>} />
         {loading && items.length === 0 ? (
-          <p>Lade...</p>
+          <Spinner label='Lade...' />
         ) : items.length === 0 ? (
-          <p>Noch keine Zuschnittliste vorhanden.</p>
+          <Body1>Noch keine Zuschnittliste vorhanden.</Body1>
         ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Datum</th>
-                <th>Raum</th>
-                <th>Teile</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((entry) => (
-                <tr key={entry.id} className={activeId === entry.id ? styles.activeRow : ''}>
-                  <td>
-                    <button className={styles.linkBtn} onClick={() => setActiveId(entry.id)}>
-                      {new Date(entry.generated_at).toLocaleString('de-DE')}
-                    </button>
-                  </td>
-                  <td>{entry.room_id ? 'Raum-Filter' : 'Projektweit'}</td>
-                  <td>{entry.summary?.total_parts ?? 0}</td>
-                  <td>
-                    <button type="button" className={styles.btnDanger} onClick={() => void onDelete(entry.id)}>
-                      Loeschen
-                    </button>
-                  </td>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>Datum</th>
+                  <th className={styles.th}>Raum</th>
+                  <th className={styles.th}>Teile</th>
+                  <th className={styles.th}></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((entry) => (
+                  <tr key={entry.id} className={activeId === entry.id ? styles.activeRow : ''}>
+                    <td className={styles.td}>
+                      <Button appearance='transparent' size='small' onClick={() => setActiveId(entry.id)}>
+                        {new Date(entry.generated_at).toLocaleString('de-DE')}
+                      </Button>
+                    </td>
+                    <td className={styles.td}>{entry.room_id ? 'Raum-Filter' : 'Projektweit'}</td>
+                    <td className={styles.td}>{entry.summary?.total_parts ?? 0}</td>
+                    <td className={styles.td}>
+                      <Button appearance='subtle' size='small' onClick={() => void onDelete(entry.id)}>Loeschen</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </section>
+      </Card>
 
       {active && (
-        <section className={styles.section}>
-          <div className={styles.filters}>
-            <label>
-              Raum
-              <select value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)}>
-                <option value="all">Alle</option>
-                {roomOptions.map((room) => (
-                  <option key={room} value={room}>{room}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Material
-              <select value={materialFilter} onChange={(e) => setMaterialFilter(e.target.value)}>
-                <option value="all">Alle</option>
-                {materialOptions.map((material) => (
-                  <option key={material} value={material}>{material}</option>
-                ))}
-              </select>
-            </label>
-
-            <div className={styles.actions}>
-              <a className={styles.btnSecondary} href={`/api/v1/cutlists/${active.id}/export.csv`} target="_blank" rel="noreferrer">
-                CSV Export
-              </a>
-              <a className={styles.btnSecondary} href={`/api/v1/cutlists/${active.id}/export.pdf`} target="_blank" rel="noreferrer">
-                PDF Export
-              </a>
-            </div>
+        <Card>
+          <div className={styles.filterRow}>
+            <Select
+              value={roomFilter}
+              onChange={(_e, d) => setRoomFilter(d.value)}
+              style={{ minWidth: 160 }}
+            >
+              <Option value='all'>Alle Raeume</Option>
+              {roomOptions.map((room) => <Option key={room} value={room}>{room}</Option>)}
+            </Select>
+            <Select
+              value={materialFilter}
+              onChange={(_e, d) => setMaterialFilter(d.value)}
+              style={{ minWidth: 160 }}
+            >
+              <Option value='all'>Alle Materialien</Option>
+              {materialOptions.map((material) => <Option key={material} value={material}>{material}</Option>)}
+            </Select>
+            <Button
+              as='a'
+              href={`/api/v1/cutlists/${active.id}/export.csv`}
+              target='_blank'
+              rel='noreferrer'
+              appearance='subtle'
+            >
+              CSV Export
+            </Button>
+            <Button
+              as='a'
+              href={`/api/v1/cutlists/${active.id}/export.pdf`}
+              target='_blank'
+              rel='noreferrer'
+              appearance='subtle'
+            >
+              PDF Export
+            </Button>
           </div>
 
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Bezeichnung</th>
-                <th>Breite</th>
-                <th>Hoehe</th>
-                <th>Anzahl</th>
-                <th>Material</th>
-                <th>Korn</th>
-                <th>Artikel</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredParts.map((part, index) => (
-                <tr key={`${part.article_name}-${index}`}>
-                  <td>{part.label}</td>
-                  <td>{part.width_mm}</td>
-                  <td>{part.height_mm}</td>
-                  <td>{part.quantity}</td>
-                  <td>{part.material_code}</td>
-                  <td>{grainLabel(part.grain_direction)}</td>
-                  <td>{part.article_name}</td>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>Bezeichnung</th>
+                  <th className={styles.th}>Breite</th>
+                  <th className={styles.th}>Hoehe</th>
+                  <th className={styles.th}>Anzahl</th>
+                  <th className={styles.th}>Material</th>
+                  <th className={styles.th}>Korn</th>
+                  <th className={styles.th}>Artikel</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredParts.map((part, index) => (
+                  <tr key={`${part.article_name}-${index}`}>
+                    <td className={styles.td}>{part.label}</td>
+                    <td className={styles.td}>{part.width_mm}</td>
+                    <td className={styles.td}>{part.height_mm}</td>
+                    <td className={styles.td}>{part.quantity}</td>
+                    <td className={styles.td}>{part.material_code}</td>
+                    <td className={styles.td}>{grainLabel(part.grain_direction)}</td>
+                    <td className={styles.td}>{part.article_name}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          <div className={styles.summary}>
-            <strong>Gesamtteile: {active.summary?.total_parts ?? 0}</strong>
-            <ul>
+          <div className={styles.summaryBlock}>
+            <Body1Strong>Gesamtteile: {active.summary?.total_parts ?? 0}</Body1Strong>
+            <ul style={{ margin: `${tokens.spacingVerticalXS} 0 0`, paddingLeft: tokens.spacingHorizontalL }}>
               {Object.entries(active.summary?.by_material ?? {}).map(([code, item]) => (
-                <li key={code}>{code}: {item.count} Teile · {item.area_sqm.toFixed(3)} m²</li>
+                <li key={code}>
+                  <Caption1>{code}: {item.count} Teile · {item.area_sqm.toFixed(3)} m²</Caption1>
+                </li>
               ))}
             </ul>
           </div>
-        </section>
+        </Card>
       )}
     </div>
   )
 }
-

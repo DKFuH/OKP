@@ -1,12 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import {
+  Badge,
+  Body1,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 import { productionOrdersApi, type ProductionOrder, type ProductionOrderStatus } from '../api/productionOrders.js'
 import { projectsApi, type Project } from '../api/projects.js'
-import styles from './ProductionOrdersPage.module.css'
 
 const STATUS_LABELS: Record<ProductionOrderStatus, string> = {
   draft: 'Entwurf',
-  confirmed: 'Bestätigt',
+  confirmed: 'Bestaetigt',
   in_production: 'In Produktion',
   ready: 'Fertig',
   delivered: 'Geliefert',
@@ -21,13 +36,13 @@ const STATUS_NEXT: Partial<Record<ProductionOrderStatus, ProductionOrderStatus>>
   delivered: 'installed',
 }
 
-const STATUS_COLOR: Record<ProductionOrderStatus, string> = {
-  draft: 'var(--text-muted)',
-  confirmed: 'var(--status-info)',
-  in_production: 'var(--status-warning)',
-  ready: 'var(--status-success)',
-  delivered: 'var(--primary-color)',
-  installed: 'var(--status-success)',
+const STATUS_INTENT: Record<ProductionOrderStatus, 'informational' | 'warning' | 'success' | 'error'> = {
+  draft: 'informational',
+  confirmed: 'informational',
+  in_production: 'warning',
+  ready: 'success',
+  delivered: 'success',
+  installed: 'success',
 }
 
 function formatDate(iso: string | null): string {
@@ -35,8 +50,139 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+const useStyles = makeStyles({
+  shell: {
+    display: 'grid',
+    gridTemplateRows: 'auto 1fr',
+    gap: tokens.spacingVerticalM,
+    minHeight: '70vh',
+  },
+  body: {
+    display: 'grid',
+    gridTemplateColumns: '280px 1fr',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'start',
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  sidebar: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  orderList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  orderItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    background: 'transparent',
+    cursor: 'pointer',
+    textAlign: 'left',
+    width: '100%',
+    fontSize: tokens.fontSizeBase300,
+  },
+  orderItemActive: {
+    background: tokens.colorBrandBackground2,
+    borderColor: tokens.colorBrandStroke1,
+  },
+  statusDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  workflowBar: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
+    flexWrap: 'wrap',
+    marginBottom: tokens.spacingVerticalM,
+  },
+  workflowStep: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderRadius: tokens.borderRadiusMedium,
+    background: tokens.colorNeutralBackground3,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
+  workflowDone: {
+    background: tokens.colorPaletteGreenBackground2,
+    color: tokens.colorPaletteGreenForeground2,
+  },
+  workflowCurrent: {
+    background: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundInverted,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  metaGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  metaItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
+  },
+  freezeNotice: {
+    background: tokens.colorPaletteLightTealBackground2,
+    border: `1px solid ${tokens.colorPaletteLightTealBorder1}`,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    marginBottom: tokens.spacingVerticalM,
+    fontSize: tokens.fontSizeBase300,
+  },
+  tableWrap: { overflowX: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: tokens.fontSizeBase300 },
+  th: {
+    textAlign: 'left',
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  td: {
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  eventList: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  eventItem: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+  },
+  placeholder: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '200px',
+    color: tokens.colorNeutralForeground3,
+    textAlign: 'center',
+  },
+})
+
 export function ProductionOrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const styles = useStyles()
 
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>(searchParams.get('projectId') ?? '')
@@ -83,7 +229,7 @@ export function ProductionOrdersPage() {
   }
 
   async function handleDelete(order: ProductionOrder) {
-    if (!confirm(`Produktionsauftrag löschen?`)) return
+    if (!confirm('Produktionsauftrag loeschen?')) return
     try {
       await productionOrdersApi.delete(order.id)
       setOrders(prev => prev.filter(o => o.id !== order.id))
@@ -96,217 +242,175 @@ export function ProductionOrdersPage() {
   const filtered = statusFilter === 'all' ? orders : orders.filter(o => o.status === statusFilter)
   const selectedOrder = selectedOrderId ? orders.find(o => o.id === selectedOrderId) ?? null : null
 
+  const STATUS_DOT_COLOR: Record<ProductionOrderStatus, string> = {
+    draft: tokens.colorNeutralForeground3,
+    confirmed: tokens.colorPaletteBlueForeground2,
+    in_production: tokens.colorPaletteMarigoldForeground2,
+    ready: tokens.colorPaletteGreenForeground2,
+    delivered: tokens.colorBrandForeground1,
+    installed: tokens.colorPaletteGreenForeground2,
+  }
+
   return (
     <div className={styles.shell}>
-      {/* ── Header ── */}
-      <div className={styles.header}>
-        <h1 className={styles.title}>Produktionsaufträge</h1>
-      </div>
+      <Title2>Produktionsauftraege</Title2>
+
+      {error && <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>}
 
       <div className={styles.body}>
-        {/* ── Sidebar ── */}
         <aside className={styles.sidebar}>
-          {/* Projekt-Auswahl */}
-          <div className={styles.sidebarSection}>
-            <label className={styles.label}>Projekt</label>
-            <select
-              className={styles.select}
-              value={selectedProjectId}
-              onChange={e => handleProjectChange(e.target.value)}
-            >
-              <option value="">Projekt auswählen …</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status-Filter */}
-          <div className={styles.sidebarSection}>
-            <label className={styles.label}>Status-Filter</label>
-            <select
-              className={styles.select}
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as ProductionOrderStatus | 'all')}
-            >
-              <option value="all">Alle</option>
+          <Card>
+            <Body1Strong>Projekt</Body1Strong>
+            <Select value={selectedProjectId} onChange={(_e, d) => handleProjectChange(d.value)}>
+              <Option value=''>Projekt auswaehlen …</Option>
+              {projects.map(p => <Option key={p.id} value={p.id}>{p.name}</Option>)}
+            </Select>
+            <Body1Strong>Status-Filter</Body1Strong>
+            <Select value={statusFilter} onChange={(_e, d) => setStatusFilter(d.value as ProductionOrderStatus | 'all')}>
+              <Option value='all'>Alle</Option>
               {(Object.keys(STATUS_LABELS) as ProductionOrderStatus[]).map(s => (
-                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                <Option key={s} value={s}>{STATUS_LABELS[s]}</Option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Card>
 
-          {/* Auftrags-Liste */}
           <div className={styles.orderList}>
-            {loading && <p className={styles.hint}>Laden …</p>}
-            {!loading && filtered.length === 0 && selectedProjectId && (
-              <p className={styles.hint}>Keine Aufträge gefunden.</p>
-            )}
-            {!loading && !selectedProjectId && (
-              <p className={styles.hint}>Bitte Projekt auswählen.</p>
-            )}
+            {loading && <Spinner size='tiny' label='Laden...' />}
+            {!loading && !selectedProjectId && <Caption1>Bitte Projekt auswaehlen.</Caption1>}
+            {!loading && selectedProjectId && filtered.length === 0 && <Caption1>Keine Auftraege gefunden.</Caption1>}
             {filtered.map(order => (
               <button
                 key={order.id}
-                type="button"
+                type='button'
                 className={`${styles.orderItem} ${selectedOrderId === order.id ? styles.orderItemActive : ''}`}
                 onClick={() => setSelectedOrderId(selectedOrderId === order.id ? null : order.id)}
               >
-                <span
-                  className={styles.statusDot}
-                  style={{ background: STATUS_COLOR[order.status] }}
-                />
-                <span className={styles.orderLabel}>
-                  <span className={styles.orderStatus}>{STATUS_LABELS[order.status]}</span>
-                  {order.due_date && (
-                    <span className={styles.orderDue}>Fällig: {formatDate(order.due_date)}</span>
-                  )}
+                <span className={styles.statusDot} style={{ background: STATUS_DOT_COLOR[order.status] }} />
+                <span style={{ flex: 1 }}>
+                  <div style={{ fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightSemibold }}>
+                    {STATUS_LABELS[order.status]}
+                  </div>
+                  {order.due_date && <div style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>Faellig: {formatDate(order.due_date)}</div>}
                 </span>
-                {order.frozen_at && <span className={styles.frozenBadge} title="Eingefroren">❄</span>}
+                {order.frozen_at && <span title='Eingefroren'>❄</span>}
               </button>
             ))}
           </div>
         </aside>
 
-        {/* ── Detailansicht ── */}
-        <main className={styles.main}>
-          {error && <div className={styles.error}>{error}</div>}
-
+        <main>
           {!selectedOrder && (
             <div className={styles.placeholder}>
-              <p>Produktionsauftrag auswählen</p>
-              <p className={styles.hint}>Wähle links einen Auftrag für Details und Status-Workflow.</p>
+              <Body1>Produktionsauftrag auswaehlen</Body1>
+              <Caption1>Wähle links einen Auftrag fuer Details und Status-Workflow.</Caption1>
             </div>
           )}
 
           {selectedOrder && (
-            <div className={styles.detail}>
-              {/* Status-Workflow ── */}
+            <Card>
               <div className={styles.workflowBar}>
                 {(Object.keys(STATUS_LABELS) as ProductionOrderStatus[]).map((s, idx, arr) => {
                   const statusIdx = arr.indexOf(selectedOrder.status)
                   const isDone = idx < statusIdx
                   const isCurrent = idx === statusIdx
                   return (
-                    <div
-                      key={s}
-                      className={`${styles.workflowStep} ${isDone ? styles.workflowDone : ''} ${isCurrent ? styles.workflowCurrent : ''}`}
-                    >
-                      <span className={styles.workflowDot} />
-                      <span className={styles.workflowLabel}>{STATUS_LABELS[s]}</span>
+                    <div key={s} className={`${styles.workflowStep} ${isDone ? styles.workflowDone : ''} ${isCurrent ? styles.workflowCurrent : ''}`}>
+                      {STATUS_LABELS[s]}
                     </div>
                   )
                 })}
               </div>
 
-              {/* Metadaten ── */}
               <div className={styles.metaGrid}>
                 <div className={styles.metaItem}>
-                  <span className={styles.metaKey}>Status</span>
-                  <span className={styles.metaValue} style={{ color: STATUS_COLOR[selectedOrder.status] }}>
+                  <Caption1>Status</Caption1>
+                  <Badge appearance='tint' color={STATUS_INTENT[selectedOrder.status] === 'success' ? 'success' : STATUS_INTENT[selectedOrder.status] === 'warning' ? 'warning' : 'informational'}>
                     {STATUS_LABELS[selectedOrder.status]}
-                  </span>
+                  </Badge>
                 </div>
                 <div className={styles.metaItem}>
-                  <span className={styles.metaKey}>Angelegt von</span>
-                  <span className={styles.metaValue}>{selectedOrder.created_by}</span>
+                  <Caption1>Angelegt von</Caption1>
+                  <Body1>{selectedOrder.created_by}</Body1>
                 </div>
                 <div className={styles.metaItem}>
-                  <span className={styles.metaKey}>Erstellt</span>
-                  <span className={styles.metaValue}>{formatDate(selectedOrder.created_at)}</span>
+                  <Caption1>Erstellt</Caption1>
+                  <Body1>{formatDate(selectedOrder.created_at)}</Body1>
                 </div>
                 <div className={styles.metaItem}>
-                  <span className={styles.metaKey}>Fällig</span>
-                  <span className={styles.metaValue}>{formatDate(selectedOrder.due_date)}</span>
+                  <Caption1>Faellig</Caption1>
+                  <Body1>{formatDate(selectedOrder.due_date)}</Body1>
                 </div>
                 {selectedOrder.frozen_at && (
                   <div className={styles.metaItem}>
-                    <span className={styles.metaKey}>Eingefroren</span>
-                    <span className={styles.metaValue}>{formatDate(selectedOrder.frozen_at)}</span>
+                    <Caption1>Eingefroren</Caption1>
+                    <Body1>{formatDate(selectedOrder.frozen_at)}</Body1>
                   </div>
                 )}
               </div>
 
-              {/* Freeze-Hinweis ── */}
               {selectedOrder.frozen_at && (
                 <div className={styles.freezeNotice}>
-                  ❄ Planung eingefroren – Änderungen an BOM und Planung sind gesperrt.
-                  Für Korrekturen neue Alternative anlegen.
+                  ❄ Planung eingefroren – Aenderungen an BOM und Planung sind gesperrt.
                 </div>
               )}
 
-              {/* Notizen ── */}
               {selectedOrder.notes && (
-                <div className={styles.notes}>
-                  <span className={styles.metaKey}>Notizen</span>
-                  <p>{selectedOrder.notes}</p>
+                <div style={{ marginBottom: tokens.spacingVerticalM }}>
+                  <Caption1>Notizen</Caption1>
+                  <Body1>{selectedOrder.notes}</Body1>
                 </div>
               )}
 
-              {/* Verknüpfte Bestellungen ── */}
               {selectedOrder.purchase_orders.length > 0 && (
-                <div className={styles.section}>
-                  <h3 className={styles.sectionTitle}>Verknüpfte Bestellungen</h3>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Lieferant</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedOrder.purchase_orders.map(po => (
-                        <tr key={po.id}>
-                          <td>{po.supplier_name}</td>
-                          <td>{po.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div style={{ marginBottom: tokens.spacingVerticalM }}>
+                  <Body1Strong>Verknuepfte Bestellungen</Body1Strong>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead><tr><th className={styles.th}>Lieferant</th><th className={styles.th}>Status</th></tr></thead>
+                      <tbody>
+                        {selectedOrder.purchase_orders.map(po => (
+                          <tr key={po.id}>
+                            <td className={styles.td}>{po.supplier_name}</td>
+                            <td className={styles.td}>{po.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
-              {/* Audit-Log ── */}
               {selectedOrder.events.length > 0 && (
-                <div className={styles.section}>
-                  <h3 className={styles.sectionTitle}>Status-Verlauf</h3>
+                <div style={{ marginBottom: tokens.spacingVerticalM }}>
+                  <Body1Strong>Status-Verlauf</Body1Strong>
                   <ul className={styles.eventList}>
                     {selectedOrder.events.map(ev => (
                       <li key={ev.id} className={styles.eventItem}>
-                        <span className={styles.eventTime}>{formatDate(ev.created_at)}</span>
-                        <span className={styles.eventTransition}>
-                          {ev.from_status ? `${ev.from_status} → ` : ''}{ev.to_status}
-                        </span>
-                        {ev.note && <span className={styles.eventNote}>{ev.note}</span>}
+                        <span>{formatDate(ev.created_at)}</span>
+                        <span>{ev.from_status ? `${ev.from_status} → ` : ''}{ev.to_status}</span>
+                        {ev.note && <span>{ev.note}</span>}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Aktionen ── */}
-              <div className={styles.actions}>
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
                 {STATUS_NEXT[selectedOrder.status] && (
-                  <button
-                    type="button"
-                    className={styles.btnPrimary}
+                  <Button
+                    appearance='primary'
                     disabled={transitioning}
-                    onClick={() => handleStatusTransition(selectedOrder)}
+                    onClick={() => void handleStatusTransition(selectedOrder)}
+                    icon={transitioning ? <Spinner size='tiny' /> : undefined}
                   >
                     → {STATUS_LABELS[STATUS_NEXT[selectedOrder.status]!]}
-                  </button>
+                  </Button>
                 )}
                 {selectedOrder.status === 'draft' && (
-                  <button
-                    type="button"
-                    className={styles.btnDanger}
-                    onClick={() => handleDelete(selectedOrder)}
-                  >
-                    Löschen
-                  </button>
+                  <Button appearance='subtle' onClick={() => void handleDelete(selectedOrder)}>Loeschen</Button>
                 )}
               </div>
-            </div>
+            </Card>
           )}
         </main>
       </div>

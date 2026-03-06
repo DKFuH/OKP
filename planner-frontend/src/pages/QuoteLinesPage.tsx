@@ -4,56 +4,113 @@ import type { QuoteLine, PricingGroup } from '@shared/types'
 import { quoteLinesApi, pricingGroupsApi } from '../api/projectFeatures.js'
 import { projectsApi } from '../api/projects.js'
 import { resequenceQuoteLines } from '../api/quotes.js'
-import styles from './QuoteLinesPage.module.css'
-
-// ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
+import {
+  Badge,
+  Body1,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
 
 function formatEur(value: number): string {
   return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
+    style: 'currency', currency: 'EUR', minimumFractionDigits: 2,
   }).format(value)
 }
 
 const UNIT_LABELS: Record<QuoteLine['unit'], string> = {
-  stk: 'Stk.',
-  m: 'lfm',
-  m2: 'm²',
-  pauschal: 'pauschal',
+  stk: 'Stk.', m: 'lfm', m2: 'm²', pauschal: 'pauschal',
 }
 
 const TYPE_LABELS: Record<QuoteLine['type'], string> = {
-  standard: 'Standard',
-  custom: 'Individuell',
-  text: 'Textzeile',
+  standard: 'Standard', custom: 'Individuell', text: 'Textzeile',
 }
 
-// ─── Hauptkomponente ─────────────────────────────────────────────────────────
+const useStyles = makeStyles({
+  page: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM },
+  topRow: {
+    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+    gap: tokens.spacingHorizontalM, flexWrap: 'wrap',
+  },
+  actionRow: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap', alignItems: 'center' },
+  groupList: { display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' },
+  groupChip: {
+    display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    background: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium,
+    fontSize: tokens.fontSizeBase200,
+  },
+  tableWrap: { overflowX: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: tokens.fontSizeBase300 },
+  th: {
+    textAlign: 'left',
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
+    fontWeight: tokens.fontWeightSemibold,
+    whiteSpace: 'nowrap',
+  },
+  td: {
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    verticalAlign: 'middle',
+  },
+  trText: { background: tokens.colorNeutralBackground2, fontStyle: 'italic' },
+  trEditing: { background: tokens.colorBrandBackground2 },
+  trExcluded: { opacity: 0.5 },
+  cellInput: {
+    width: '100%', boxSizing: 'border-box',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusSmall,
+    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalXS}`,
+    fontSize: tokens.fontSizeBase300,
+    background: tokens.colorNeutralBackground1,
+  },
+  cellSelect: {
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusSmall,
+    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalXS}`,
+    fontSize: tokens.fontSizeBase300,
+    background: tokens.colorNeutralBackground1,
+  },
+  numCol: { textAlign: 'right' as const },
+  summaryGrid: {
+    display: 'flex', gap: tokens.spacingHorizontalL, flexWrap: 'wrap',
+    padding: tokens.spacingVerticalM,
+    background: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  summaryItem: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXS },
+  savingsText: { color: tokens.colorPaletteGreenForeground2 },
+})
 
 export function QuoteLinesPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const styles = useStyles()
   const [lines, setLines] = useState<QuoteLine[]>([])
   const [pricingGroups, setPricingGroups] = useState<PricingGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [resequenceMessage, setResequenceMessage] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [latestQuoteId, setLatestQuoteId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!projectId) return
     setLoading(true)
-    Promise.all([
-      quoteLinesApi.list(projectId),
-      pricingGroupsApi.list(projectId),
-      projectsApi.get(projectId),
-    ])
+    Promise.all([quoteLinesApi.list(projectId), pricingGroupsApi.list(projectId), projectsApi.get(projectId)])
       .then(([ql, pg, project]) => {
         setLines(ql)
         setPricingGroups(pg)
-        const latestQuote = [...project.quotes].sort((left, right) => right.version - left.version)[0] ?? null
+        const latestQuote = [...project.quotes].sort((l, r) => r.version - l.version)[0] ?? null
         setLatestQuoteId(latestQuote?.id ?? null)
       })
       .catch((e: Error) => setError(e.message))
@@ -61,78 +118,48 @@ export function QuoteLinesPage() {
   }, [projectId])
 
   async function handleResequenceFromPosition() {
-    if (!latestQuoteId) {
-      setError('Keine Angebotsversion vorhanden. Erstelle zuerst ein Angebot.')
-      return
-    }
-
+    if (!latestQuoteId) { setError('Keine Angebotsversion vorhanden.'); return }
     const rawStart = window.prompt('Neue Start-Positionsnummer:', '1')
-    if (rawStart == null) {
-      return
-    }
-
+    if (rawStart == null) return
     const startPosition = Number.parseInt(rawStart, 10)
-    if (!Number.isFinite(startPosition) || startPosition < 1) {
-      setError('Bitte eine gültige Start-Positionsnummer (>= 1) eingeben.')
-      return
-    }
-
-    setError(null)
-    setResequenceMessage(null)
-
+    if (!Number.isFinite(startPosition) || startPosition < 1) { setError('Bitte gueltige Zahl eingeben.'); return }
+    setError(null); setSuccessMsg(null)
     try {
       const result = await resequenceQuoteLines(latestQuoteId, startPosition)
-      setResequenceMessage(`Positionen neu nummeriert: ${result.updated_count} Zeilen, Start bei ${result.start_position}.`)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Positionsnummern konnten nicht neu gesetzt werden.')
-    }
+      setSuccessMsg(`Positionen neu nummeriert: ${result.updated_count} Zeilen, Start bei ${result.start_position}.`)
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Fehler') }
   }
 
-  // Neue Zeile anlegen
   async function handleAddLine(type: QuoteLine['type']) {
     if (!projectId) return
     setError(null)
     try {
       const newLine = await quoteLinesApi.create(projectId, {
-        type,
-        description: type === 'text' ? 'Überschrift' : 'Neue Position',
-        qty: 1,
-        unit: 'stk',
-        list_price_net: 0,
-        position_discount_pct: 0,
-        sort_order: lines.length,
+        type, description: type === 'text' ? 'Ueberschrift' : 'Neue Position',
+        qty: 1, unit: 'stk', list_price_net: 0, position_discount_pct: 0, sort_order: lines.length,
       })
       setLines((prev) => [...prev, newLine])
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Anlegen')
-    }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Fehler beim Anlegen') }
   }
 
-  // Zeile aktualisieren
   async function handleUpdateLine(lineId: string, data: Partial<Omit<QuoteLine, 'id' | 'project_id'>>) {
     if (!projectId) return
     setError(null)
     try {
       const updated = await quoteLinesApi.update(projectId, lineId, data)
       setLines((prev) => prev.map((l) => (l.id === lineId ? updated : l)))
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
-    }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Fehler beim Speichern') }
   }
 
-  // Zeile löschen
   async function handleDeleteLine(lineId: string) {
-    if (!projectId || !confirm('Position wirklich löschen?')) return
+    if (!projectId || !confirm('Position wirklich loeschen?')) return
     setError(null)
     try {
       await quoteLinesApi.delete(projectId, lineId)
       setLines((prev) => prev.filter((l) => l.id !== lineId))
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Löschen')
-    }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Fehler beim Loeschen') }
   }
 
-  // Preisgruppe anlegen
   async function handleAddPricingGroup() {
     if (!projectId) return
     const name = window.prompt('Name der Preisgruppe:', 'Preisgruppe')
@@ -142,17 +169,10 @@ export function QuoteLinesPage() {
     if (!Number.isFinite(discount)) return
     setError(null)
     try {
-      const group = await pricingGroupsApi.create(projectId, {
-        name: name.trim(),
-        discount_pct: discount,
-      })
+      const group = await pricingGroupsApi.create(projectId, { name: name.trim(), discount_pct: discount })
       setPricingGroups((prev) => [...prev, group])
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Anlegen')
-    }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Fehler') }
   }
-
-  // ─── Summen ────────────────────────────────────────────────────────────────
 
   const activeLines = lines.filter((l) => l.type !== 'text' && !l.exclude_from_quote)
   const totalListNet = activeLines.reduce((sum, l) => sum + l.list_price_net * l.qty, 0)
@@ -163,161 +183,126 @@ export function QuoteLinesPage() {
     return sum + l.list_price_net * l.qty * (1 - totalDiscount / 100)
   }, 0)
 
-  if (loading) {
-    return <div className={styles.center}>Lade Angebotspositionen…</div>
-  }
+  if (loading) return <Spinner label='Lade Angebotspositionen...' />
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <div className={styles.topRow}>
         <div>
-          <p className={styles.kicker}>Phase 3 · Sprint 40</p>
-          <h1>Angebotspositionen</h1>
-          <p className={styles.subtitle}>
-            Manuelle Angebotszeilen, Preisgruppen und Zeilenstruktur für Projekt {projectId?.slice(0, 8)}…
-          </p>
+          <Title2>Angebotspositionen</Title2>
+          <Caption1>Projekt {projectId?.slice(0, 8)}…</Caption1>
         </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={() => navigate(projectId ? `/projects/${projectId}` : '/')}
-          >
-            ← Zurück zum Editor
-          </button>
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={() => void handleResequenceFromPosition()}
-            disabled={!latestQuoteId}
-            title={latestQuoteId ? 'Positionsnummern ab Startwert neu setzen' : 'Erfordert eine bestehende Angebotsversion'}
-          >
+        <div className={styles.actionRow}>
+          <Button appearance='subtle' onClick={() => navigate(projectId ? `/projects/${projectId}` : '/')}>← Zurueck</Button>
+          <Button appearance='subtle' onClick={() => void handleResequenceFromPosition()} disabled={!latestQuoteId}>
             Pos.-Nr. neu ab…
-          </button>
-          <button type="button" className={styles.btnSecondary} onClick={() => void handleAddLine('text')}>
-            + Textzeile
-          </button>
-          <button type="button" className={styles.btnSecondary} onClick={() => void handleAddLine('custom')}>
-            + Individuelle Position
-          </button>
-          <button type="button" className={styles.btnPrimary} onClick={() => void handleAddLine('standard')}>
-            + Standard-Position
-          </button>
+          </Button>
+          <Button appearance='subtle' onClick={() => void handleAddLine('text')}>+ Textzeile</Button>
+          <Button appearance='subtle' onClick={() => void handleAddLine('custom')}>+ Individuell</Button>
+          <Button appearance='primary' onClick={() => void handleAddLine('standard')}>+ Standard</Button>
         </div>
-      </header>
+      </div>
 
-      {error && <div className={styles.error}>{error}</div>}
-  {resequenceMessage && <div className={styles.success}>{resequenceMessage}</div>}
+      {error && <MessageBar intent='error'><MessageBarBody>{error}</MessageBarBody></MessageBar>}
+      {successMsg && <MessageBar intent='success'><MessageBarBody>{successMsg}</MessageBarBody></MessageBar>}
 
-      {/* Preisgruppen */}
-      <section className={styles.groupSection}>
-        <div className={styles.groupHeader}>
-          <h2>Preisgruppen</h2>
-          <button type="button" className={styles.btnSmall} onClick={() => void handleAddPricingGroup()}>
-            + Preisgruppe
-          </button>
-        </div>
+      <Card>
+        <CardHeader header={<Body1Strong>Preisgruppen</Body1Strong>}
+          action={<Button size='small' appearance='subtle' onClick={() => void handleAddPricingGroup()}>+ Preisgruppe</Button>}
+        />
         {pricingGroups.length === 0 ? (
-          <p className={styles.empty}>Keine Preisgruppen angelegt.</p>
+          <Caption1>Keine Preisgruppen angelegt.</Caption1>
         ) : (
           <div className={styles.groupList}>
             {pricingGroups.map((group) => (
               <div key={group.id} className={styles.groupChip}>
-                <strong>{group.name}</strong>
-                <span>{group.discount_pct}% Rabatt</span>
+                <Body1Strong>{group.name}</Body1Strong>
+                <Caption1>{group.discount_pct}% Rabatt</Caption1>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </Card>
 
-      {/* Zeilen-Tabelle */}
-      <section className={styles.tableSection}>
+      <Card>
         {lines.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>Noch keine Angebotspositionen. Lege die erste Position über die Buttons oben an.</p>
-          </div>
+          <Body1>Noch keine Angebotspositionen. Lege die erste Position oben an.</Body1>
         ) : (
-          <div className={styles.tableWrapper}>
+          <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Typ</th>
-                  <th>Beschreibung</th>
-                  <th className={styles.numCol}>Menge</th>
-                  <th>Einheit</th>
-                  <th className={styles.numCol}>Einzelpreis netto</th>
-                  <th className={styles.numCol}>Pos.-Rabatt</th>
-                  <th>Preisgruppe</th>
-                  <th className={styles.numCol}>Gesamt netto</th>
-                  <th></th>
+                  <th className={styles.th}>Typ</th>
+                  <th className={styles.th}>Beschreibung</th>
+                  <th className={`${styles.th} ${styles.numCol}`}>Menge</th>
+                  <th className={styles.th}>Einheit</th>
+                  <th className={`${styles.th} ${styles.numCol}`}>Einzelpreis netto</th>
+                  <th className={`${styles.th} ${styles.numCol}`}>Pos.-Rabatt</th>
+                  <th className={styles.th}>Preisgruppe</th>
+                  <th className={`${styles.th} ${styles.numCol}`}>Gesamt netto</th>
+                  <th className={styles.th}></th>
                 </tr>
               </thead>
               <tbody>
-                {lines
-                  .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                  .map((line) => (
-                    <QuoteLineRow
-                      key={line.id}
-                      line={line}
-                      pricingGroups={pricingGroups}
-                      isEditing={editingId === line.id}
-                      onStartEdit={() => setEditingId(line.id)}
-                      onEndEdit={() => setEditingId(null)}
-                      onUpdate={(data) => void handleUpdateLine(line.id, data)}
-                      onDelete={() => void handleDeleteLine(line.id)}
-                    />
-                  ))}
+                {[...lines].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((line) => (
+                  <QuoteLineRow
+                    key={line.id}
+                    line={line}
+                    pricingGroups={pricingGroups}
+                    isEditing={editingId === line.id}
+                    styles={styles}
+                    onStartEdit={() => setEditingId(line.id)}
+                    onEndEdit={() => setEditingId(null)}
+                    onUpdate={(data) => void handleUpdateLine(line.id, data)}
+                    onDelete={() => void handleDeleteLine(line.id)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
         )}
-      </section>
+      </Card>
 
-      {/* Summen-Zeile */}
       {activeLines.length > 0 && (
-        <section className={styles.summary}>
-          <div className={styles.summaryGrid}>
-            <div className={styles.summaryItem}>
-              <span>Listenpreis gesamt (netto)</span>
-              <strong>{formatEur(totalListNet)}</strong>
-            </div>
-            <div className={styles.summaryItem}>
-              <span>Nach Rabatten (netto)</span>
-              <strong>{formatEur(totalAfterDiscount)}</strong>
-            </div>
-            <div className={styles.summaryItem}>
-              <span>Ersparnis</span>
-              <strong className={styles.savings}>{formatEur(totalListNet - totalAfterDiscount)}</strong>
-            </div>
-            <div className={styles.summaryItem}>
-              <span>MwSt. 19%</span>
-              <strong>{formatEur(totalAfterDiscount * 0.19)}</strong>
-            </div>
-            <div className={`${styles.summaryItem} ${styles.summaryTotal}`}>
-              <span>Gesamtbetrag (brutto)</span>
-              <strong>{formatEur(totalAfterDiscount * 1.19)}</strong>
-            </div>
+        <div className={styles.summaryGrid}>
+          <div className={styles.summaryItem}>
+            <Caption1>Listenpreis gesamt (netto)</Caption1>
+            <Body1Strong>{formatEur(totalListNet)}</Body1Strong>
           </div>
-        </section>
+          <div className={styles.summaryItem}>
+            <Caption1>Nach Rabatten (netto)</Caption1>
+            <Body1Strong>{formatEur(totalAfterDiscount)}</Body1Strong>
+          </div>
+          <div className={styles.summaryItem}>
+            <Caption1>Ersparnis</Caption1>
+            <Body1Strong className={styles.savingsText}>{formatEur(totalListNet - totalAfterDiscount)}</Body1Strong>
+          </div>
+          <div className={styles.summaryItem}>
+            <Caption1>MwSt. 19%</Caption1>
+            <Body1Strong>{formatEur(totalAfterDiscount * 0.19)}</Body1Strong>
+          </div>
+          <div className={styles.summaryItem}>
+            <Caption1>Gesamtbetrag (brutto)</Caption1>
+            <Body1Strong>{formatEur(totalAfterDiscount * 1.19)}</Body1Strong>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-// ─── QuoteLineRow ─────────────────────────────────────────────────────────────
-
 interface QuoteLineRowProps {
   line: QuoteLine
   pricingGroups: PricingGroup[]
   isEditing: boolean
+  styles: ReturnType<typeof useStyles>
   onStartEdit: () => void
   onEndEdit: () => void
   onUpdate: (data: Partial<Omit<QuoteLine, 'id' | 'project_id'>>) => void
   onDelete: () => void
 }
 
-function QuoteLineRow({ line, pricingGroups, isEditing, onStartEdit, onEndEdit, onUpdate, onDelete }: QuoteLineRowProps) {
+function QuoteLineRow({ line, pricingGroups, isEditing, styles, onStartEdit, onEndEdit, onUpdate, onDelete }: QuoteLineRowProps) {
   const [desc, setDesc] = useState(line.description)
   const [qty, setQty] = useState(String(line.qty))
   const [price, setPrice] = useState(String(line.list_price_net))
@@ -346,117 +331,65 @@ function QuoteLineRow({ line, pricingGroups, isEditing, onStartEdit, onEndEdit, 
   const group = pricingGroups.find((g) => g.id === line.pricing_group_id)
   const groupDiscount = group?.discount_pct ?? 0
   const totalDiscount = Math.min(100, line.position_discount_pct + groupDiscount)
-  const lineTotal = line.type !== 'text'
-    ? line.list_price_net * line.qty * (1 - totalDiscount / 100)
-    : null
-
+  const lineTotal = line.type !== 'text' ? line.list_price_net * line.qty * (1 - totalDiscount / 100) : null
   const isTextLine = line.type === 'text'
 
   if (!isEditing) {
     return (
       <tr
-        className={`${styles.tr} ${isTextLine ? styles.trText : ''} ${line.exclude_from_quote ? styles.trExcluded : ''}`}
+        className={`${isTextLine ? styles.trText : ''} ${line.exclude_from_quote ? styles.trExcluded : ''}`}
         onDoubleClick={onStartEdit}
       >
-        <td><span className={styles.typeBadge}>{TYPE_LABELS[line.type]}</span></td>
-        <td className={styles.descCell}>{line.description}</td>
-        <td className={styles.numCol}>{isTextLine ? '–' : line.qty}</td>
-        <td>{isTextLine ? '–' : UNIT_LABELS[line.unit]}</td>
-        <td className={styles.numCol}>{isTextLine ? '–' : formatEur(line.list_price_net)}</td>
-        <td className={styles.numCol}>{isTextLine ? '–' : `${line.position_discount_pct}%`}</td>
-        <td>{group?.name ?? '–'}</td>
-        <td className={styles.numCol}>{lineTotal != null ? formatEur(lineTotal) : '–'}</td>
-        <td>
-          <div className={styles.rowActions}>
-            <button type="button" className={styles.btnEdit} onClick={onStartEdit} title="Bearbeiten">✎</button>
-            <button type="button" className={styles.btnDelete} onClick={onDelete} title="Löschen">×</button>
-          </div>
+        <td className={styles.td}><Badge appearance='tint'>{TYPE_LABELS[line.type]}</Badge></td>
+        <td className={styles.td}>{line.description}</td>
+        <td className={`${styles.td} ${styles.numCol}`}>{isTextLine ? '–' : line.qty}</td>
+        <td className={styles.td}>{isTextLine ? '–' : UNIT_LABELS[line.unit]}</td>
+        <td className={`${styles.td} ${styles.numCol}`}>{isTextLine ? '–' : formatEur(line.list_price_net)}</td>
+        <td className={`${styles.td} ${styles.numCol}`}>{isTextLine ? '–' : `${line.position_discount_pct}%`}</td>
+        <td className={styles.td}>{group?.name ?? '–'}</td>
+        <td className={`${styles.td} ${styles.numCol}`}>{lineTotal != null ? formatEur(lineTotal) : '–'}</td>
+        <td className={styles.td}>
+          <Button size='small' appearance='subtle' onClick={onStartEdit} title='Bearbeiten'>✎</Button>
+          <Button size='small' appearance='subtle' onClick={onDelete} title='Loeschen'>×</Button>
         </td>
       </tr>
     )
   }
 
   return (
-    <tr className={`${styles.tr} ${styles.trEditing}`}>
-      <td><span className={styles.typeBadge}>{TYPE_LABELS[line.type]}</span></td>
-      <td>
-        <input
-          className={styles.cellInput}
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
-          autoFocus
-        />
+    <tr className={styles.trEditing}>
+      <td className={styles.td}><Badge appearance='tint'>{TYPE_LABELS[line.type]}</Badge></td>
+      <td className={styles.td}>
+        <input className={styles.cellInput} value={desc} onChange={(e) => setDesc(e.target.value)} autoFocus />
       </td>
-      <td>
-        {!isTextLine && (
-          <input
-            className={`${styles.cellInput} ${styles.numInput}`}
-            type="number"
-            min={0.001}
-            step={0.001}
-            value={qty}
-            onChange={(e) => setQty(e.target.value)}
-          />
-        )}
+      <td className={styles.td}>
+        {!isTextLine && <input className={styles.cellInput} type='number' min={0.001} step={0.001} value={qty} onChange={(e) => setQty(e.target.value)} />}
       </td>
-      <td>
+      <td className={styles.td}>
         {!isTextLine && (
-          <select
-            className={styles.cellSelect}
-            value={line.unit}
-            onChange={(e) => onUpdate({ unit: e.target.value as QuoteLine['unit'] })}
-          >
-            {Object.entries(UNIT_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
+          <select className={styles.cellSelect} value={line.unit} onChange={(e) => onUpdate({ unit: e.target.value as QuoteLine['unit'] })}>
+            {Object.entries(UNIT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         )}
       </td>
-      <td>
-        {!isTextLine && (
-          <input
-            className={`${styles.cellInput} ${styles.numInput}`}
-            type="number"
-            min={0}
-            step={0.01}
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        )}
+      <td className={styles.td}>
+        {!isTextLine && <input className={styles.cellInput} type='number' min={0} step={0.01} value={price} onChange={(e) => setPrice(e.target.value)} />}
       </td>
-      <td>
-        {!isTextLine && (
-          <input
-            className={`${styles.cellInput} ${styles.numInput}`}
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={discount}
-            onChange={(e) => setDiscount(e.target.value)}
-          />
-        )}
+      <td className={styles.td}>
+        {!isTextLine && <input className={styles.cellInput} type='number' min={0} max={100} step={0.1} value={discount} onChange={(e) => setDiscount(e.target.value)} />}
       </td>
-      <td>
+      <td className={styles.td}>
         {!isTextLine && (
-          <select
-            className={styles.cellSelect}
-            value={line.pricing_group_id ?? ''}
-            onChange={(e) => onUpdate({ pricing_group_id: e.target.value || undefined })}
-          >
-            <option value="">Keine</option>
-            {pricingGroups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
+          <select className={styles.cellSelect} value={line.pricing_group_id ?? ''} onChange={(e) => onUpdate({ pricing_group_id: e.target.value || undefined })}>
+            <option value=''>Keine</option>
+            {pricingGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
         )}
       </td>
-      <td></td>
-      <td>
-        <div className={styles.rowActions}>
-          <button type="button" className={styles.btnSave} onClick={commitAll}>✓</button>
-          <button type="button" className={styles.btnCancel} onClick={onEndEdit}>✕</button>
-        </div>
+      <td className={styles.td}></td>
+      <td className={styles.td}>
+        <Button size='small' appearance='primary' onClick={commitAll}>✓</Button>
+        <Button size='small' appearance='subtle' onClick={onEndEdit}>✕</Button>
       </td>
     </tr>
   )

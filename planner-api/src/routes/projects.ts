@@ -294,10 +294,16 @@ export async function projectRoutes(app: FastifyInstance) {
     }
 
     const { name, description, user_id } = parsed.data
-    const user = await prisma.user.findUnique({ where: { id: user_id } })
-    if (!user) {
-      return sendNotFound(reply, 'User not found')
-    }
+    const user = await prisma.user.upsert({
+      where: { id: user_id },
+      update: {},
+      create: {
+        id: user_id,
+        email: `${user_id}@yakds.local`,
+        name: user_id,
+        password_hash: '',
+      },
+    })
 
     const tenantId = user.tenant_id ?? request.tenantId ?? null
     const defaults = tenantId

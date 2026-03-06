@@ -1,5 +1,26 @@
 import { useEffect, useState } from 'react'
 import {
+  Body1,
+  Body1Strong,
+  Button,
+  Caption1,
+  Card,
+  CardHeader,
+  Checkbox,
+  Field,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Option,
+  Select,
+  Spinner,
+  Tab,
+  TabList,
+  Title2,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components'
+import {
   complianceApi,
   type GdprDeletionRequest,
   type GdprScope,
@@ -8,7 +29,6 @@ import {
   type RolePermission,
   type SlaSnapshot,
 } from '../api/compliance.js'
-import styles from './CompliancePage.module.css'
 
 type TabId = 'gdpr' | 'rbac' | 'sla'
 
@@ -18,20 +38,48 @@ const ROLES: RoleName[] = ['admin', 'sales', 'planner', 'viewer']
 const ACTIONS: RoleAction[] = ['read', 'write', 'delete', 'export']
 
 function formatDateTime(value: string | null): string {
-  if (!value) {
-    return '–'
-  }
-
+  if (!value) return '–'
   return new Date(value).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 }
 
+const useStyles = makeStyles({
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  formRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  scopeRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  tableWrap: { overflowX: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: tokens.fontSizeBase300 },
+  th: {
+    textAlign: 'left',
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `2px solid ${tokens.colorNeutralStroke1}`,
+    fontWeight: tokens.fontWeightSemibold,
+    whiteSpace: 'nowrap',
+  },
+  td: {
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+})
+
 export function CompliancePage() {
+  const styles = useStyles()
   const [activeTab, setActiveTab] = useState<TabId>('gdpr')
 
   const [gdprRequests, setGdprRequests] = useState<GdprDeletionRequest[]>([])
@@ -54,42 +102,24 @@ export function CompliancePage() {
   const [slaError, setSlaError] = useState<string | null>(null)
 
   async function loadGdprRequests() {
-    setGdprLoading(true)
-    setGdprError(null)
-    try {
-      const data = await complianceApi.listDeletionRequests(TENANT_ID)
-      setGdprRequests(data)
-    } catch (error) {
-      setGdprError(error instanceof Error ? error.message : 'DSGVO-Anfragen konnten nicht geladen werden')
-    } finally {
-      setGdprLoading(false)
-    }
+    setGdprLoading(true); setGdprError(null)
+    try { setGdprRequests(await complianceApi.listDeletionRequests(TENANT_ID)) }
+    catch (e) { setGdprError(e instanceof Error ? e.message : 'Fehler') }
+    finally { setGdprLoading(false) }
   }
 
   async function loadRolePermissions() {
-    setRbacLoading(true)
-    setRbacError(null)
-    try {
-      const data = await complianceApi.listRolePermissions(TENANT_ID)
-      setPermissions(data)
-    } catch (error) {
-      setRbacError(error instanceof Error ? error.message : 'RBAC-Berechtigungen konnten nicht geladen werden')
-    } finally {
-      setRbacLoading(false)
-    }
+    setRbacLoading(true); setRbacError(null)
+    try { setPermissions(await complianceApi.listRolePermissions(TENANT_ID)) }
+    catch (e) { setRbacError(e instanceof Error ? e.message : 'Fehler') }
+    finally { setRbacLoading(false) }
   }
 
   async function loadSlaSnapshots() {
-    setSlaLoading(true)
-    setSlaError(null)
-    try {
-      const data = await complianceApi.listSlaSnapshots(TENANT_ID, 20)
-      setSnapshots(data)
-    } catch (error) {
-      setSlaError(error instanceof Error ? error.message : 'SLA-Snapshots konnten nicht geladen werden')
-    } finally {
-      setSlaLoading(false)
-    }
+    setSlaLoading(true); setSlaError(null)
+    try { setSnapshots(await complianceApi.listSlaSnapshots(TENANT_ID, 20)) }
+    catch (e) { setSlaError(e instanceof Error ? e.message : 'Fehler') }
+    finally { setSlaLoading(false) }
   }
 
   useEffect(() => {
@@ -99,267 +129,195 @@ export function CompliancePage() {
   }, [])
 
   function toggleScope(scope: GdprScope) {
-    setScopeSelection((current) =>
-      current.includes(scope)
-        ? current.filter((entry) => entry !== scope)
-        : [...current, scope],
-    )
+    setScopeSelection((cur) => cur.includes(scope) ? cur.filter((s) => s !== scope) : [...cur, scope])
   }
 
   async function submitDeletionRequest() {
-    if (!contactId.trim()) {
-      setGdprError('Contact-ID ist erforderlich.')
-      return
-    }
-
-    if (scopeSelection.length === 0) {
-      setGdprError('Mindestens ein Scope muss ausgewählt sein.')
-      return
-    }
-
-    setGdprSubmitting(true)
-    setGdprError(null)
+    if (!contactId.trim()) { setGdprError('Contact-ID ist erforderlich.'); return }
+    if (scopeSelection.length === 0) { setGdprError('Mindestens ein Scope muss ausgewaehlt sein.'); return }
+    setGdprSubmitting(true); setGdprError(null)
     try {
       await complianceApi.createDeletionRequest(TENANT_ID, {
-        contact_id: contactId.trim(),
-        performed_by: 'compliance-ui',
-        scope: scopeSelection,
+        contact_id: contactId.trim(), performed_by: 'compliance-ui', scope: scopeSelection,
       })
       setContactId('')
       await loadGdprRequests()
-    } catch (error) {
-      setGdprError(error instanceof Error ? error.message : 'DSGVO-Anfrage konnte nicht erstellt werden')
-    } finally {
-      setGdprSubmitting(false)
-    }
+    } catch (e) { setGdprError(e instanceof Error ? e.message : 'Fehler') }
+    finally { setGdprSubmitting(false) }
   }
 
   async function createPermission() {
-    if (!newResource.trim()) {
-      setRbacError('Ressource ist erforderlich.')
-      return
-    }
-
-    setRbacSubmitting(true)
-    setRbacError(null)
+    if (!newResource.trim()) { setRbacError('Ressource ist erforderlich.'); return }
+    setRbacSubmitting(true); setRbacError(null)
     try {
-      await complianceApi.createRolePermission(TENANT_ID, {
-        role: newRole,
-        resource: newResource.trim(),
-        action: newAction,
-      })
+      await complianceApi.createRolePermission(TENANT_ID, { role: newRole, resource: newResource.trim(), action: newAction })
       await loadRolePermissions()
-    } catch (error) {
-      setRbacError(error instanceof Error ? error.message : 'Berechtigung konnte nicht erstellt werden')
-    } finally {
-      setRbacSubmitting(false)
-    }
+    } catch (e) { setRbacError(e instanceof Error ? e.message : 'Fehler') }
+    finally { setRbacSubmitting(false) }
   }
 
   async function deletePermission(id: string) {
-    try {
-      await complianceApi.deleteRolePermission(TENANT_ID, id)
-      await loadRolePermissions()
-    } catch (error) {
-      setRbacError(error instanceof Error ? error.message : 'Berechtigung konnte nicht gelöscht werden')
-    }
+    try { await complianceApi.deleteRolePermission(TENANT_ID, id); await loadRolePermissions() }
+    catch (e) { setRbacError(e instanceof Error ? e.message : 'Fehler') }
   }
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Compliance</h1>
-      </div>
+      <Title2>Compliance</Title2>
 
-      <div className={styles.tabs}>
-        <button type="button" className={activeTab === 'gdpr' ? styles.tabActive : styles.tab} onClick={() => setActiveTab('gdpr')}>
-          DSGVO
-        </button>
-        <button type="button" className={activeTab === 'rbac' ? styles.tabActive : styles.tab} onClick={() => setActiveTab('rbac')}>
-          RBAC
-        </button>
-        <button type="button" className={activeTab === 'sla' ? styles.tabActive : styles.tab} onClick={() => setActiveTab('sla')}>
-          SLA
-        </button>
-      </div>
+      <TabList selectedValue={activeTab} onTabSelect={(_e, d) => setActiveTab(d.value as TabId)}>
+        <Tab value='gdpr'>DSGVO</Tab>
+        <Tab value='rbac'>RBAC</Tab>
+        <Tab value='sla'>SLA</Tab>
+      </TabList>
 
       {activeTab === 'gdpr' && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>DSGVO-Löschanfrage</h2>
+        <Card>
+          <CardHeader header={<Body1Strong>DSGVO-Loeschanfrage</Body1Strong>} />
           <div className={styles.formRow}>
-            <label className={styles.label}>
-              Contact-ID
-              <input
-                className={styles.input}
-                value={contactId}
-                onChange={(event) => setContactId(event.target.value)}
-                placeholder="UUID"
-              />
-            </label>
+            <Field label='Contact-ID'>
+              <Input value={contactId} onChange={(_e, d) => setContactId(d.value)} placeholder='UUID' />
+            </Field>
           </div>
-          <div className={styles.formRow}>
+          <div className={styles.scopeRow}>
             {GDPR_SCOPES.map((scope) => (
-              <label key={scope} className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={scopeSelection.includes(scope)}
-                  onChange={() => toggleScope(scope)}
-                />
-                {scope}
-              </label>
+              <Checkbox
+                key={scope}
+                checked={scopeSelection.includes(scope)}
+                onChange={() => toggleScope(scope)}
+                label={scope}
+              />
             ))}
           </div>
-          <div className={styles.formActions}>
-            <button type="button" className={styles.primaryBtn} onClick={() => void submitDeletionRequest()} disabled={gdprSubmitting}>
-              {gdprSubmitting ? 'Ausführen …' : 'Ausführen'}
-            </button>
+          <div style={{ marginBottom: tokens.spacingVerticalS }}>
+            <Button
+              appearance='primary'
+              onClick={() => void submitDeletionRequest()}
+              disabled={gdprSubmitting}
+              icon={gdprSubmitting ? <Spinner size='tiny' /> : undefined}
+            >
+              {gdprSubmitting ? 'Ausfuehren...' : 'Ausfuehren'}
+            </Button>
           </div>
-
-          {gdprError && <p className={styles.error}>{gdprError}</p>}
-          {gdprLoading ? (
-            <p className={styles.hint}>Laden …</p>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Contact-ID</th>
-                  <th>Scope</th>
-                  <th>Angefordert</th>
-                  <th>Abgeschlossen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gdprRequests.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className={styles.hint}>Keine Löschanfragen vorhanden.</td>
-                  </tr>
-                )}
-                {gdprRequests.map((request) => (
-                  <tr key={request.id}>
-                    <td>{request.contact_id ?? '–'}</td>
-                    <td>{request.scope_json.join(', ')}</td>
-                    <td>{formatDateTime(request.requested_at)}</td>
-                    <td>{formatDateTime(request.completed_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {gdprError && <MessageBar intent='error'><MessageBarBody>{gdprError}</MessageBarBody></MessageBar>}
+          {gdprLoading ? <Spinner label='Laden...' /> : (
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead><tr>
+                  <th className={styles.th}>Contact-ID</th>
+                  <th className={styles.th}>Scope</th>
+                  <th className={styles.th}>Angefordert</th>
+                  <th className={styles.th}>Abgeschlossen</th>
+                </tr></thead>
+                <tbody>
+                  {gdprRequests.length === 0 && (
+                    <tr><td colSpan={4} className={styles.td}><Caption1>Keine Loeschanfragen vorhanden.</Caption1></td></tr>
+                  )}
+                  {gdprRequests.map((req) => (
+                    <tr key={req.id}>
+                      <td className={styles.td}>{req.contact_id ?? '–'}</td>
+                      <td className={styles.td}>{req.scope_json.join(', ')}</td>
+                      <td className={styles.td}>{formatDateTime(req.requested_at)}</td>
+                      <td className={styles.td}>{formatDateTime(req.completed_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </section>
+        </Card>
       )}
 
       {activeTab === 'rbac' && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Rollen-Berechtigungen</h2>
-
-          <div className={styles.formInline}>
-            <select
-              className={styles.select}
-              aria-label="Rolle"
-              value={newRole}
-              onChange={(event) => setNewRole(event.target.value as RoleName)}
+        <Card>
+          <CardHeader header={<Body1Strong>Rollen-Berechtigungen</Body1Strong>} />
+          <div className={styles.formRow}>
+            <Field label='Rolle'>
+              <Select value={newRole} onChange={(_e, d) => setNewRole(d.value as RoleName)}>
+                {ROLES.map((role) => <Option key={role} value={role}>{role}</Option>)}
+              </Select>
+            </Field>
+            <Field label='Ressource'>
+              <Input value={newResource} onChange={(_e, d) => setNewResource(d.value)} placeholder='resource' />
+            </Field>
+            <Field label='Aktion'>
+              <Select value={newAction} onChange={(_e, d) => setNewAction(d.value as RoleAction)}>
+                {ACTIONS.map((action) => <Option key={action} value={action}>{action}</Option>)}
+              </Select>
+            </Field>
+            <Button
+              appearance='primary'
+              onClick={() => void createPermission()}
+              disabled={rbacSubmitting}
+              icon={rbacSubmitting ? <Spinner size='tiny' /> : undefined}
+              style={{ alignSelf: 'flex-end' }}
             >
-              {ROLES.map((role) => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
-
-            <input
-              className={styles.input}
-              value={newResource}
-              onChange={(event) => setNewResource(event.target.value)}
-              placeholder="resource"
-            />
-
-            <select
-              className={styles.select}
-              aria-label="Aktion"
-              value={newAction}
-              onChange={(event) => setNewAction(event.target.value as RoleAction)}
-            >
-              {ACTIONS.map((action) => (
-                <option key={action} value={action}>{action}</option>
-              ))}
-            </select>
-
-            <button type="button" className={styles.primaryBtn} onClick={() => void createPermission()} disabled={rbacSubmitting}>
-              {rbacSubmitting ? 'Speichern …' : 'Hinzufügen'}
-            </button>
+              Hinzufuegen
+            </Button>
           </div>
-
-          {rbacError && <p className={styles.error}>{rbacError}</p>}
-          {rbacLoading ? (
-            <p className={styles.hint}>Laden …</p>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Rolle</th>
-                  <th>Ressource</th>
-                  <th>Aktion</th>
-                  <th>Filiale</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {permissions.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className={styles.hint}>Keine Berechtigungen vorhanden.</td>
-                  </tr>
-                )}
-                {permissions.map((permission) => (
-                  <tr key={permission.id}>
-                    <td>{permission.role}</td>
-                    <td>{permission.resource}</td>
-                    <td>{permission.action}</td>
-                    <td>{permission.branch_id ?? 'alle'}</td>
-                    <td>
-                      <button type="button" className={styles.secondaryBtn} onClick={() => void deletePermission(permission.id)}>
-                        Löschen
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {rbacError && <MessageBar intent='error'><MessageBarBody>{rbacError}</MessageBarBody></MessageBar>}
+          {rbacLoading ? <Spinner label='Laden...' /> : (
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead><tr>
+                  <th className={styles.th}>Rolle</th>
+                  <th className={styles.th}>Ressource</th>
+                  <th className={styles.th}>Aktion</th>
+                  <th className={styles.th}>Filiale</th>
+                  <th className={styles.th}></th>
+                </tr></thead>
+                <tbody>
+                  {permissions.length === 0 && (
+                    <tr><td colSpan={5} className={styles.td}><Caption1>Keine Berechtigungen vorhanden.</Caption1></td></tr>
+                  )}
+                  {permissions.map((perm) => (
+                    <tr key={perm.id}>
+                      <td className={styles.td}>{perm.role}</td>
+                      <td className={styles.td}>{perm.resource}</td>
+                      <td className={styles.td}>{perm.action}</td>
+                      <td className={styles.td}>{perm.branch_id ?? 'alle'}</td>
+                      <td className={styles.td}>
+                        <Button appearance='subtle' size='small' onClick={() => void deletePermission(perm.id)}>Loeschen</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </section>
+        </Card>
       )}
 
       {activeTab === 'sla' && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>SLA-Snapshots (letzte 20)</h2>
-          {slaError && <p className={styles.error}>{slaError}</p>}
-          {slaLoading ? (
-            <p className={styles.hint}>Laden …</p>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Endpoint</th>
-                  <th>P50 (ms)</th>
-                  <th>P95 (ms)</th>
-                  <th>Uptime (%)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {snapshots.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className={styles.hint}>Keine SLA-Snapshots vorhanden.</td>
-                  </tr>
-                )}
-                {snapshots.map((snapshot) => (
-                  <tr key={snapshot.id}>
-                    <td>{snapshot.endpoint}</td>
-                    <td>{snapshot.p50_ms.toFixed(1)}</td>
-                    <td>{snapshot.p95_ms.toFixed(1)}</td>
-                    <td>{snapshot.uptime_pct.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <Card>
+          <CardHeader header={<Body1Strong>SLA-Snapshots (letzte 20)</Body1Strong>} />
+          {slaError && <MessageBar intent='error'><MessageBarBody>{slaError}</MessageBarBody></MessageBar>}
+          {slaLoading ? <Spinner label='Laden...' /> : (
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead><tr>
+                  <th className={styles.th}>Endpoint</th>
+                  <th className={styles.th}>P50 (ms)</th>
+                  <th className={styles.th}>P95 (ms)</th>
+                  <th className={styles.th}>Uptime (%)</th>
+                </tr></thead>
+                <tbody>
+                  {snapshots.length === 0 && (
+                    <tr><td colSpan={4} className={styles.td}><Caption1>Keine SLA-Snapshots vorhanden.</Caption1></td></tr>
+                  )}
+                  {snapshots.map((snap) => (
+                    <tr key={snap.id}>
+                      <td className={styles.td}>{snap.endpoint}</td>
+                      <td className={styles.td}>{snap.p50_ms.toFixed(1)}</td>
+                      <td className={styles.td}>{snap.p95_ms.toFixed(1)}</td>
+                      <td className={styles.td}>{snap.uptime_pct.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </section>
+        </Card>
       )}
     </div>
   )
