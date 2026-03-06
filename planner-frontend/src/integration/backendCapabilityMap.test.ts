@@ -46,6 +46,6 @@ describe('backendCapabilityMap', () => {
     const cameraEntry = entries.find((entry) => entry.id === 'panel-camera')
     expect(cameraEntry).toBeDefined()
     expect(cameraEntry?.enabled).toBe(false)
-    expect(cameraEntry?.reasonIfDisabled).toBe('Projektkontext fehlt')
+    expect(cameraEntry?.reasonIfDisabled).toBe('shell.reasons.projectContextMissing')
   })
 })

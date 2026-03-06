@@ -73,7 +73,7 @@ export function McpQuickActions({
               key={action.id}
               appearance='subtle'
               disabled={!action.enabled}
-              title={action.reasonIfDisabled}
+              title={action.reasonIfDisabled ? t(action.reasonIfDisabled) : undefined}
               data-testid={`${testIdPrefix}-${variant}-action-${action.id}`}
               onClick={() => {
                 void runAction(action.id)
@@ -101,7 +101,7 @@ export function McpQuickActions({
               <MenuItem
                 key={action.id}
                 disabled={!action.enabled}
-                title={action.reasonIfDisabled}
+                title={action.reasonIfDisabled ? t(action.reasonIfDisabled) : undefined}
                 data-testid={`${testIdPrefix}-${variant}-action-${action.id}`}
                 onClick={() => {
                   void runAction(action.id)

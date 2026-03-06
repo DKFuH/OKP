@@ -22,9 +22,9 @@ describe('mcpActionBridge', () => {
     const promptAction = actions.find((action) => action.id === 'mcp-copy-validation-prompt')
 
     expect(projectContext?.enabled).toBe(false)
-    expect(projectContext?.reasonIfDisabled).toBe('Projektkontext fehlt')
+    expect(projectContext?.reasonIfDisabled).toBe('shell.reasons.projectContextMissing')
 
     expect(promptAction?.enabled).toBe(false)
-    expect(promptAction?.reasonIfDisabled).toBe('Projektkontext fehlt')
+    expect(promptAction?.reasonIfDisabled).toBe('shell.reasons.projectContextMissing')
   })
 })

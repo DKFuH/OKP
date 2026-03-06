@@ -30,7 +30,7 @@ describe('pluginSlotRegistry', () => {
     const assets = entries.find((entry) => entry.pluginId === 'asset-library')
 
     expect(presentation?.enabled).toBe(false)
-    expect(presentation?.reasonIfDisabled).toBe('Projektkontext fehlt')
+    expect(presentation?.reasonIfDisabled).toBe('shell.reasons.projectContextMissing')
 
     expect(assets?.enabled).toBe(true)
     expect(assets?.path).toBe('/catalog')

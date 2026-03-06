@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Room } from '../../api/projects.js'
 import {
   catalogApi,
@@ -79,6 +80,7 @@ export function LeftSidebar({
   pluginSlotEntries = [],
   onNavigateToPath,
 }: Props) {
+  const { t } = useTranslation()
   const [addingRoom, setAddingRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
   const [catalogMode, setCatalogMode] = useState<'standard' | 'manufacturer' | 'assets'>('standard')
@@ -364,7 +366,7 @@ export function LeftSidebar({
                       className={styles.pluginSlotButton}
                       data-testid={`sidebar-plugin-slot-${entry.pluginId ?? entry.id}`}
                       disabled={!entry.enabled}
-                      title={entry.reasonIfDisabled}
+                      title={entry.reasonIfDisabled ? t(entry.reasonIfDisabled) : undefined}
                       onClick={() => {
                         if (!entry.enabled || !onNavigateToPath) {
                           return

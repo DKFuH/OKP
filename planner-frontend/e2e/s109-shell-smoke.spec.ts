@@ -53,12 +53,18 @@ test('hardening: global context keeps project-scoped actions disabled', async ({
 
   await page.getByTestId('header-backend-menu-trigger').click()
   await expect(page.getByTestId('header-backend-feature-panel-camera')).toBeDisabled()
-  await expect(page.getByTestId('header-backend-feature-panel-camera')).toHaveAttribute('title', 'Projektkontext fehlt')
+  await expect(page.getByTestId('header-backend-feature-panel-camera')).toHaveAttribute(
+    'title',
+    /Projektkontext fehlt|Project context missing/,
+  )
   await page.keyboard.press('Escape')
 
   await page.getByTestId('header-plugins-menu-trigger').click()
   await expect(page.getByTestId('header-plugin-slot-presentation')).toBeDisabled()
-  await expect(page.getByTestId('header-plugin-slot-presentation')).toHaveAttribute('title', 'Projektkontext fehlt')
+  await expect(page.getByTestId('header-plugin-slot-presentation')).toHaveAttribute(
+    'title',
+    /Projektkontext fehlt|Project context missing/,
+  )
   await page.keyboard.press('Escape')
 
   await expect(page.getByTestId('sidebar-plugin-slot-presentation')).toBeDisabled()

@@ -39,15 +39,15 @@ function resolveDisabledReason(
   targetPath: string | null,
 ): string | undefined {
   if (!enabled) {
-    return 'Plugin ist fuer diesen Tenant deaktiviert'
+    return 'shell.reasons.pluginDisabledForTenant'
   }
 
   if (!targetPath && PROJECT_SCOPED_PLUGIN_IDS.has(pluginId)) {
-    return 'Projektkontext fehlt'
+    return 'shell.reasons.projectContextMissing'
   }
 
   if (!targetPath) {
-    return 'Kein direkter UI-Einstiegspunkt verfuegbar'
+    return 'shell.reasons.noDirectUiEntry'
   }
 
   return undefined

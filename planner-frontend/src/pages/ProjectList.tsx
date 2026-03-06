@@ -360,7 +360,11 @@ export function ProjectList() {
                       }}
                     >
                       <div className={styles.cardTop}>
-                        <button className={styles.cardTitle} onClick={() => navigate(`/projects/${project.id}`)}>
+                        <button
+                          className={styles.cardTitle}
+                          data-testid={`project-open-${project.id}`}
+                          onClick={() => navigate(`/projects/${project.id}`)}
+                        >
                           {project.name}
                         </button>
                         <div className={styles.menuWrapper} ref={openMenuId === project.id ? menuRef : undefined}>

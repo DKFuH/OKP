@@ -77,6 +77,11 @@ export const de = {
       nextStepDisabled: 'Bereits im letzten Workflow-Schritt',
       disabledFallback: 'Diese Aktion ist aktuell nicht verfuegbar',
     },
+    reasons: {
+      projectContextMissing: 'Projektkontext fehlt',
+      pluginDisabledForTenant: 'Plugin ist fuer diesen Tenant deaktiviert',
+      noDirectUiEntry: 'Kein direkter UI-Einstiegspunkt verfuegbar',
+    },
   },
   settings: {
     title: 'Einstellungen',

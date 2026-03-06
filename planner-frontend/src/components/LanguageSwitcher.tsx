@@ -74,13 +74,14 @@ export function LanguageSwitcher({ onChange }: Props) {
   }
 
   return (
-    <div className={styles.switcher}>
+    <div className={styles.switcher} data-testid='language-switcher'>
       {availableLocales.map((code) => (
         <button
           key={code}
           type="button"
           onClick={() => void handleSwitch(code)}
           className={`${styles.button} ${current === code ? styles.buttonActive : ''}`}
+          data-testid={`language-switch-${code}`}
         >
           {LOCALE_LABELS[code] ?? code.toUpperCase()}
         </button>

@@ -47,7 +47,7 @@ function fromActionState(
       targetPath,
       enabled: false,
       visible: actionState.visible !== false,
-      reasonIfDisabled: 'Projektkontext fehlt',
+      reasonIfDisabled: 'shell.reasons.projectContextMissing',
     }
   }
 

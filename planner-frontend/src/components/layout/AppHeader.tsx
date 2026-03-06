@@ -209,13 +209,13 @@ export function AppHeader({ shellState, editorBridgeState = null }: AppHeaderPro
         </div>
 
         <div className={styles.statusCluster}>
-          <Badge appearance='filled'>
+          <Badge appearance='filled' data-testid='shell-workflow-badge'>
             {t(`shell.workflow.steps.${shellState.workflowStep}`)}
           </Badge>
-          <Badge appearance='tint'>
+          <Badge appearance='tint' data-testid='shell-mode-badge'>
             {t('shell.mode.label')}: {shellState.modeLabel}
           </Badge>
-          <Badge appearance={shellState.projectId ? 'filled' : 'outline'}>
+          <Badge appearance={shellState.projectId ? 'filled' : 'outline'} data-testid='shell-project-scope-badge'>
             {shellState.projectId ? t('shell.badges.projectBound') : t('shell.badges.globalContext')}
           </Badge>
         </div>
@@ -255,7 +255,7 @@ export function AppHeader({ shellState, editorBridgeState = null }: AppHeaderPro
                     <MenuItem
                       key={entry.id}
                       disabled={!entry.enabled}
-                      title={entry.reasonIfDisabled}
+                      title={entry.reasonIfDisabled ? t(entry.reasonIfDisabled) : undefined}
                       data-testid={`header-backend-feature-${entry.id}`}
                       onClick={() => {
                         if (!entry.enabled) return
@@ -281,7 +281,7 @@ export function AppHeader({ shellState, editorBridgeState = null }: AppHeaderPro
                     <MenuItem
                       key={entry.id}
                       disabled={!entry.enabled}
-                      title={entry.reasonIfDisabled}
+                      title={entry.reasonIfDisabled ? t(entry.reasonIfDisabled) : undefined}
                       data-testid={`header-plugin-slot-${entry.pluginId ?? entry.id}`}
                       onClick={() => {
                         if (!entry.enabled) return

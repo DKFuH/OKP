@@ -38,7 +38,7 @@ export function resolveMcpQuickActions({ projectId }: ResolveMcpQuickActionsInpu
       kind: 'navigate',
       targetPath: projectId ? `/settings/mcp?projectId=${projectId}` : '/settings/mcp',
       enabled: hasProject,
-      reasonIfDisabled: hasProject ? undefined : 'Projektkontext fehlt',
+      reasonIfDisabled: hasProject ? undefined : 'shell.reasons.projectContextMissing',
     },
     {
       id: 'mcp-copy-validation-prompt',
@@ -46,7 +46,7 @@ export function resolveMcpQuickActions({ projectId }: ResolveMcpQuickActionsInpu
       kind: 'copy-prompt',
       prompt: projectId ? buildValidationPrompt(projectId) : undefined,
       enabled: hasProject,
-      reasonIfDisabled: hasProject ? undefined : 'Projektkontext fehlt',
+      reasonIfDisabled: hasProject ? undefined : 'shell.reasons.projectContextMissing',
     },
   ]
 }

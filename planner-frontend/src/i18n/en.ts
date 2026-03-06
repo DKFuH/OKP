@@ -79,6 +79,11 @@ export const en: Messages = {
       nextStepDisabled: 'Already at the last workflow step',
       disabledFallback: 'This action is currently unavailable',
     },
+    reasons: {
+      projectContextMissing: 'Project context missing',
+      pluginDisabledForTenant: 'Plugin is disabled for this tenant',
+      noDirectUiEntry: 'No direct UI entry point available',
+    },
   },
   settings: {
     title: 'Settings',
