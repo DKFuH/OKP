@@ -76,6 +76,36 @@ const isRoom = (value: unknown): value is Room => {
   return typeof record.id === 'string' && typeof record.project_id === 'string' && typeof record.name === 'string'
 }
 
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
+const hasUsableBoundaryVertices = (boundary: unknown): boolean => {
+  const record = asRecord(boundary)
+  if (!record || !Array.isArray(record.vertices)) {
+    return false
+  }
+
+  return record.vertices.some((entry) => {
+    const vertex = asRecord(entry)
+    return typeof vertex?.x_mm === 'number' && Number.isFinite(vertex.x_mm)
+      && typeof vertex?.y_mm === 'number' && Number.isFinite(vertex.y_mm)
+  })
+}
+
+const mergeRoomData = (baseRoom: Room, bundleRoom: Room): Room => ({
+  ...baseRoom,
+  ...bundleRoom,
+  boundary: hasUsableBoundaryVertices(bundleRoom.boundary) ? bundleRoom.boundary : baseRoom.boundary,
+  ceiling_constraints: Array.isArray(bundleRoom.ceiling_constraints) ? bundleRoom.ceiling_constraints : baseRoom.ceiling_constraints,
+  openings: Array.isArray(bundleRoom.openings) ? bundleRoom.openings : baseRoom.openings,
+  placements: Array.isArray(bundleRoom.placements) ? bundleRoom.placements : baseRoom.placements,
+  reference_image: bundleRoom.reference_image !== undefined ? bundleRoom.reference_image : baseRoom.reference_image,
+})
+
 const readRecentProjectDetailsCache = (): RecentProjectDetailsCache => {
   if (!isBrowserAvailable()) {
     return []
@@ -127,7 +157,8 @@ const mergeProjectRooms = (detail: ProjectDetail, bundleRooms: unknown[]): Proje
 
   for (const room of bundleRooms) {
     if (isRoom(room)) {
-      roomMap.set(room.id, room)
+      const existingRoom = roomMap.get(room.id)
+      roomMap.set(room.id, existingRoom ? mergeRoomData(existingRoom, room) : room)
     }
   }
 
