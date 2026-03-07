@@ -36,7 +36,7 @@ const useStyles = makeStyles({
   tabButton: {
     borderRadius: 0,
     borderBottom: '2px solid transparent',
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
     minWidth: 'unset',
   },
   tabButtonActive: {
@@ -57,7 +57,7 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: tokens.spacingHorizontalS,
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
     overflowX: 'auto',
     minHeight: '56px',
   },
