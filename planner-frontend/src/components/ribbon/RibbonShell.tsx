@@ -15,10 +15,12 @@ import {
   type RibbonTabId,
 } from './ribbonStateResolver.js'
 import type { AppShellState } from '../../editor/appShellState.js'
+import type { AppShellKanbanBridgeState } from '../layout/AppShellKanbanBridge.js'
 
 interface RibbonShellProps {
   shellState: AppShellState
   editorBridgeState?: AppShellEditorBridgeState | null
+  kanbanBridgeState?: AppShellKanbanBridgeState | null
 }
 
 const useStyles = makeStyles({
@@ -61,12 +63,13 @@ const useStyles = makeStyles({
   },
 })
 
-export function RibbonShell({ shellState, editorBridgeState = null }: RibbonShellProps) {
+export function RibbonShell({ shellState, editorBridgeState = null, kanbanBridgeState = null }: RibbonShellProps) {
   const styles = useStyles()
   const { t } = useTranslation()
   const navigate = useNavigate()
 
   const tenantPlugins = editorBridgeState?.tenantPlugins ?? null
+  const selectedKanbanProjectId = kanbanBridgeState?.selectedProjectId ?? null
 
   const defaultTab: RibbonTabId = shellState.area === 'kanban' ? 'projekt' : 'start'
   const [activeTabId, setActiveTabId] = useState<RibbonTabId>(defaultTab)
@@ -113,6 +116,7 @@ export function RibbonShell({ shellState, editorBridgeState = null }: RibbonShel
         mcpActions,
         enabledPluginIds,
         area: shellState.area,
+        selectedKanbanProjectId,
         activeTabId,
       }),
     [
@@ -124,6 +128,7 @@ export function RibbonShell({ shellState, editorBridgeState = null }: RibbonShel
       availablePlugins,
       mcpActions,
       enabledPluginIds,
+      selectedKanbanProjectId,
       activeTabId,
     ],
   )
@@ -165,12 +170,25 @@ export function RibbonShell({ shellState, editorBridgeState = null }: RibbonShel
         }
         return
       }
+      if (command.kanbanAction && kanbanBridgeState && selectedKanbanProjectId) {
+        const action = command.kanbanAction
+        if (action === 'archive') {
+          kanbanBridgeState.onArchive(selectedKanbanProjectId)
+        } else if (action === 'delete') {
+          kanbanBridgeState.onDelete(selectedKanbanProjectId)
+        } else if (action === 'duplicate') {
+          kanbanBridgeState.onDuplicate(selectedKanbanProjectId)
+        } else if (action.startsWith('status:')) {
+          kanbanBridgeState.onStatusChange(selectedKanbanProjectId, action.slice(7))
+        }
+        return
+      }
       if (command.targetPath) {
         navigate(command.targetPath)
         return
       }
     },
-    [shellState, navigate],
+    [shellState, navigate, kanbanBridgeState, selectedKanbanProjectId],
   )
 
   return (

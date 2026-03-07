@@ -32,6 +32,7 @@ import {
   tokens,
 } from '@fluentui/react-components'
 import { platformApi, type GlobalSearchResult } from '../api/platform.js'
+import { useAppShellKanbanBridge } from '../components/layout/AppShellKanbanBridge.js'
 import { projectsApi, type Project, type ProjectLockState } from '../api/projects.js'
 import { OnboardingWizard, shouldShowOnboarding } from '../components/OnboardingWizard.js'
 import { useLocale } from '../hooks/useLocale.js'
@@ -127,6 +128,10 @@ const useStyles = makeStyles({
   card: {
     cursor: 'grab',
     userSelect: 'none',
+  },
+  cardSelected: {
+    outline: `2px solid ${tokens.colorBrandBackground}`,
+    outlineOffset: '-2px',
   },
   cardHeaderLayout: {
     display: 'flex',
@@ -279,6 +284,8 @@ export function ProjectList() {
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const kanbanBridgeCtx = useAppShellKanbanBridge()
 
   async function loadProjects(filter: 'all' | Project['project_status']) {
     setLoading(true)
@@ -320,6 +327,19 @@ export function ProjectList() {
   useEffect(() => {
     void loadProjects(statusFilter)
   }, [statusFilter])
+
+  // Register callbacks + selectedProjectId in kanban bridge
+  useEffect(() => {
+    if (!kanbanBridgeCtx) return
+    kanbanBridgeCtx.setKanbanBridgeState({
+      selectedProjectId,
+      onArchive: (id) => { void handleArchive(id) },
+      onDelete: (id) => { void handleDelete(id) },
+      onDuplicate: (id) => { void handleDuplicate(id) },
+      onStatusChange: (id, status) => { void handleStatusDrop(id, status as Project['project_status']) },
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProjectId, kanbanBridgeCtx])
 
   async function handleCreate() {
     if (!newName.trim()) return
@@ -571,8 +591,9 @@ export function ProjectList() {
                   <Card
                     key={project.id}
                     appearance="filled"
-                    className={styles.card}
+                    className={selectedProjectId === project.id ? styles.card + ' ' + styles.cardSelected : styles.card}
                     draggable
+                    onClick={() => setSelectedProjectId((prev) => prev === project.id ? null : project.id)}
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move'
                       e.dataTransfer.setData('text/project-id', project.id)

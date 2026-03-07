@@ -38,6 +38,7 @@ function buildRibbonInput(overrides: Partial<RibbonStateInput> = {}): RibbonStat
     mcpActions: [],
     enabledPluginIds: [],
     area: 'editor',
+    selectedKanbanProjectId: null,
     activeTabId: 'start',
     ...overrides,
   }

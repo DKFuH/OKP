@@ -50,6 +50,8 @@ export interface RibbonCommand {
   /** For MCP copy actions */
   mcpActionKind?: McpQuickAction['kind']
   clipboardText?: string
+  /** For kanban board actions */
+  kanbanAction?: string
 }
 
 export interface RibbonGroup {
@@ -93,6 +95,7 @@ export interface RibbonStateInput {
   mcpActions: McpQuickAction[]
   enabledPluginIds: string[]
   area: AppArea
+  selectedKanbanProjectId: string | null
   /** The currently active primary tab (controlled externally) */
   activeTabId: RibbonTabId
 }
@@ -533,9 +536,9 @@ function buildQuickAccess(
 // Kanban Tab Builders
 // ---------------------------------------------------------------------------
 
-function buildKanbanProjektTab(projectId: string | null): RibbonTab {
+function buildKanbanProjektTab(selectedKanbanProjectId: string | null): RibbonTab {
   const noSel = { enabled: false, visible: true, reasonIfDisabled: 'ribbon.reasons.noProjectSelected' }
-  const editorPath = projectId ? '/projects/' + projectId : null
+  const editorPath = selectedKanbanProjectId ? '/projects/' + selectedKanbanProjectId : null
 
   const newGroup = group('kb-new', 'ribbon.groups.newProject', [
     enabledCmd('cmd-kb-new-project', 'ribbon.commands.newProject', { targetPath: '/?new=1' }),
@@ -551,9 +554,10 @@ function buildKanbanProjektTab(projectId: string | null): RibbonTab {
     enabledCmd('cmd-kb-documents', 'ribbon.commands.documents', { targetPath: '/documents' }),
   ])
 
+  const hasSel = selectedKanbanProjectId !== null
   const manageGroup = group('kb-manage', 'ribbon.groups.manage', [
-    cmd('cmd-kb-archive', 'ribbon.commands.archiveProject', noSel),
-    cmd('cmd-kb-delete', 'ribbon.commands.deleteProject', noSel),
+    { id: 'cmd-kb-archive', labelKey: 'ribbon.commands.archiveProject', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : 'ribbon.reasons.noProjectSelected', kanbanAction: 'archive' },
+    { id: 'cmd-kb-delete', labelKey: 'ribbon.commands.deleteProject', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : 'ribbon.reasons.noProjectSelected', kanbanAction: 'delete' },
   ])
 
   return {
@@ -563,20 +567,21 @@ function buildKanbanProjektTab(projectId: string | null): RibbonTab {
   }
 }
 
-function buildKanbanAendernTab(): RibbonTab {
-  const noSel = { enabled: false, visible: true, reasonIfDisabled: 'ribbon.reasons.noProjectSelected' }
+function buildKanbanAendernTab(selectedKanbanProjectId: string | null): RibbonTab {
+  const hasSel = selectedKanbanProjectId !== null
+  const noSelReason = 'ribbon.reasons.noProjectSelected'
 
   const statusGroup = group('kb-status', 'ribbon.groups.status', [
-    cmd('cmd-kb-status-lead', 'ribbon.commands.statusLead', noSel),
-    cmd('cmd-kb-status-planning', 'ribbon.commands.statusPlanning', noSel),
-    cmd('cmd-kb-status-quoted', 'ribbon.commands.statusQuoted', noSel),
-    cmd('cmd-kb-status-contract', 'ribbon.commands.statusContract', noSel),
-    cmd('cmd-kb-status-production', 'ribbon.commands.statusProduction', noSel),
-    cmd('cmd-kb-status-installed', 'ribbon.commands.statusInstalled', noSel),
+    { id: 'cmd-kb-status-lead', labelKey: 'ribbon.commands.statusLead', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : noSelReason, kanbanAction: 'status:lead' },
+    { id: 'cmd-kb-status-planning', labelKey: 'ribbon.commands.statusPlanning', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : noSelReason, kanbanAction: 'status:planning' },
+    { id: 'cmd-kb-status-quoted', labelKey: 'ribbon.commands.statusQuoted', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : noSelReason, kanbanAction: 'status:quoted' },
+    { id: 'cmd-kb-status-contract', labelKey: 'ribbon.commands.statusContract', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : noSelReason, kanbanAction: 'status:contract' },
+    { id: 'cmd-kb-status-production', labelKey: 'ribbon.commands.statusProduction', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : noSelReason, kanbanAction: 'status:production' },
+    { id: 'cmd-kb-status-installed', labelKey: 'ribbon.commands.statusInstalled', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : noSelReason, kanbanAction: 'status:installed' },
   ])
 
   const projectGroup = group('kb-change', 'ribbon.groups.projectChange', [
-    cmd('cmd-kb-duplicate', 'ribbon.commands.duplicateProject', noSel),
+    { id: 'cmd-kb-duplicate', labelKey: 'ribbon.commands.duplicateProject', enabled: hasSel, visible: true, reasonKey: hasSel ? undefined : noSelReason, kanbanAction: 'duplicate' },
     enabledCmd('cmd-kb-customer-data', 'ribbon.commands.customerData', { targetPath: '/contacts' }),
   ])
 
@@ -629,6 +634,7 @@ export function resolveRibbonState(input: RibbonStateInput): RibbonState {
     mcpActions,
     enabledPluginIds,
     area,
+    selectedKanbanProjectId,
     activeTabId,
   } = input
 
@@ -636,8 +642,8 @@ export function resolveRibbonState(input: RibbonStateInput): RibbonState {
   if (area === 'kanban') {
     return {
       primaryTabs: [
-        buildKanbanProjektTab(projectId),
-        buildKanbanAendernTab(),
+        buildKanbanProjektTab(selectedKanbanProjectId),
+        buildKanbanAendernTab(selectedKanbanProjectId),
         buildEinstellungenTab(),
         buildHilfeTab(),
       ],

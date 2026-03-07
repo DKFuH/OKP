@@ -7,6 +7,10 @@ import {
   AppShellEditorBridgeProvider,
   type AppShellEditorBridgeState,
 } from './AppShellEditorBridge.js'
+import {
+  AppShellKanbanBridgeProvider,
+  type AppShellKanbanBridgeState,
+} from './AppShellKanbanBridge.js'
 
 const useStyles = makeStyles({
   root: {
@@ -28,6 +32,7 @@ export function AppShell() {
   const styles = useStyles()
   const location = useLocation()
   const [editorBridgeState, setEditorBridgeState] = useState<AppShellEditorBridgeState | null>(null)
+  const [kanbanBridgeState, setKanbanBridgeState] = useState<AppShellKanbanBridgeState | null>(null)
 
   const shellState = useAppShellState({
     pathname: location.pathname,
@@ -37,6 +42,10 @@ export function AppShell() {
     const onEditorRoute = /^\/projects\/[^/]+$/.test(location.pathname)
     if (!onEditorRoute) {
       setEditorBridgeState(null)
+    }
+    const onKanbanRoute = location.pathname === '/'
+    if (!onKanbanRoute) {
+      setKanbanBridgeState(null)
     }
   }, [location.pathname])
 
@@ -58,16 +67,21 @@ export function AppShell() {
   }, [editorBridgeState, shellState])
 
   return (
+    <AppShellKanbanBridgeProvider
+      kanbanBridgeState={kanbanBridgeState}
+      setKanbanBridgeState={setKanbanBridgeState}
+    >
     <AppShellEditorBridgeProvider
       editorBridgeState={editorBridgeState}
       setEditorBridgeState={setEditorBridgeState}
     >
       <div className={styles.root}>
-        <RibbonShell shellState={mergedShellState} editorBridgeState={editorBridgeState} />
+        <RibbonShell shellState={mergedShellState} editorBridgeState={editorBridgeState} kanbanBridgeState={kanbanBridgeState} />
         <main className={styles.content}>
           <Outlet />
         </main>
       </div>
     </AppShellEditorBridgeProvider>
+    </AppShellKanbanBridgeProvider>
   )
 }
