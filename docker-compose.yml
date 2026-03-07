@@ -17,22 +17,21 @@ services:
 
   api:
     build:
-      context: ./planner-api
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: planner-api/Dockerfile.dev
     environment:
       DATABASE_URL: postgresql://okp:okp_dev@postgres:5432/okp
       PORT: 3000
       HOST: 0.0.0.0
       FRONTEND_URL: http://localhost:5173
+      NODE_OPTIONS: --no-warnings
     ports:
       - "3000:3000"
-    volumes:
-      - ./planner-api:/app
-      - /app/node_modules
+    volumes: []
     depends_on:
       postgres:
         condition: service_healthy
-    command: npm run dev
+    command: npm run dev --workspace=planner-api
 
 volumes:
   postgres_data:

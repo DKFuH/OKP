@@ -1,8 +1,31 @@
-FROM node:22-alpine
+FROM node:22-slim
+
+# Runtime deps needed by Prisma in slim images.
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+
+# Copy workspace manifests first for better layer caching.
+COPY package*.json ./
+COPY planner-api/package*.json ./planner-api/
+COPY shared-schemas/package*.json ./shared-schemas/
+COPY interop-cad/dxf-export/package*.json ./interop-cad/dxf-export/
+COPY interop-cad/dxf-import/package*.json ./interop-cad/dxf-import/
+COPY interop-sketchup/skp-import/package*.json ./interop-sketchup/skp-import/
+
+RUN npm install --workspaces
+
 COPY . .
+
+# Build workspace libs consumed by planner-api at runtime.
+RUN npm run build --workspace=@okp/shared-schemas
+RUN npm run build --workspace=@okp/dxf-export
+RUN npm run build --workspace=@okp/dxf-import
+RUN npm run build --workspace=@okp/skp-import
+
+WORKDIR /app/planner-api
 RUN npx prisma generate
+
+WORKDIR /app
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev", "--workspace=planner-api"]
