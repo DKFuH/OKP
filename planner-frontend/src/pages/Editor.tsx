@@ -28,6 +28,8 @@ import {
 } from '../api/rooms.js'
 import { areasApi } from '../api/areas.js'
 import { openingsApi, type Opening } from '../api/openings.js'
+import { createCadImportJob, createSkpImportJob, type ImportJob } from '../api/imports.js'
+import { ifcInteropApi } from '../api/ifcInterop.js'
 import { validateApi, type ValidateResponse } from '../api/validate.js'
 import { autoCompletionApi } from '../api/autoCompletion.js'
 import { acousticsApi, type AcousticGridMeta, type GeoJsonGrid } from '../api/acoustics.js'
@@ -75,6 +77,8 @@ import { AreasPanel } from '../components/editor/AreasPanel.js'
 import { LayoutSheetTabs } from '../components/editor/LayoutSheetTabs.js'
 import { CameraPresetPanel } from '../components/editor/CameraPresetPanel.js'
 import { NavigationSettingsPanel } from '../components/editor/NavigationSettingsPanel.js'
+import { ImportJobPanel } from '../components/imports/ImportJobPanel.js'
+import { ImportReviewPanel } from '../components/imports/ImportReviewPanel.js'
 import { useAppShellEditorBridge } from '../components/layout/AppShellEditorBridge.js'
 import { resolvePluginSlotEntries } from '../plugins/pluginSlotRegistry.js'
 import type { ProjectEnvironment, SunPreview } from '../plugins/daylight/index.js'
@@ -412,6 +416,31 @@ const useStyles = makeStyles({
     maxWidth: 'calc(100vw - 32px)',
     zIndex: 70,
   },
+  importDock: {
+    position: 'absolute',
+    top: '106px',
+    left: '332px',
+    width: '420px',
+    maxWidth: 'calc(100vw - 32px)',
+    zIndex: 75,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  importNotice: {
+    margin: '0',
+    padding: '0.65rem 0.8rem',
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: '0.82rem',
+    backgroundColor: tokens.colorNeutralBackground1,
+    border: '1px solid ' + tokens.colorNeutralStroke1,
+    color: tokens.colorNeutralForeground1,
+  },
+  importNoticeError: {
+    backgroundColor: tokens.colorPaletteRedBackground1,
+    border: '1px solid ' + tokens.colorPaletteRedBorder2,
+    color: tokens.colorPaletteRedForeground1,
+  },
   materialDockShifted: {
     top: '470px',
   },
@@ -681,6 +710,10 @@ export function Editor() {
   const [screenshotBusy, setScreenshotBusy] = useState(false)
   const [screenshotMessage, setScreenshotMessage] = useState<string | null>(null)
   const [screenshotError, setScreenshotError] = useState(false)
+  const [importDockOpen, setImportDockOpen] = useState(false)
+  const [activeImportJobId, setActiveImportJobId] = useState<string | null>(null)
+  const [importNotice, setImportNotice] = useState<string | null>(null)
+  const [importNoticeError, setImportNoticeError] = useState(false)
   const [export360Busy, setExport360Busy] = useState(false)
   const [materialsEnabled, setMaterialsEnabled] = useState(false)
   const [materialPanelOpen, setMaterialPanelOpen] = useState(false)
@@ -1130,6 +1163,45 @@ export function Editor() {
       setExport360Busy(false)
     }
   }, [id, renderEnvironmentSettings, screenshotOptions])
+
+  const refreshProjectSnapshot = useCallback(async (preferredRoomId?: string | null) => {
+    if (!id) {
+      return
+    }
+
+    const refreshedProject = await projectsApi.get(id)
+    setProject(refreshedProject)
+    setSelectedRoomId((previous) => {
+      const preferred = preferredRoomId ?? previous
+      if (preferred && refreshedProject.rooms.some((room) => room.id === preferred)) {
+        return preferred
+      }
+      return refreshedProject.rooms[0]?.id ?? null
+    })
+
+    try {
+      const payload = await roomsApi.listElevations(id)
+      setProjectElevations(payload.elevations)
+    } catch {
+      setProjectElevations([])
+    }
+  }, [id])
+
+  const handleImportJobUpdated = useCallback((job: ImportJob) => {
+    setImportDockOpen(true)
+    setActiveImportJobId(job.id)
+
+    if (job.status === 'failed') {
+      setImportNoticeError(true)
+      setImportNotice(job.error_message ?? `Import fehlgeschlagen: ${job.source_filename}`)
+      return
+    }
+
+    if (job.status === 'done') {
+      setImportNoticeError(false)
+      setImportNotice(`Import-Review bereit: ${job.source_filename}`)
+    }
+  }, [])
 
   const handleMaterialRoomPatch = useCallback((roomId: string, patch: { coloring: unknown; placements: Placement[] }) => {
     setProject((prev) => {
@@ -1593,6 +1665,7 @@ export function Editor() {
     }
   }, [selectedAlternativeId])
   const handleImportFile = useCallback((format: 'dxf' | 'ifc' | 'sketchup') => {
+    if (!id) return
     const labels: Record<string, string> = { dxf: 'DXF/DWG', ifc: 'IFC', sketchup: 'SketchUp' }
     const accept: Record<string, string> = { dxf: '.dxf,.dwg', ifc: '.ifc', sketchup: '.skp' }
     const input = document.createElement('input')
@@ -1601,10 +1674,38 @@ export function Editor() {
     input.onchange = () => {
       const file = input.files?.[0]
       if (!file) return
-      setShortcutFeedback(labels[format] + ': ' + file.name + ' (Import noch nicht implementiert)')
+      setImportDockOpen(true)
+      setImportNoticeError(false)
+      setImportNotice(null)
+      setShortcutFeedback(`${labels[format]}-Import gestartet: ${file.name}`)
+      
+      const doImport = async () => {
+        try {
+          if (format === 'dxf') {
+            const job = await createCadImportJob({ project_id: id, file })
+            handleImportJobUpdated(job)
+          } else if (format === 'sketchup') {
+            const job = await createSkpImportJob({ project_id: id, file })
+            handleImportJobUpdated(job)
+          } else if (format === 'ifc') {
+            const result = await ifcInteropApi.importIfc(id, file)
+            await refreshProjectSnapshot()
+            setActiveImportJobId(null)
+            setImportNoticeError(false)
+            setImportNotice(`IFC importiert: ${result.rooms_created} Raeume${result.warnings.length > 0 ? `, Hinweise: ${result.warnings.length}` : ''}`)
+          }
+          setShortcutFeedback(`${labels[format]}-Import erfolgreich`)
+        } catch (error) {
+          setImportNoticeError(true)
+          setImportNotice(`${labels[format]}-Import fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`)
+          setShortcutFeedback(`${labels[format]}-Import fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+      
+      void doImport()
     }
     input.click()
-  }, [])
+  }, [handleImportJobUpdated, id, refreshProjectSnapshot])
 
     useEffect(() => {
     if (!appShellBridge) {
@@ -3507,6 +3608,20 @@ export function Editor() {
             onChange={handleRenderEnvironmentChange}
             onSave={handleSaveRenderEnvironment}
           />
+        </div>
+      )}
+
+      {importDockOpen && id && (
+        <div className={styles.importDock}>
+          <ImportJobPanel projectId={id} onJobUpdated={handleImportJobUpdated} />
+          {importNotice && (
+            <p className={`${styles.importNotice} ${importNoticeError ? styles.importNoticeError : ''}`}>
+              {importNotice}
+            </p>
+          )}
+          {activeImportJobId && (
+            <ImportReviewPanel jobId={activeImportJobId} />
+          )}
         </div>
       )}
 
