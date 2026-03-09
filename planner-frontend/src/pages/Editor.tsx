@@ -2186,6 +2186,7 @@ export function Editor() {
   selectedRoomRef.current = selectedRoom as unknown as RoomPayload | null
 
   const effectiveViewMode: PlannerViewMode = compactLayout && (viewMode === 'split' || viewMode === 'split3') ? '2d' : viewMode
+  const showsElevationProjection = effectiveViewMode === 'elevation' || effectiveViewMode === 'split3'
   const elevationsForSelectedRoom = useMemo(
     () => projectElevations.filter((entry) => entry.room_id === selectedRoomId),
     [projectElevations, selectedRoomId],
@@ -2206,7 +2207,7 @@ export function Editor() {
   }, [elevationsForSelectedRoom])
 
   useEffect(() => {
-    if (effectiveViewMode !== 'elevation' || !selectedRoomId) {
+    if (!showsElevationProjection || !selectedRoomId) {
       setElevationSvg('')
       setElevationLoading(false)
       return
@@ -2231,7 +2232,7 @@ export function Editor() {
     return () => {
       active = false
     }
-  }, [effectiveViewMode, selectedRoomId, selectedElevationWallIndex])
+  }, [selectedElevationWallIndex, selectedRoomId, showsElevationProjection])
 
   useEffect(() => {
     if (effectiveViewMode !== 'section' || !selectedRoomId || !selectedSectionLineId) {
@@ -2532,6 +2533,20 @@ export function Editor() {
   const selectedWallId = state.selectedEdgeIndex !== null
     ? (selectedWallSegment?.id ?? state.wallIds[state.selectedEdgeIndex] ?? null)
     : null
+  useEffect(() => {
+    if (!selectedWallId || !selectedRoomId || elevationsForSelectedRoom.length === 0) {
+      return
+    }
+
+    const matchingElevation = elevationsForSelectedRoom.find((entry) => entry.wall_id === selectedWallId)
+    if (!matchingElevation) {
+      return
+    }
+
+    setSelectedElevationWallIndex((previous) => (
+      previous === matchingElevation.wall_index ? previous : matchingElevation.wall_index
+    ))
+  }, [elevationsForSelectedRoom, selectedRoomId, selectedWallId])
   const dimensionAssistSegments = useMemo(() => {
     if (!selectedWallId || selEdgeLen == null) {
       return []
@@ -2916,9 +2931,9 @@ export function Editor() {
   const elevationPanel = (
     <section className={styles.projectionPanel}>
       <div className={styles.projectionHeader}>
-        <h3 className={styles.projectionTitle}>Elevation View</h3>
+        <h3 className={styles.projectionTitle}>Wandansicht</h3>
         <label className={styles.projectionField}>
-          Wand
+          Gewaehlte Wand
           <select
             value={selectedElevationWallIndex}
             onChange={(event) => setSelectedElevationWallIndex(Number(event.target.value))}

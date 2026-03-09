@@ -253,6 +253,7 @@ export const de = {
       topology: 'Topologie',
       view2d: '2D',
       viewSplit: 'Split',
+      viewSplit3: '3-Fach',
       view3d: '3D',
       viewElevation: 'Elevation',
       viewSection: 'Schnitt',

@@ -255,6 +255,7 @@ export const en: Messages = {
       topology: 'Topology',
       view2d: '2D',
       viewSplit: 'Split',
+      viewSplit3: 'Triple View',
       view3d: '3D',
       viewElevation: 'Elevation',
       viewSection: 'Section',
