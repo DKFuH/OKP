@@ -16,7 +16,7 @@ describe('interop provider registry', () => {
   it('bootstraps default providers on first access', () => {
     const providers = getInteropProviders()
 
-    expect(providers.map((provider) => provider.format)).toEqual(['dxf', 'dwg', 'skp', 'ifc'])
+    expect(providers.map((provider) => provider.format)).toEqual(['dxf', 'dwg', 'skp', 'ifc', 'stl', 'step', 'obj', '3mf'])
     expect(getInteropProvider('dxf').getCapabilities()).toMatchObject({
       provider_id: 'core.dxf',
       provider_kind: 'embedded',
@@ -66,6 +66,33 @@ describe('interop provider registry', () => {
           provider_kind: 'embedded',
           artifact_kind: 'script',
           export_delivery_mode: 'script',
+        }),
+        expect.objectContaining({
+          format: 'stl',
+          provider_id: 'core.stl',
+          artifact_kind: 'mesh',
+          export_delivery_mode: 'native',
+        }),
+        expect.objectContaining({
+          format: 'step',
+          provider_id: 'core.step',
+          artifact_kind: 'cad',
+          availability: 'experimental',
+          export_delivery_mode: 'native',
+        }),
+        expect.objectContaining({
+          format: 'obj',
+          provider_id: 'core.obj',
+          artifact_kind: 'mesh',
+          availability: 'stable',
+          export_delivery_mode: 'native',
+        }),
+        expect.objectContaining({
+          format: '3mf',
+          provider_id: 'core.3mf',
+          artifact_kind: 'mesh',
+          availability: 'stable',
+          export_delivery_mode: 'native',
         }),
       ]),
     )

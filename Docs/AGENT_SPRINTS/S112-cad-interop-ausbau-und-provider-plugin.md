@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sprint-112-cad-provider-expansion`
 **Gruppe:** B
-**Status:** `planned`
+**Status:** `in_progress`
 **Abhaengigkeiten:** S111
 
 ## Ziel
@@ -20,6 +20,31 @@ Leitidee:
 - der Core bleibt schlank und stabil
 - schwere oder proprietaere Interop-Implementierungen werden als zuschaltbare Provider behandelt
 - Nutzer sehen klar, was `native`, `fallback`, `review`, `script` oder `mesh` ist
+
+## Ausfuehrungsstand 2026-03-09
+
+Bereits umgesetzt:
+
+- plugin-faehige Interop-Registry auf Basis von `S111`
+- erweiterte Capability- und Artifact-Deskriptoren
+- vereinheitlichte Interop-API fuer:
+  - `GET /api/v1/interop/capabilities`
+  - `GET /api/v1/projects/:id/interop/jobs`
+  - `GET /api/v1/projects/:id/interop/artifacts`
+- neue Export-Provider:
+  - `STL`
+  - `STEP` (ehrlicher V1-Wireframe-Export)
+  - `OBJ`
+  - `3MF`
+- persistente Export-Artefakte ueber `Document` inkl. Download-URL
+- standardisierte Export-Descriptor-Endpunkte und Response-Header
+
+Noch offen:
+
+- echtes persistentes `interop_jobs`-/`interop_artifacts`-Datenmodell statt API-Fassade ueber bestehende Tabellen
+- externe/native Worker-Bridge fuer schwere oder proprietaere Provider
+- Frontend-Ausbau fuer capability-getriebete Export-/Import-Dialoge
+- optionale Folgeformate wie `IGES`
 
 ## Hintergrund
 
@@ -300,6 +325,13 @@ Damit kann das Frontend sauber kommunizieren:
 - erweiterte Export-/Import-UI
 - Operations-/Governance-Dokumentation
 
+Bereits geliefert in diesem Stand:
+
+- plugin-faehige Registry
+- Descriptor-APIs und Capability-API
+- `STL`-/`STEP`-/`OBJ`-/`3MF`-Provider-V1
+- persistente Export-Dokumente fuer Interop-Artefakte
+
 ## Tests
 
 - Unit:
@@ -348,4 +380,3 @@ Damit kann das Frontend sauber kommunizieren:
 - vollstaendige CAM-/CNC-Kette
 - automatische semantische Perfektkonvertierung zwischen allen Formaten
 - universeller nativer Multi-CAD-Writer im Core-Prozess
-

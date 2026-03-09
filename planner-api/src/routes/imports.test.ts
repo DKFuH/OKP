@@ -240,6 +240,29 @@ describe('importRoutes', () => {
           artifact_kind: 'bim',
           provider_kind: 'embedded',
         }),
+        expect.objectContaining({
+          format: 'stl',
+          artifact_kind: 'mesh',
+          export_delivery_mode: 'native',
+        }),
+        expect.objectContaining({
+          format: 'step',
+          artifact_kind: 'cad',
+          availability: 'experimental',
+          export_delivery_mode: 'native',
+        }),
+        expect.objectContaining({
+          format: 'obj',
+          artifact_kind: 'mesh',
+          availability: 'stable',
+          export_delivery_mode: 'native',
+        }),
+        expect.objectContaining({
+          format: '3mf',
+          artifact_kind: 'mesh',
+          availability: 'stable',
+          export_delivery_mode: 'native',
+        }),
       ]),
     })
 

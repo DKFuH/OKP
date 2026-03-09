@@ -1792,3 +1792,31 @@ sind im Frontend vollstaendig verdrahtet.
 | 114 | Kunden koennen Feng-Shui-Analysen mit Bagua-Zonen und Befunden durchfuehren |
 | 115 | Plugin-Aktivierung ist selbsterklaerend und professionell gestaltbar |
 | 116 | Kein Plugin existiert im Backend ohne Frontend-Entsprechung |
+
+---
+
+## Zusatzstand 2026-03-09 - CAD-/BIM-Interop
+
+Parallel zur UI-/Plugin-Linie wurde die Interop-Architektur modernisiert.
+
+Aktueller Stand:
+
+- `S111` abgeschlossen:
+  - Provider-Schnitt fuer `DXF`, `DWG`, `SKP`, `IFC`
+  - Registry und Capability-Modell
+  - Import-/Export-Routen auf Provider delegiert
+- `S112` in Arbeit:
+  - plugin-faehige Registry
+  - vereinheitlichte Interop-Jobs/Artefakte als API-Layer
+  - neue Export-Formate:
+    - `STL`
+    - `STEP` (V1 Wireframe)
+    - `OBJ`
+    - `3MF`
+  - persistente Export-Dokumente inkl. Download-URLs
+
+Noch offen in `S112`:
+
+- persistente `interop_jobs`-/`interop_artifacts`-Tabellen
+- externe/native Worker fuer schwere oder proprietaere Provider
+- capability-getriebene Frontend-Dialoge fuer Interop

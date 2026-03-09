@@ -4,7 +4,7 @@ export type InteropCapability = {
   provider_id: string
   provider_kind: 'embedded' | 'plugin' | 'external' | string
   availability: 'stable' | 'experimental' | 'disabled' | string
-  format: 'dxf' | 'dwg' | 'skp' | 'ifc' | string
+  format: 'dxf' | 'dwg' | 'skp' | 'ifc' | 'stl' | 'step' | 'obj' | '3mf' | string
   import_preview: boolean
   import_execute: boolean
   export_artifact: boolean

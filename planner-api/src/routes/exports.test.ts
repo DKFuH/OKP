@@ -1,4 +1,5 @@
 import Fastify from 'fastify'
+import AdmZip from 'adm-zip'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const tenantId = '00000000-0000-0000-0000-000000000001'
@@ -15,8 +16,16 @@ const { prismaMock } = vi.hoisted(() => ({
   },
 }))
 
+const { registerProjectDocumentMock } = vi.hoisted(() => ({
+  registerProjectDocumentMock: vi.fn(),
+}))
+
 vi.mock('../db.js', () => ({
   prisma: prismaMock,
+}))
+
+vi.mock('../services/documentRegistry.js', () => ({
+  registerProjectDocument: registerProjectDocumentMock,
 }))
 
 import { exportRoutes } from './exports.js'
@@ -75,6 +84,7 @@ describe('exportRoutes', () => {
         project_id: projectId,
       },
     })
+    registerProjectDocumentMock.mockResolvedValue({ id: 'doc-export-1' })
   })
 
   it('returns a DXF document as attachment', async () => {
@@ -93,10 +103,19 @@ describe('exportRoutes', () => {
     expect(response.headers['content-disposition']).toContain('kitchen-plan.dxf')
     expect(response.headers['content-type']).toContain('application/dxf')
     expect(response.headers['x-okp-provider-id']).toBe('core.dxf')
+    expect(response.headers['x-okp-document-id']).toBe('doc-export-1')
+    expect(response.headers['x-okp-download-url']).toBe(`/api/v1/projects/${projectId}/documents/doc-export-1/download`)
     expect(response.headers['x-okp-artifact-kind']).toBe('cad')
     expect(response.headers['x-okp-delivery-mode']).toBe('native')
     expect(response.body).toContain('OKP_ROOM')
     expect(response.body).toContain('OKP_OPENINGS')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      projectId,
+      tenantId,
+      type: 'other',
+      sourceId: `interop-export:dxf:${projectId}`,
+      tags: expect.arrayContaining(['interop', 'export', 'dxf', 'cad']),
+    }))
 
     await app.close()
   })
@@ -146,6 +165,10 @@ describe('exportRoutes', () => {
     expect(response.headers['content-disposition']).toContain('kitchen-plan.dxf')
     expect(response.headers['content-type']).toContain('application/dxf')
     expect(response.body).toContain('ENTITIES')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      sourceId: `interop-export:dwg:${projectId}`,
+      tags: expect.arrayContaining(['interop', 'export', 'dwg']),
+    }))
 
     await app.close()
   })
@@ -194,6 +217,130 @@ describe('exportRoutes', () => {
     expect(response.headers['x-okp-artifact-kind']).toBe('script')
     expect(response.headers['x-okp-delivery-mode']).toBe('script')
     expect(response.body).toContain('Sketchup.active_model')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      sourceId: `interop-export:skp:${projectId}`,
+      tags: expect.arrayContaining(['interop', 'export', 'skp', 'script']),
+    }))
+
+    await app.close()
+  })
+
+  it('returns an STL mesh export', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/exports/stl',
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-disposition']).toContain('kitchen-plan.stl')
+    expect(response.headers['content-type']).toContain('model/stl')
+    expect(response.headers['x-okp-provider-id']).toBe('core.stl')
+    expect(response.headers['x-okp-artifact-kind']).toBe('mesh')
+    expect(response.headers['x-okp-delivery-mode']).toBe('native')
+    expect(response.body).toContain('solid kitchen-plan')
+    expect(response.body).toContain('facet normal')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      sourceId: `interop-export:stl:${projectId}`,
+      tags: expect.arrayContaining(['interop', 'export', 'stl', 'mesh']),
+    }))
+
+    await app.close()
+  })
+
+  it('returns a STEP wireframe export', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/exports/step',
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-disposition']).toContain('kitchen-plan.step')
+    expect(response.headers['content-type']).toContain('application/step')
+    expect(response.headers['x-okp-provider-id']).toBe('core.step')
+    expect(response.headers['x-okp-artifact-kind']).toBe('cad')
+    expect(response.headers['x-okp-delivery-mode']).toBe('native')
+    expect(response.body).toContain('ISO-10303-21')
+    expect(response.body).toContain('GEOMETRIC_CURVE_SET')
+    expect(response.body).toContain('POLYLINE')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      sourceId: `interop-export:step:${projectId}`,
+      tags: expect.arrayContaining(['interop', 'export', 'step', 'cad']),
+    }))
+
+    await app.close()
+  })
+
+  it('returns an OBJ mesh export', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/exports/obj',
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-disposition']).toContain('kitchen-plan.obj')
+    expect(response.headers['content-type']).toContain('model/obj')
+    expect(response.headers['x-okp-provider-id']).toBe('core.obj')
+    expect(response.headers['x-okp-artifact-kind']).toBe('mesh')
+    expect(response.headers['x-okp-delivery-mode']).toBe('native')
+    expect(response.body).toContain('# OKP OBJ export')
+    expect(response.body).toContain('\nv ')
+    expect(response.body).toContain('\nf ')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      sourceId: `interop-export:obj:${projectId}`,
+      tags: expect.arrayContaining(['interop', 'export', 'obj', 'mesh']),
+    }))
+
+    await app.close()
+  })
+
+  it('returns a 3MF mesh export', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/exports/3mf',
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-disposition']).toContain('kitchen-plan.3mf')
+    expect(response.headers['content-type']).toContain('model/3mf')
+    expect(response.headers['x-okp-provider-id']).toBe('core.3mf')
+    expect(response.headers['x-okp-artifact-kind']).toBe('mesh')
+    expect(response.headers['x-okp-delivery-mode']).toBe('native')
+
+    const archive = new AdmZip(Buffer.from(response.rawPayload))
+    const modelEntry = archive.getEntry('3D/3dmodel.model')
+    expect(modelEntry).toBeTruthy()
+    expect(archive.getEntry('[Content_Types].xml')).toBeTruthy()
+    expect(archive.getEntry('_rels/.rels')).toBeTruthy()
+    expect(modelEntry?.getData().toString('utf8')).toContain('<model unit="millimeter"')
+    expect(modelEntry?.getData().toString('utf8')).toContain('<triangle ')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      sourceId: `interop-export:3mf:${projectId}`,
+      tags: expect.arrayContaining(['interop', 'export', '3mf', 'mesh']),
+    }))
 
     await app.close()
   })
@@ -238,6 +385,119 @@ describe('exportRoutes', () => {
       native: false,
       review_required: false,
       fallback_of: 'dwg',
+    })
+
+    await app.close()
+  })
+
+  it('returns a JSON export descriptor for project-scoped STL artifacts', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/export-descriptor/stl`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      provider_id: 'core.stl',
+      format: 'stl',
+      artifact_kind: 'mesh',
+      delivery_mode: 'native',
+      filename: 'kitchen-plan.stl',
+      content_type: 'model/stl; charset=utf-8',
+      native: true,
+      review_required: false,
+      fallback_of: null,
+    })
+
+    await app.close()
+  })
+
+  it('returns a JSON export descriptor for project-scoped STEP artifacts', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/export-descriptor/step`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      provider_id: 'core.step',
+      format: 'step',
+      artifact_kind: 'cad',
+      delivery_mode: 'native',
+      filename: 'kitchen-plan.step',
+      content_type: 'application/step; charset=utf-8',
+      native: true,
+      review_required: false,
+      fallback_of: null,
+      note: 'step endpoint currently returns a wireframe STEP exchange model',
+    })
+
+    await app.close()
+  })
+
+  it('returns a JSON export descriptor for project-scoped OBJ artifacts', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/export-descriptor/obj`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      provider_id: 'core.obj',
+      format: 'obj',
+      artifact_kind: 'mesh',
+      delivery_mode: 'native',
+      filename: 'kitchen-plan.obj',
+      content_type: 'model/obj; charset=utf-8',
+      native: true,
+      review_required: false,
+      fallback_of: null,
+    })
+
+    await app.close()
+  })
+
+  it('returns a JSON export descriptor for project-scoped 3MF artifacts', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(exportRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/export-descriptor/3mf`,
+      headers: { 'x-tenant-id': tenantId },
+      payload: createPayload(),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      provider_id: 'core.3mf',
+      format: '3mf',
+      artifact_kind: 'mesh',
+      delivery_mode: 'native',
+      filename: 'kitchen-plan.3mf',
+      content_type: 'model/3mf',
+      native: true,
+      review_required: false,
+      fallback_of: null,
     })
 
     await app.close()

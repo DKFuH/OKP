@@ -66,3 +66,24 @@ Naechster Fokus: E2E-Tests fuer Ribbon-Navigation (Playwright), verbleibende CSS
 - Die detaillierte Sprintplanung liegt in `Docs/AGENT_SPRINTS/`.
 - Der strategische Backlog und die Phasenstruktur liegen in `Docs/ROADMAP.md`.
 - Fuer den tagesaktuellen Sprintstand sind `Docs/AGENT_SPRINTS/README.md` und `Docs/ROADMAP.md` die fuehrenden Quellen.
+
+---
+
+## Interop-Stand 2026-03-09
+
+- `S111` ist abgeschlossen:
+  - Provider-Schnitt fuer `DXF`, `DWG`, `SKP`, `IFC`
+  - Registry
+  - Capability-Endpunkt
+  - Route-Migration auf den Provider-Layer
+- `S112` ist in Arbeit:
+  - plugin-faehige Registry aktiv
+  - neue Export-Formate `STL`, `STEP`, `OBJ`, `3MF`
+  - vereinheitlichte Interop-Jobs/Artefakte als API-Layer
+  - persistente Export-Artefakte ueber `Document`
+
+Offen in `S112`:
+
+- eigenes persistentes `interop_jobs`-/`interop_artifacts`-Modell
+- externe/native Worker-Bridge
+- capability-getriebenes Frontend fuer Interop-Dialoge

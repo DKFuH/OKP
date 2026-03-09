@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendForbidden, sendNotFound } from '../errors.js'
+import { registerProjectDocument } from '../services/documentRegistry.js'
 import { getInteropProvider } from '../services/interop/providers/registry.js'
 import type { InteropExportArtifact, InteropFormat } from '../services/interop/providers/types.js'
 
@@ -91,7 +92,7 @@ const ExportProjectParamsSchema = z.object({
 
 const ExportFormatParamsSchema = z.object({
   projectId: z.string().uuid(),
-  format: z.enum(['dxf', 'dwg', 'skp']),
+  format: z.enum(['dxf', 'dwg', 'skp', 'stl', 'step', 'obj', '3mf']),
 })
 
 function getTenantId(request: unknown): string | null {
@@ -162,8 +163,59 @@ function applyArtifactHeaders(reply: FastifyReply, artifact: InteropExportArtifa
   }
 }
 
+function buildArtifactBuffer(artifact: InteropExportArtifact): Buffer {
+  return typeof artifact.body === 'string' ? Buffer.from(artifact.body, 'utf8') : artifact.body
+}
+
+async function persistInteropArtifact(params: {
+  projectId: string
+  tenantId: string
+  uploadedBy: string
+  sourceId: string
+  artifact: InteropExportArtifact
+}) {
+  const document = await registerProjectDocument({
+    projectId: params.projectId,
+    tenantId: params.tenantId,
+    filename: params.artifact.filename,
+    originalFilename: params.artifact.filename,
+    mimeType: params.artifact.content_type,
+    uploadedBy: params.uploadedBy,
+    type: 'other',
+    tags: [
+      'interop',
+      'export',
+      params.artifact.format,
+      params.artifact.artifact_kind,
+      `provider:${params.artifact.provider_id}`,
+      ...(params.artifact.fallback_of ? [`fallback-of:${params.artifact.fallback_of}`] : []),
+    ],
+    isPublic: false,
+    sourceKind: 'manual_upload',
+    sourceId: params.sourceId,
+    versionMetadata: {
+      interop: {
+        provider_id: params.artifact.provider_id,
+        format: params.artifact.format,
+        artifact_kind: params.artifact.artifact_kind,
+        delivery_mode: params.artifact.delivery_mode,
+        native: params.artifact.native,
+        review_required: params.artifact.review_required,
+        fallback_of: params.artifact.fallback_of ?? null,
+        note: params.artifact.note ?? null,
+      },
+    },
+    buffer: buildArtifactBuffer(params.artifact),
+  })
+
+  return {
+    documentId: document.id,
+    downloadUrl: `/api/v1/projects/${params.projectId}/documents/${document.id}/download`,
+  }
+}
+
 async function buildProjectScopedArtifact(
-  format: InteropFormat,
+  format: Extract<InteropFormat, 'dxf' | 'dwg' | 'skp' | 'stl' | 'step' | 'obj' | '3mf'>,
   projectId: string,
   parsed: z.infer<typeof ExportRequestSchema>,
 ): Promise<InteropExportArtifact> {
@@ -193,6 +245,98 @@ async function buildProjectScopedArtifact(
     })
     if (!artifact) {
       throw new Error('Export provider for dwg is not configured for artifacts.')
+    }
+    return artifact
+  }
+
+  if (format === 'stl') {
+    const artifact = await provider.exportArtifact?.({
+      projectId,
+      filename: parsed.filename,
+      payload: {
+        projectName: parsed.filename?.trim() || `project-${projectId}`,
+        wall_segments: mapWallSegmentsForCad(parsed.payload),
+        placements: parsed.payload.furniture.map((item) => ({
+          id: item.id,
+          offset_mm: item.footprintRect.min.x_mm,
+          width_mm: Math.max(1, item.footprintRect.max.x_mm - item.footprintRect.min.x_mm),
+          depth_mm: Math.max(1, item.footprintRect.max.y_mm - item.footprintRect.min.y_mm),
+          height_mm: 720,
+        })),
+        ceiling_height_mm: 2600,
+      },
+    })
+    if (!artifact) {
+      throw new Error('Export provider for stl is not configured for artifacts.')
+    }
+    return artifact
+  }
+
+  if (format === 'step') {
+    const artifact = await provider.exportArtifact?.({
+      projectId,
+      filename: parsed.filename,
+      payload: {
+        projectName: parsed.filename?.trim() || `project-${projectId}`,
+        wall_segments: mapWallSegmentsForCad(parsed.payload),
+        placements: parsed.payload.furniture.map((item) => ({
+          id: item.id,
+          offset_mm: item.footprintRect.min.x_mm,
+          width_mm: Math.max(1, item.footprintRect.max.x_mm - item.footprintRect.min.x_mm),
+          depth_mm: Math.max(1, item.footprintRect.max.y_mm - item.footprintRect.min.y_mm),
+          height_mm: 720,
+        })),
+        ceiling_height_mm: 2600,
+      },
+    })
+    if (!artifact) {
+      throw new Error('Export provider for step is not configured for artifacts.')
+    }
+    return artifact
+  }
+
+  if (format === 'obj') {
+    const artifact = await provider.exportArtifact?.({
+      projectId,
+      filename: parsed.filename,
+      payload: {
+        projectName: parsed.filename?.trim() || `project-${projectId}`,
+        wall_segments: mapWallSegmentsForCad(parsed.payload),
+        placements: parsed.payload.furniture.map((item) => ({
+          id: item.id,
+          offset_mm: item.footprintRect.min.x_mm,
+          width_mm: Math.max(1, item.footprintRect.max.x_mm - item.footprintRect.min.x_mm),
+          depth_mm: Math.max(1, item.footprintRect.max.y_mm - item.footprintRect.min.y_mm),
+          height_mm: 720,
+        })),
+        ceiling_height_mm: 2600,
+      },
+    })
+    if (!artifact) {
+      throw new Error('Export provider for obj is not configured for artifacts.')
+    }
+    return artifact
+  }
+
+  if (format === '3mf') {
+    const artifact = await provider.exportArtifact?.({
+      projectId,
+      filename: parsed.filename,
+      payload: {
+        projectName: parsed.filename?.trim() || `project-${projectId}`,
+        wall_segments: mapWallSegmentsForCad(parsed.payload),
+        placements: parsed.payload.furniture.map((item) => ({
+          id: item.id,
+          offset_mm: item.footprintRect.min.x_mm,
+          width_mm: Math.max(1, item.footprintRect.max.x_mm - item.footprintRect.min.x_mm),
+          depth_mm: Math.max(1, item.footprintRect.max.y_mm - item.footprintRect.min.y_mm),
+          height_mm: 720,
+        })),
+        ceiling_height_mm: 2600,
+      },
+    })
+    if (!artifact) {
+      throw new Error('Export provider for 3mf is not configured for artifacts.')
     }
     return artifact
   }
@@ -247,8 +391,17 @@ export async function exportRoutes(app: FastifyInstance) {
     }
 
     const artifact = await buildProjectScopedArtifact('dxf', projectId, parsed.data)
+    const persisted = await persistInteropArtifact({
+      projectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:dxf',
+      sourceId: `interop-export:dxf:${projectId}`,
+      artifact,
+    })
 
     applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
     reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
     reply.type(artifact.content_type)
     return reply.send(artifact.body)
@@ -287,8 +440,17 @@ export async function exportRoutes(app: FastifyInstance) {
     }
 
     const artifact = await buildProjectScopedArtifact('dwg', projectId, parsed.data)
+    const persisted = await persistInteropArtifact({
+      projectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:dwg',
+      sourceId: `interop-export:dwg:${projectId}`,
+      artifact,
+    })
 
     applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
     reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
     reply.type(artifact.content_type)
     return reply.send(artifact.body)
@@ -327,8 +489,17 @@ export async function exportRoutes(app: FastifyInstance) {
     }
 
     const artifact = await buildProjectScopedArtifact('skp', projectId, parsed.data)
+    const persisted = await persistInteropArtifact({
+      projectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:skp',
+      sourceId: `interop-export:skp:${projectId}`,
+      artifact,
+    })
 
     applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
     reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
     reply.type(artifact.content_type)
     return reply.send(artifact.body)
@@ -369,6 +540,310 @@ export async function exportRoutes(app: FastifyInstance) {
   app.post('/projects/:projectId/export-dwg', dwgHandler)
   app.post('/exports/skp', skpHandler)
   app.post('/projects/:projectId/export-skp', skpHandler)
+  app.post('/exports/stl', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const projectId = parsed.data.project_id
+    if (!projectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, projectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('stl', projectId, parsed.data)
+    const persisted = await persistInteropArtifact({
+      projectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:stl',
+      sourceId: `interop-export:stl:${projectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
+  app.post('/projects/:projectId/export-stl', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const params = ExportProjectParamsSchema.safeParse(request.params)
+    const routeProjectId = params.success ? params.data.projectId : null
+    if (!routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+    if (parsed.data.project_id && parsed.data.project_id !== routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id in payload must match route parameter.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, routeProjectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('stl', routeProjectId, { ...parsed.data, project_id: routeProjectId })
+    const persisted = await persistInteropArtifact({
+      projectId: routeProjectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:stl',
+      sourceId: `interop-export:stl:${routeProjectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
+  app.post('/exports/step', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const projectId = parsed.data.project_id
+    if (!projectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, projectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('step', projectId, parsed.data)
+    const persisted = await persistInteropArtifact({
+      projectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:step',
+      sourceId: `interop-export:step:${projectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
+  app.post('/projects/:projectId/export-step', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const params = ExportProjectParamsSchema.safeParse(request.params)
+    const routeProjectId = params.success ? params.data.projectId : null
+    if (!routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+    if (parsed.data.project_id && parsed.data.project_id !== routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id in payload must match route parameter.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, routeProjectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('step', routeProjectId, { ...parsed.data, project_id: routeProjectId })
+    const persisted = await persistInteropArtifact({
+      projectId: routeProjectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:step',
+      sourceId: `interop-export:step:${routeProjectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
+  app.post('/exports/obj', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const projectId = parsed.data.project_id
+    if (!projectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, projectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('obj', projectId, parsed.data)
+    const persisted = await persistInteropArtifact({
+      projectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:obj',
+      sourceId: `interop-export:obj:${projectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
+  app.post('/projects/:projectId/export-obj', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const params = ExportProjectParamsSchema.safeParse(request.params)
+    const routeProjectId = params.success ? params.data.projectId : null
+    if (!routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+    if (parsed.data.project_id && parsed.data.project_id !== routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id in payload must match route parameter.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, routeProjectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('obj', routeProjectId, { ...parsed.data, project_id: routeProjectId })
+    const persisted = await persistInteropArtifact({
+      projectId: routeProjectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:obj',
+      sourceId: `interop-export:obj:${routeProjectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
+  app.post('/exports/3mf', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const projectId = parsed.data.project_id
+    if (!projectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, projectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('3mf', projectId, parsed.data)
+    const persisted = await persistInteropArtifact({
+      projectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:3mf',
+      sourceId: `interop-export:3mf:${projectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
+  app.post('/projects/:projectId/export-3mf', async (request, reply) => {
+    const tenantId = getTenantId(request)
+    if (!tenantId) {
+      return sendForbidden(reply, 'Tenant scope is required')
+    }
+
+    const parsed = ExportRequestSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return sendBadRequest(reply as never, parsed.error.errors[0].message)
+    }
+
+    const params = ExportProjectParamsSchema.safeParse(request.params)
+    const routeProjectId = params.success ? params.data.projectId : null
+    if (!routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id is required for tenant-scoped exports.')
+    }
+    if (parsed.data.project_id && parsed.data.project_id !== routeProjectId) {
+      return sendBadRequest(reply as never, 'project_id in payload must match route parameter.')
+    }
+
+    const project = await assertProjectInTenantScope(reply, tenantId, routeProjectId)
+    if (!project) {
+      return reply
+    }
+
+    const artifact = await buildProjectScopedArtifact('3mf', routeProjectId, { ...parsed.data, project_id: routeProjectId })
+    const persisted = await persistInteropArtifact({
+      projectId: routeProjectId,
+      tenantId,
+      uploadedBy: 'system:interop-export:3mf',
+      sourceId: `interop-export:3mf:${routeProjectId}`,
+      artifact,
+    })
+    applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', persisted.documentId)
+    reply.header('x-okp-download-url', persisted.downloadUrl)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
+  })
 
   app.post<{ Params: { id: string } }>('/alternatives/:id/export/gltf', async (request, reply) => {
     const tenantId = getTenantId(request)

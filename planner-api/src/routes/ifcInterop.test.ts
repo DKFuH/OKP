@@ -29,8 +29,16 @@ const { prismaMock } = vi.hoisted(() => ({
   },
 }))
 
+const { registerProjectDocumentMock } = vi.hoisted(() => ({
+  registerProjectDocumentMock: vi.fn(),
+}))
+
 vi.mock('../db.js', () => ({
   prisma: prismaMock,
+}))
+
+vi.mock('../services/documentRegistry.js', () => ({
+  registerProjectDocument: registerProjectDocumentMock,
 }))
 
 vi.mock('../services/ifcEngine.js', () => ({
@@ -61,7 +69,7 @@ describe('ifcInteropRoutes', () => {
 
     prismaMock.project.findUnique.mockImplementation(async ({ where }: { where: { id: string } }) => {
       if (where.id === projectId) {
-        return { id: projectId, name: 'Projekt IFC' }
+        return { id: projectId, name: 'Projekt IFC', tenant_id: 'tenant-ifc-1' }
       }
 
       return null
@@ -73,6 +81,7 @@ describe('ifcInteropRoutes', () => {
         project: {
           id: projectId,
           name: 'Projekt IFC',
+          tenant_id: 'tenant-ifc-1',
         },
       },
     })
@@ -107,6 +116,7 @@ describe('ifcInteropRoutes', () => {
 
     prismaMock.ifcImportJob.create.mockResolvedValue({ id: 'job-1' })
     prismaMock.ifcImportJob.update.mockResolvedValue({ id: 'job-1', status: 'done' })
+    registerProjectDocumentMock.mockResolvedValue({ id: 'doc-ifc-export-1' })
     prismaMock.ifcImportJob.findMany.mockResolvedValue([
       { id: 'job-1', project_id: projectId, status: 'done', created_at: new Date().toISOString() },
     ])
@@ -189,8 +199,17 @@ describe('ifcInteropRoutes', () => {
     expect(response.statusCode).toBe(200)
     expect(response.headers['content-type']).toContain('application/x-step')
     expect(response.headers['x-okp-provider-id']).toBe('core.ifc')
+    expect(response.headers['x-okp-document-id']).toBe('doc-ifc-export-1')
+    expect(response.headers['x-okp-download-url']).toBe(`/api/v1/projects/${projectId}/documents/doc-ifc-export-1/download`)
     expect(response.headers['x-okp-artifact-kind']).toBe('bim')
     expect(response.headers['x-okp-delivery-mode']).toBe('native')
+    expect(registerProjectDocumentMock).toHaveBeenCalledWith(expect.objectContaining({
+      projectId,
+      tenantId: 'tenant-ifc-1',
+      type: 'other',
+      sourceId: `interop-export:ifc:${alternativeId}`,
+      tags: expect.arrayContaining(['interop', 'export', 'ifc', 'bim']),
+    }))
 
     await app.close()
   })

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendNotFound } from '../errors.js'
+import { registerProjectDocument } from '../services/documentRegistry.js'
 import { getInteropProvider } from '../services/interop/providers/registry.js'
 import type { InteropExportArtifact } from '../services/interop/providers/types.js'
 
@@ -135,6 +136,10 @@ function applyArtifactHeaders(reply: { header: (name: string, value: string) => 
   if (artifact.note) {
     reply.header('x-okp-export-note', artifact.note)
   }
+}
+
+function buildArtifactBuffer(artifact: InteropExportArtifact): Buffer {
+  return typeof artifact.body === 'string' ? Buffer.from(artifact.body, 'utf8') : artifact.body
 }
 
 export async function ifcInteropRoutes(app: FastifyInstance) {
@@ -348,7 +353,36 @@ export async function ifcInteropRoutes(app: FastifyInstance) {
       throw new Error('Export provider for ifc is not configured for artifacts.')
     }
 
+    const document = await registerProjectDocument({
+      projectId: project.id,
+      tenantId: project.tenant_id ?? 'tenant-unknown',
+      filename: artifact.filename,
+      originalFilename: artifact.filename,
+      mimeType: artifact.content_type,
+      uploadedBy: 'system:interop-export:ifc',
+      type: 'other',
+      tags: ['interop', 'export', 'ifc', 'bim', `provider:${artifact.provider_id}`],
+      isPublic: false,
+      sourceKind: 'manual_upload',
+      sourceId: `interop-export:ifc:${parsedParams.data.id}`,
+      versionMetadata: {
+        interop: {
+          provider_id: artifact.provider_id,
+          format: artifact.format,
+          artifact_kind: artifact.artifact_kind,
+          delivery_mode: artifact.delivery_mode,
+          native: artifact.native,
+          review_required: artifact.review_required,
+          note: artifact.note ?? null,
+          alternative_id: parsedParams.data.id,
+        },
+      },
+      buffer: buildArtifactBuffer(artifact),
+    })
+
     applyArtifactHeaders(reply, artifact)
+    reply.header('x-okp-document-id', document.id)
+    reply.header('x-okp-download-url', `/api/v1/projects/${project.id}/documents/${document.id}/download`)
     reply.header('Content-Type', artifact.content_type)
     reply.header('Content-Disposition', `attachment; filename="${artifact.filename}"`)
     return reply.send(artifact.body)

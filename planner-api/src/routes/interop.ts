@@ -69,6 +69,14 @@ function toInteropArtifact(document: {
       ? 'ifc'
       : document.filename.toLowerCase().endsWith('.skp.rb') || document.filename.toLowerCase().endsWith('.rb')
         ? 'skp'
+        : document.filename.toLowerCase().endsWith('.stl')
+          ? 'stl'
+          : document.filename.toLowerCase().endsWith('.step') || document.filename.toLowerCase().endsWith('.stp')
+            ? 'step'
+            : document.filename.toLowerCase().endsWith('.obj')
+              ? 'obj'
+              : document.filename.toLowerCase().endsWith('.3mf')
+                ? '3mf'
         : document.filename.toLowerCase().endsWith('.dwg')
           ? 'dwg'
           : document.filename.toLowerCase().endsWith('.dxf')
@@ -160,6 +168,7 @@ export async function interopRoutes(app: FastifyInstance) {
           { tags: { has: 'dwg' } },
           { tags: { has: 'skp' } },
           { tags: { has: 'ifc' } },
+          { tags: { has: '3mf' } },
           { tags: { has: 'interop' } },
         ],
       },

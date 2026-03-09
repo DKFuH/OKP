@@ -1,4 +1,4 @@
-export type InteropFormat = 'dxf' | 'dwg' | 'skp' | 'ifc'
+export type InteropFormat = 'dxf' | 'dwg' | 'skp' | 'ifc' | 'stl' | 'step' | 'obj' | '3mf'
 export type InteropArtifactKind = 'cad' | 'bim' | 'script' | 'mesh'
 export type InteropDeliveryMode = 'native' | 'fallback' | 'script' | 'derived'
 export type InteropProviderKind = 'embedded' | 'plugin' | 'external'

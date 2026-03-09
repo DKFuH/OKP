@@ -1,10 +1,14 @@
 import { dxfProvider } from './dxfProvider.js'
 import { dwgProvider } from './dwgProvider.js'
 import { ifcProvider } from './ifcProvider.js'
+import { objProvider } from './objProvider.js'
 import { skpProvider } from './skpProvider.js'
+import { stepProvider } from './stepProvider.js'
+import { stlProvider } from './stlProvider.js'
+import { threeMfProvider } from './threeMfProvider.js'
 import type { InteropFormat, InteropProvider } from './types.js'
 
-const defaultProviders = [dxfProvider, dwgProvider, skpProvider, ifcProvider] as const
+const defaultProviders = [dxfProvider, dwgProvider, skpProvider, ifcProvider, stlProvider, stepProvider, objProvider, threeMfProvider] as const
 
 const providerMap = new Map<InteropFormat, InteropProvider>()
 const providerList: InteropProvider[] = []
