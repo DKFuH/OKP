@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendNotFound } from '../errors.js'
-import { buildIfcBuffer, parseIfcRooms } from '../services/ifcEngine.js'
+import { getInteropProvider } from '../services/interop/providers/registry.js'
 
 const ParamsSchema = z.object({
   id: z.string().uuid(),
@@ -153,7 +153,23 @@ export async function ifcInteropRoutes(app: FastifyInstance) {
     const warnings: string[] = []
 
     try {
-      const ifcRooms = await parseIfcRooms(buffer)
+      const provider = getInteropProvider('ifc')
+      const providerResult = await provider.importExecute?.({
+        projectId: parsedParams.data.id,
+        filename: `import-${Date.now()}.ifc`,
+        payload: buffer,
+      })
+      if (!providerResult) {
+        throw new Error('Import provider for ifc is not configured for execute.')
+      }
+      const importAsset = (providerResult.import_asset as {
+        parsed_rooms?: Array<{
+          name: string
+          wall_segments: Array<{ x0_mm: number; y0_mm: number; x1_mm: number; y1_mm: number }>
+          ceiling_height_mm: number
+        }>
+      } | null) ?? null
+      const ifcRooms = importAsset?.parsed_rooms ?? []
 
       for (const ifcRoom of ifcRooms) {
         if (ifcRoom.wall_segments.length === 0) {
@@ -179,7 +195,7 @@ export async function ifcInteropRoutes(app: FastifyInstance) {
           status: 'done',
           result: {
             rooms_created: roomsCreated,
-            warnings,
+            warnings: [...warnings, ...providerResult.warnings],
           },
         },
       })
@@ -275,31 +291,39 @@ export async function ifcInteropRoutes(app: FastifyInstance) {
       }
     })
 
-    const buffer = await buildIfcBuffer({
-      projectName: project.name,
-      rooms: exportRooms as any,
-      metadata: {
-        level_id: level?.id ?? sectionLine?.level_id ?? null,
-        level_name: level?.name ?? null,
-        section_line: sectionLine
-          ? {
-              id: sectionLine.id,
-              label: sectionLine.label ?? null,
-              direction: sectionLine.direction ?? null,
-              depth_mm: sectionLine.depth_mm ?? null,
-              level_scope: sectionLine.level_scope ?? null,
-              level_id: sectionLine.level_id ?? null,
-              sheet_visibility: sectionLine.sheet_visibility ?? null,
-              start: sectionLine.start,
-              end: sectionLine.end,
-            }
-          : null,
+    const provider = getInteropProvider('ifc')
+    const artifact = await provider.exportArtifact?.({
+      projectId: project.id,
+      payload: {
+        projectName: project.name,
+        rooms: exportRooms as any,
+        alternativeId: parsedParams.data.id,
+        metadata: {
+          level_id: level?.id ?? sectionLine?.level_id ?? null,
+          level_name: level?.name ?? null,
+          section_line: sectionLine
+            ? {
+                id: sectionLine.id,
+                label: sectionLine.label ?? null,
+                direction: sectionLine.direction ?? null,
+                depth_mm: sectionLine.depth_mm ?? null,
+                level_scope: sectionLine.level_scope ?? null,
+                level_id: sectionLine.level_id ?? null,
+                sheet_visibility: sectionLine.sheet_visibility ?? null,
+                start: sectionLine.start,
+                end: sectionLine.end,
+              }
+            : null,
+        },
       },
     })
+    if (!artifact) {
+      throw new Error('Export provider for ifc is not configured for artifacts.')
+    }
 
-    reply.header('Content-Type', 'application/x-step')
-    reply.header('Content-Disposition', `attachment; filename="alternative-${parsedParams.data.id}.ifc"`)
-    return reply.send(buffer)
+    reply.header('Content-Type', artifact.content_type)
+    reply.header('Content-Disposition', `attachment; filename="${artifact.filename}"`)
+    return reply.send(artifact.body)
   })
 
   app.get<{ Params: { id: string } }>('/projects/:id/ifc-jobs', async (request, reply) => {

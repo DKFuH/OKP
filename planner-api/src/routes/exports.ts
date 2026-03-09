@@ -1,11 +1,8 @@
 import { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import type { ExportPayload } from '@okp/shared-schemas'
-import { exportToDxf } from '@okp/dxf-export'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendForbidden, sendNotFound } from '../errors.js'
-import { buildDwgBuffer } from '../services/interop/dwgExport.js'
-import { buildSkpRubyScript } from '../services/interop/skpExport.js'
+import { getInteropProvider } from '../services/interop/providers/registry.js'
 
 type GltfBoundary = {
   wall_segments?: Array<{
@@ -119,30 +116,6 @@ async function assertProjectInTenantScope(reply: FastifyReply, tenantId: string,
   return project
 }
 
-function normalizeFilename(filename?: string): string {
-  const trimmed = filename?.trim() || 'okp-export.dxf'
-  return trimmed.toLowerCase().endsWith('.dxf') ? trimmed : `${trimmed}.dxf`
-}
-
-function normalizeDwgFilename(filename?: string): string {
-  const trimmed = filename?.trim() || 'okp-export.dwg'
-  return trimmed.toLowerCase().endsWith('.dwg') ? trimmed : `${trimmed}.dwg`
-}
-
-function normalizeSkpFilename(filename?: string): string {
-  const trimmed = filename?.trim() || 'okp-export.skp.rb'
-  if (trimmed.toLowerCase().endsWith('.skp.rb')) {
-    return trimmed
-  }
-  if (trimmed.toLowerCase().endsWith('.skp')) {
-    return `${trimmed}.rb`
-  }
-  if (trimmed.toLowerCase().endsWith('.rb')) {
-    return trimmed
-  }
-  return `${trimmed}.skp.rb`
-}
-
 function mapWallSegmentsForCad(payload: z.infer<typeof ExportRequestSchema>['payload']) {
   return payload.wallSegments.map((segment) => ({
     id: segment.id,
@@ -186,12 +159,19 @@ export async function exportRoutes(app: FastifyInstance) {
       return reply
     }
 
-    const dxf = exportToDxf(parsed.data.payload as ExportPayload)
-    const filename = normalizeFilename(parsed.data.filename)
+    const provider = getInteropProvider('dxf')
+    const artifact = await provider.exportArtifact?.({
+      projectId,
+      filename: parsed.data.filename,
+      payload: parsed.data.payload as Record<string, unknown>,
+    })
+    if (!artifact) {
+      throw new Error('Export provider for dxf is not configured for artifacts.')
+    }
 
-    reply.header('content-disposition', `attachment; filename="${filename}"`)
-    reply.type('application/dxf; charset=utf-8')
-    return reply.send(dxf)
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
   }
 
   const dwgHandler = async (
@@ -226,19 +206,29 @@ export async function exportRoutes(app: FastifyInstance) {
       return reply
     }
 
-    const buffer = buildDwgBuffer({
-      projectName: parsed.data.filename?.trim() || `project-${projectId}`,
-      wall_segments: mapWallSegmentsForCad(parsed.data.payload),
-      placements: [],
+    const provider = getInteropProvider('dwg')
+    const artifact = await provider.exportArtifact?.({
+      projectId,
+      filename: parsed.data.filename,
+      payload: {
+        projectName: parsed.data.filename?.trim() || `project-${projectId}`,
+        wall_segments: mapWallSegmentsForCad(parsed.data.payload),
+        placements: [],
+      },
     })
-    const requestedFilename = normalizeDwgFilename(parsed.data.filename)
-    const fallbackFilename = requestedFilename.replace(/\.dwg$/i, '.dxf')
+    if (!artifact) {
+      throw new Error('Export provider for dwg is not configured for artifacts.')
+    }
 
-    reply.header('x-okp-export-fallback', 'dwg->dxf')
-    reply.header('x-okp-export-note', 'dwg endpoint currently returns ASCII DXF content for CAD compatibility')
-    reply.header('content-disposition', `attachment; filename="${fallbackFilename}"`)
-    reply.type('application/dxf; charset=utf-8')
-    return reply.send(buffer)
+    if (artifact.fallback_of) {
+      reply.header('x-okp-export-fallback', `${artifact.fallback_of}->${artifact.format === 'dwg' ? 'dxf' : artifact.format}`)
+    }
+    if (artifact.note) {
+      reply.header('x-okp-export-note', artifact.note)
+    }
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
   }
 
   const skpHandler = async (
@@ -273,18 +263,27 @@ export async function exportRoutes(app: FastifyInstance) {
       return reply
     }
 
-    const script = buildSkpRubyScript({
-      projectName: parsed.data.filename?.trim() || `project-${projectId}`,
-      wall_segments: mapWallSegmentsForCad(parsed.data.payload),
-      placements: [],
-      ceiling_height_mm: 2600,
+    const provider = getInteropProvider('skp')
+    const artifact = await provider.exportArtifact?.({
+      projectId,
+      filename: parsed.data.filename,
+      payload: {
+        projectName: parsed.data.filename?.trim() || `project-${projectId}`,
+        wall_segments: mapWallSegmentsForCad(parsed.data.payload),
+        placements: [],
+        ceiling_height_mm: 2600,
+      },
     })
-    const filename = normalizeSkpFilename(parsed.data.filename)
+    if (!artifact) {
+      throw new Error('Export provider for skp is not configured for artifacts.')
+    }
 
-    reply.header('x-okp-export-note', 'skp endpoint returns a SketchUp Ruby import script')
-    reply.header('content-disposition', `attachment; filename="${filename}"`)
-    reply.type('application/ruby; charset=utf-8')
-    return reply.send(script)
+    if (artifact.note) {
+      reply.header('x-okp-export-note', artifact.note)
+    }
+    reply.header('content-disposition', `attachment; filename="${artifact.filename}"`)
+    reply.type(artifact.content_type)
+    return reply.send(artifact.body)
   }
 
   app.post('/exports/dxf', dxfHandler)

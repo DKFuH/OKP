@@ -2,13 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { FastifyInstance } from 'fastify'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
-import { parseDxf } from '@okp/dxf-import'
-import { parseSkp } from '@okp/skp-import'
 import type { CadLayer } from '@okp/shared-schemas'
 import { prisma } from '../db.js'
 import { sendBadRequest, sendForbidden, sendNotFound, sendServerError } from '../errors.js'
 import { registerProjectDocument } from '../services/documentRegistry.js'
-import { parseDwgBuffer } from '../services/interop/dwgImport.js'
+import { getInteropProvider, listInteropCapabilities } from '../services/interop/providers/registry.js'
 
 const LegacyImportJobSchema = z.object({
   project_id: z.string().uuid(),
@@ -80,6 +78,10 @@ const ImportJobParamsSchema = z.object({
 const ProjectParamsSchema = z.object({
   id: z.string().uuid(),
 })
+
+function nowIsoString(): string {
+  return new Date().toISOString()
+}
 
 const RaumaufmassPointSchema = z.object({
   x_mm: z.number().finite(),
@@ -218,10 +220,6 @@ function decodeBase64(value: string): Buffer {
   return Buffer.from(value, 'base64')
 }
 
-function nowIsoString(): string {
-  return new Date().toISOString()
-}
-
 function deriveCadSourceFormat(
   sourceFilename: string,
   explicit?: 'dxf' | 'dwg',
@@ -243,166 +241,6 @@ function getImportMimeType(sourceFormat: 'dxf' | 'dwg' | 'skp'): string {
   }
 
   return 'application/octet-stream'
-}
-
-function emptyCadImportAsset(
-  importJobId: string,
-  sourceFilename: string,
-  sourceFormat: 'dxf' | 'dwg',
-  protocol: Array<{ entity_id: string | null; status: 'imported' | 'ignored' | 'needs_review'; reason: string }>,
-  rawUploadBase64?: string,
-) {
-  return {
-    id: randomUUID(),
-    import_job_id: importJobId,
-    source_format: sourceFormat,
-    source_filename: sourceFilename,
-    layers: [],
-    entities: [],
-    bounding_box: {
-      min: { x_mm: 0, y_mm: 0 },
-      max: { x_mm: 0, y_mm: 0 },
-    },
-    units: 'mm',
-    created_at: nowIsoString(),
-    protocol,
-    ...(rawUploadBase64 ? { raw_upload_base64: rawUploadBase64 } : {}),
-  }
-}
-
-function applyCadLayerMapping(
-  asset: ReturnType<typeof parseDxf>,
-  layerMapping?: Record<string, z.infer<typeof LayerMappingSchema>>,
-) {
-  if (!layerMapping) {
-    return asset
-  }
-
-  const ignoredLayerIds = new Set(
-    asset.layers
-      .filter((layer) => layerMapping[layer.name]?.action === 'ignored')
-      .map((layer) => layer.id),
-  )
-
-  const entities = asset.entities.filter((entity) => !ignoredLayerIds.has(entity.layer_id))
-  const layers = asset.layers.map((layer) => {
-    const isIgnored = layerMapping[layer.name]?.action === 'ignored'
-    return {
-      ...layer,
-      visible: isIgnored ? false : layer.visible,
-      entity_count: entities.filter((entity) => entity.layer_id === layer.id).length,
-    }
-  })
-
-  const protocol = [
-    ...asset.protocol,
-    ...Object.entries(layerMapping).map(([layerName, entry]) => ({
-      entity_id: null,
-      status: entry.action,
-      reason: entry.reason ?? `Layer ${layerName} marked as ${entry.action}.`,
-    })),
-  ]
-
-  return {
-    ...asset,
-    layers,
-    entities,
-    protocol,
-    mapping_state: {
-      layers: layerMapping,
-    },
-  }
-}
-
-function createCadProtocol(
-  asset: ReturnType<typeof applyCadLayerMapping>,
-  sourceFilename: string,
-) {
-  if (asset.protocol.length > 0) {
-    return asset.protocol
-  }
-
-  return [
-    {
-      entity_id: null,
-      status: 'imported' as const,
-      reason: `Parsed ${asset.entities.length} CAD entities from ${sourceFilename}.`,
-    },
-  ]
-}
-
-function applySkpComponentMapping(
-  referenceModel: ReturnType<typeof parseSkp>,
-  componentMapping?: Record<string, z.infer<typeof ComponentMappingSchema>>,
-) {
-  if (!componentMapping) {
-    return referenceModel
-  }
-
-  const components = referenceModel.components.map((component) => {
-    const override =
-      componentMapping[component.skp_instance_guid] ?? componentMapping[component.skp_component_name]
-
-    if (!override) {
-      return component
-    }
-
-    return {
-      ...component,
-      mapping: {
-        component_id: component.id,
-        target_type: override.target_type,
-        catalog_item_id: override.catalog_item_id ?? null,
-        label: override.label ?? component.skp_component_name,
-      },
-    }
-  })
-
-  return {
-    ...referenceModel,
-    components,
-    mapping_state: {
-      components: componentMapping,
-    },
-  }
-}
-
-function createSkpProtocol(referenceModel: ReturnType<typeof applySkpComponentMapping>) {
-  if (referenceModel.components.length === 0) {
-    return [
-      {
-        entity_id: null,
-        status: 'needs_review' as const,
-        reason: 'No components were parsed from the SKP payload.',
-      },
-    ]
-  }
-
-  return referenceModel.components.map((component) => {
-    const targetType = component.mapping?.target_type ?? 'reference_object'
-
-    if (targetType === 'ignored') {
-      return {
-        entity_id: component.id,
-        status: 'ignored' as const,
-        reason: `Component ${component.skp_component_name} was ignored.`,
-      }
-    }
-
-    if (targetType === 'reference_object') {
-      return {
-        entity_id: component.id,
-        status: 'needs_review' as const,
-        reason: `Component ${component.skp_component_name} requires manual mapping review.`,
-      }
-    }
-
-    return {
-      entity_id: component.id,
-      status: 'imported' as const,
-      reason: `Component ${component.skp_component_name} mapped as ${targetType}.`,
-    }
-  })
 }
 
 async function createQueuedImportJob(
@@ -803,13 +641,21 @@ async function findImportJobInTenantScope(importJobId: string, tenantId: string)
 }
 
 export async function importRoutes(app: FastifyInstance) {
+  app.get('/interop/capabilities', async () => {
+    return { formats: listInteropCapabilities() }
+  })
+
   app.post('/imports/preview/dxf', async (request, reply) => {
     const parsed = DxfPreviewSchema.safeParse(request.body)
     if (!parsed.success) {
       return sendBadRequest(reply, parsed.error.errors[0].message)
     }
 
-    return reply.send(parseDxf(parsed.data.dxf, parsed.data.source_filename))
+    const provider = getInteropProvider('dxf')
+    return reply.send(await provider.importPreview?.({
+      filename: parsed.data.source_filename,
+      payload: parsed.data.dxf,
+    }))
   })
 
   app.post('/imports/preview/skp', async (request, reply) => {
@@ -818,7 +664,11 @@ export async function importRoutes(app: FastifyInstance) {
       return sendBadRequest(reply, parsed.error.errors[0].message)
     }
 
-    return reply.send(parseSkp(decodeBase64(parsed.data.file_base64), parsed.data.source_filename))
+    const provider = getInteropProvider('skp')
+    return reply.send(await provider.importPreview?.({
+      filename: parsed.data.source_filename,
+      payload: decodeBase64(parsed.data.file_base64),
+    }))
   })
 
   app.post('/imports/cad', async (request, reply) => {
@@ -854,65 +704,26 @@ export async function importRoutes(app: FastifyInstance) {
     )
 
     try {
-      let importAsset: unknown
-      let protocol: unknown
-
-      if (sourceFormat === 'dwg') {
-        const parsedAsset = await parseDwgBuffer(sourceBuffer, parsed.data.source_filename)
-        const dwgProtocol = [
-          ...parsedAsset.warnings.map((warning) => ({
-            entity_id: null,
-            status: parsedAsset.needs_review ? ('needs_review' as const) : ('imported' as const),
-            reason: warning,
-          })),
-          ...Object.entries(parsed.data.layer_mapping ?? {}).map(([layerName, entry]) => ({
-            entity_id: null,
-            status: entry.action,
-            reason: entry.reason ?? `Layer ${layerName} marked as ${entry.action}.`,
-          })),
-        ]
-
-        importAsset = {
-          ...emptyCadImportAsset(
-            importJob.id,
-            parsed.data.source_filename,
-            'dwg',
-            dwgProtocol,
-            parsed.data.file_base64,
-          ),
-          wall_segments: parsedAsset.wall_segments,
-          arc_entities_detected: parsedAsset.arc_entities_detected,
-          needs_review: parsedAsset.needs_review,
-          ...(parsed.data.layer_mapping
-            ? {
-              mapping_state: {
-                layers: parsed.data.layer_mapping,
-              },
-            }
-            : {}),
-        }
-        protocol = dwgProtocol
-      } else {
-        const dxfString =
-          parsed.data.dxf ?? decodeBase64(parsed.data.file_base64 ?? '').toString('utf8')
-        const parsedAsset = parseDxf(dxfString, parsed.data.source_filename)
-        const mappedAsset = applyCadLayerMapping(
-          {
-            ...parsedAsset,
-            import_job_id: importJob.id,
-            source_format: sourceFormat,
-          },
-          parsed.data.layer_mapping,
-        )
-
-        protocol = createCadProtocol(mappedAsset, parsed.data.source_filename)
-        importAsset = {
-          ...mappedAsset,
-          protocol,
-        }
+      const provider = getInteropProvider(sourceFormat)
+      const providerResult = await provider.importExecute?.({
+        projectId: project.id,
+        importJobId: importJob.id,
+        filename: parsed.data.source_filename,
+        payload: sourceFormat === 'dxf'
+          ? (parsed.data.dxf ?? sourceBuffer.toString('utf8'))
+          : sourceBuffer,
+        mapping: parsed.data.layer_mapping,
+        rawUploadBase64: parsed.data.file_base64,
+      })
+      if (!providerResult) {
+        throw new Error(`Import provider for ${sourceFormat} is not configured for execute.`)
       }
 
-      const completedJob = await finalizeImportJob(importJob.id, importAsset, protocol)
+      const completedJob = await finalizeImportJob(
+        importJob.id,
+        providerResult.import_asset,
+        providerResult.protocol,
+      )
       await registerProjectDocument({
         projectId: project.id,
         tenantId,
@@ -958,17 +769,22 @@ export async function importRoutes(app: FastifyInstance) {
     )
 
     try {
-      const parsedModel = parseSkp(fileBuffer, parsed.data.source_filename)
-      const mappedModel = applySkpComponentMapping(
-        {
-          ...parsedModel,
-          project_id: project.id,
-          import_job_id: importJob.id,
-        },
-        parsed.data.component_mapping,
+      const provider = getInteropProvider('skp')
+      const providerResult = await provider.importExecute?.({
+        projectId: project.id,
+        importJobId: importJob.id,
+        filename: parsed.data.source_filename,
+        payload: fileBuffer,
+        mapping: parsed.data.component_mapping,
+      })
+      if (!providerResult) {
+        throw new Error('Import provider for skp is not configured for execute.')
+      }
+      const completedJob = await finalizeImportJob(
+        importJob.id,
+        providerResult.import_asset,
+        providerResult.protocol,
       )
-      const protocol = createSkpProtocol(mappedModel)
-      const completedJob = await finalizeImportJob(importJob.id, mappedModel, protocol)
       await registerProjectDocument({
         projectId: project.id,
         tenantId,

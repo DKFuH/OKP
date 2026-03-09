@@ -16,6 +16,30 @@ export interface CadExportUrls {
   }
 }
 
+export interface CadInteropHint {
+  format: 'dwg' | 'skp'
+  label: string
+  deliveryMode: 'fallback' | 'script'
+  note: string
+}
+
+export function listCadInteropHints(): CadInteropHint[] {
+  return [
+    {
+      format: 'dwg',
+      label: 'DWG Export (DXF-kompatibel)',
+      deliveryMode: 'fallback',
+      note: 'Der DWG-Endpunkt liefert derzeit ASCII-DXF-Inhalt fuer CAD-Kompatibilitaet.',
+    },
+    {
+      format: 'skp',
+      label: 'SKP Export (Ruby-Skript)',
+      deliveryMode: 'script',
+      note: 'Der SKP-Endpunkt liefert derzeit ein SketchUp-Ruby-Importskript.',
+    },
+  ]
+}
+
 export const cadInteropApi = {
   importDwg: async (projectId: string, file: File): Promise<CadImportResponse> => {
     const buffer = await file.arrayBuffer()

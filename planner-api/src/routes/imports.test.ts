@@ -205,6 +205,29 @@ describe('importRoutes', () => {
     await app.close()
   })
 
+  it('returns interop capabilities for registered providers', async () => {
+    const app = Fastify()
+    await app.register(tenantMiddleware)
+    await app.register(importRoutes, { prefix: '/api/v1' })
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/interop/capabilities',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      formats: expect.arrayContaining([
+        expect.objectContaining({ format: 'dxf', import_execute: true, export_artifact: true }),
+        expect.objectContaining({ format: 'dwg', review_required_by_default: true }),
+        expect.objectContaining({ format: 'skp', artifact_kind: 'script' }),
+        expect.objectContaining({ format: 'ifc', artifact_kind: 'bim' }),
+      ]),
+    })
+
+    await app.close()
+  })
+
   it('returns a parsed SKP preview model from base64 payloads', async () => {
     const app = Fastify()
     await app.register(tenantMiddleware)
