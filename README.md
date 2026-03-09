@@ -1,7 +1,7 @@
 # OpenKitchenPlanner (OKP)
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.1.1-green.svg)]()
+[![Status](https://img.shields.io/badge/Status-v0.1.2-green.svg)]()
 [![Node](https://img.shields.io/badge/Node-v20%20%7C%20v22-green)](https://nodejs.org/)
 
 [English](#english) | [Deutsch](#deutsch)
@@ -14,10 +14,11 @@
 OpenKitchenPlanner is a web-based planning platform for carpentry workshops and kitchen studios. It combines room modeling, catalog-based CAD workflows, pricing, quote generation, and production export pipelines in a single monorepo — with a Fluent 2 ribbon UI and full MCP integration.
 
 ### 🚀 Status
-* **Version:** `0.1.1` (2026-03-07)
+* **Version:** `0.1.2` (2026-03-09)
 * **Build:** Green — 160 frontend tests, full tsc + vite build clean.
-* **UI:** Fluent 2 Ribbon Shell across all areas (Kanban, Editor, Settings).
+* **UI:** Fluent 2 Ribbon Shell across all areas (Kanban, Editor, Settings). All pages migrated to `makeStyles`/`tokens`.
 * **Backend:** Fastify REST API + PostgreSQL (Prisma).
+* **Plugins:** 11 registered plugins fully wired: `presentation`, `viewer-export`, `tischler`, `daylight`, `materials`, `stairs`, `multilevel-docs`, `asset-library`, `feng-shui`, `raumakustik`, `survey-import`.
 
 ### 🛠 Core Capabilities
 * **Modeling:** Polygonal rooms with wall constraints, sloped ceilings, curved walls, multi-floor support.
@@ -26,10 +27,11 @@ OpenKitchenPlanner is a web-based planning platform for carpentry workshops and 
 * **Production:** Automated cutlists, CNC nesting (DXF export), production order management.
 * **Interoperability:** IFC (BIM), DXF/DWG, SketchUp import, GLTF/GLB export for AR/VR.
 * **AI Integration:** Native **MCP (Model Context Protocol)** support for AI-assisted planning.
+* **Plugins:** Modular plugin system with tenant-scoped activation (Feng Shui, Acoustic Analysis, Site Survey, Presentation, Daylight, and more).
 
 ### 🏗 Development Phases
 * **Phase 1–4 (Sprints 0–98):** MVP → multi-tenancy → industry features → stabilization.
-* **Phase 5 (Sprints 99–110):** Workflow engine, masterdata sync, mobile client, Fluent 2 migration, Ribbon Shell.
+* **Phase 5 (Sprints 99–116):** Workflow engine, masterdata sync, mobile client, Fluent 2 migration, Ribbon Shell, plugin infrastructure hardening.
 
 ---
 
@@ -79,10 +81,11 @@ npm run dev --workspace planner-frontend
 OpenKitchenPlanner ist eine webbasierte Planungsplattform für Schreinereien und Küchenstudios. Sie vereint Raumplanung, Katalog-CAD, Kalkulation, Angebotserstellung und Produktions-Export in einem Monorepo — mit Fluent 2 Ribbon-UI und vollständiger MCP-Integration.
 
 ### 🚀 Status
-* **Version:** `0.1.1` (07.03.2026)
+* **Version:** `0.1.2` (09.03.2026)
 * **Build:** Grün — 160 Frontend-Tests, tsc + vite sauber.
-* **UI:** Fluent 2 Ribbon-Shell in allen Bereichen (Kanban, Editor, Einstellungen).
+* **UI:** Fluent 2 Ribbon-Shell in allen Bereichen (Kanban, Editor, Einstellungen). Alle Seiten auf `makeStyles`/`tokens` migriert.
 * **Backend:** Fastify REST-API + PostgreSQL (Prisma).
+* **Plugins:** 11 registrierte Plugins vollständig verdrahtet: `presentation`, `viewer-export`, `tischler`, `daylight`, `materials`, `stairs`, `multilevel-docs`, `asset-library`, `feng-shui`, `raumakustik`, `survey-import`.
 
 ### 🛠 Kernfunktionen
 * **Modellierung:** Polygonale Räume mit Wand-Constraints, Dachschrägen, gebogenen Wänden, Mehr-Ebenen.
@@ -91,6 +94,7 @@ OpenKitchenPlanner ist eine webbasierte Planungsplattform für Schreinereien und
 * **Produktion:** Zuschnittlisten, CNC-Nesting (DXF-Export), Produktionsaufträge.
 * **Interop:** IFC (BIM), DXF/DWG, SketchUp-Import, GLTF/GLB-Export für AR/VR.
 * **KI-Integration:** Native MCP-Unterstützung (Model Context Protocol) für KI-gestützte Planung.
+* **Plugins:** Modulares Plugin-System mit Mandanten-Aktivierung (Feng Shui, Raumakustik, Aufmaß-Import, Präsentation, Tageslicht u. v. m.).
 
 ---
 
