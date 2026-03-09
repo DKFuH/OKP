@@ -15,6 +15,9 @@ export const de = {
     catalog: 'Katalog',
     dashboard: 'Dashboard',
   },
+  plugins: {
+    fengShui: 'Feng Shui',
+  },
   shell: {
     brandName: 'OKP',
     brandTagline: 'Einheitliche Planung und Ausfuehrung',

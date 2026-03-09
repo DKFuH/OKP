@@ -8,6 +8,7 @@ const PROJECT_SCOPED_PLUGIN_IDS = new Set([
   'materials',
   'stairs',
   'multilevel-docs',
+  'feng-shui',
 ])
 
 function resolvePluginPath(pluginId: string, projectId: string | null): string | null {
@@ -26,6 +27,8 @@ function resolvePluginPath(pluginId: string, projectId: string | null): string |
       return projectId ? `/projects/${projectId}` : null
     case 'multilevel-docs':
       return projectId ? `/projects/${projectId}?panel=areas` : null
+    case 'feng-shui':
+      return projectId ? `/projects/${projectId}/feng-shui` : null
     case 'asset-library':
       return '/catalog'
     default:

@@ -33,6 +33,7 @@ import { CutlistPage } from './pages/CutlistPage'
 import { NestingPage } from './pages/NestingPage'
 import { CaptureDialogHarnessPage } from './pages/CaptureDialogHarnessPage.js'
 import { S109ShellHarnessPage } from './pages/S109ShellHarnessPage.js'
+import { FengShuiPage } from './pages/FengShuiPage.js'
 import { AppShell } from './components/layout/AppShell.js'
 import { getTenantPlugins } from './api/tenantSettings.js'
 import { bootstrapOfflinePwa } from './pwa/offlineBootstrap.js'
@@ -130,6 +131,10 @@ createRoot(document.getElementById('root')!).render(
               <Route
                 path="/projects/:id/exports"
                 element={<TenantPluginRoute pluginId="viewer-export"><ExportsPage /></TenantPluginRoute>}
+              />
+              <Route
+                path="/projects/:id/feng-shui"
+                element={<TenantPluginRoute pluginId="feng-shui"><FengShuiPage /></TenantPluginRoute>}
               />
               <Route path="/projects/:id/specification-packages" element={<SpecificationPackagesPage />} />
               <Route path="/share/panorama/:token" element={<PublicPanoramaTourPage />} />

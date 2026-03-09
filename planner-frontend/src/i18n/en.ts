@@ -17,6 +17,9 @@ export const en: Messages = {
     catalog: 'Catalog',
     dashboard: 'Dashboard',
   },
+  plugins: {
+    fengShui: 'Feng Shui',
+  },
   shell: {
     brandName: 'OKP',
     brandTagline: 'Unified planning and delivery',
