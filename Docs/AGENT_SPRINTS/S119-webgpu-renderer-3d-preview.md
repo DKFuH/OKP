@@ -2,7 +2,7 @@
 
 **Branch:** `copilot/improve-3d-graphics-performance`
 **Gruppe:** B
-**Status:** `teilweise_umgesetzt`
+**Status:** `abgeschlossen`
 **Abhaengigkeiten:** S107 (Skybox/HDRI), S108 (Screenshot/360-Export)
 **Merged:** 2026-03-10 via PR #35
 

@@ -512,6 +512,7 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
   } | null>(null)
   const [showReference, setShowReference] = useState(true)
   const [rendererBackend, setRendererBackend] = useState<RendererBackend | null>(null)
+  const [rendererError, setRendererError] = useState<string | null>(null)
 
   cameraStateRef.current = cameraState
   onCameraStateChangeRef.current = onCameraStateChange
@@ -559,6 +560,9 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
     const mountEl = mount
     const input = geometryInput
 
+    setRendererBackend(null)
+    setRendererError(null)
+
     let disposed = false
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let rendererInstance: any = null
@@ -566,7 +570,6 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
 
     async function initRenderer() {
       const { renderer, backend } = await createSceneRenderer({ antialias: true })
-      await renderer.init()
 
       if (disposed) {
         renderer.dispose()
@@ -964,6 +967,9 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
 
     initRenderer().catch((err) => {
       console.error('Preview3D: renderer initialization failed', err)
+      if (!disposed) {
+        setRendererError('3D-Renderer konnte nicht initialisiert werden.')
+      }
     })
 
     return () => {
@@ -1071,7 +1077,11 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
           Referenz {showReference ? 'ausblenden' : 'einblenden'}
         </button>
       </header>
-      <div ref={rootRef} className={styles.canvas} />
+      {rendererError !== null ? (
+        <div className={styles.empty}>{rendererError}</div>
+      ) : (
+        <div ref={rootRef} className={styles.canvas} />
+      )}
     </section>
   )
 }

@@ -4,11 +4,11 @@
  * Provides detection for WebGPU and OffscreenCanvas support and exports a
  * renderer factory that selects the best available backend:
  *   – WebGPU  (Chromium stable, Firefox Nightly, …)
- *   – WebGL 2 (automatic fallback inside WebGPURenderer)
+ *   – WebGL 2 (THREE.WebGLRenderer, no three/webgpu chunk loaded)
  *
  * Usage in components:
  *   const { renderer, backend } = await createSceneRenderer({ antialias: true })
- *   await renderer.init()
+ *   renderer.setSize(width, height)
  */
 
 /** The rendering backend that is actually in use. */
@@ -75,32 +75,34 @@ export interface CreateRendererOptions {
  */
 export interface SceneRenderer {
   /**
-   * The Three.js `WebGPURenderer` instance.
-   * Call `await renderer.init()` before the first `renderer.render()`.
+   * The initialised renderer — either `THREE.WebGLRenderer` (WebGL path) or
+   * `three/webgpu`'s `WebGPURenderer` (WebGPU path). Ready to use immediately;
+   * no further `init()` call is required by callers.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   renderer: any
   /**
-   * The backend that will be used after `renderer.init()` resolves:
-   * `'webgpu'` when the browser supports the WebGPU API, `'webgl'` otherwise.
+   * The backend that is active: `'webgpu'` when the browser supports the
+   * WebGPU API, `'webgl'` otherwise.
    */
   backend: RendererBackend
 }
 
 /**
- * Creates the best available Three.js renderer for the current environment.
+ * Creates the best available Three.js renderer for the current environment
+ * and fully initialises it before returning.
  *
- * When WebGPU is supported the returned renderer uses a `WebGPUBackend`
- * internally. If WebGPU is unavailable (or `forceWebGL` is set) it falls back
- * to a `WebGLBackend` automatically – no code change is required by callers.
+ * When WebGPU is supported the returned renderer is a `WebGPURenderer` from
+ * the `three/webgpu` chunk (dynamically imported). For all other browsers a
+ * plain `THREE.WebGLRenderer` is returned from the base `three` bundle, so
+ * the 153 kB `three/webgpu` chunk is **never loaded** for WebGL-only browsers.
  *
- * The `three/webgpu` module is imported dynamically so that the WebGPU bundle
- * is only loaded when this function is actually called.
+ * The returned renderer is ready to use immediately — no further `init()` call
+ * is required by callers.
  *
  * @example
  * ```ts
  * const { renderer, backend } = await createSceneRenderer({ antialias: true })
- * await renderer.init()
  * renderer.setSize(width, height)
  * renderer.setPixelRatio(window.devicePixelRatio)
  * ```
@@ -110,16 +112,20 @@ export async function createSceneRenderer(
 ): Promise<SceneRenderer> {
   const { antialias = true, forceWebGL = false } = options
 
-  const { WebGPURenderer } = await import('three/webgpu')
-
   const gpuAvailable = !forceWebGL && isWebGPUSupported()
-  const renderer = new WebGPURenderer({
-    antialias,
-    forceWebGL: !gpuAvailable,
-  })
 
-  return {
-    renderer,
-    backend: gpuAvailable ? 'webgpu' : 'webgl',
+  if (!gpuAvailable) {
+    // WebGL path: dynamically import WebGLRenderer from the base three bundle.
+    // The three/webgpu chunk is not loaded at all.
+    const { WebGLRenderer } = await import('three')
+    const renderer = new WebGLRenderer({ antialias })
+    return { renderer, backend: 'webgl' }
   }
+
+  // WebGPU path: dynamically import three/webgpu so the chunk is only
+  // loaded in browsers that actually support WebGPU.
+  const { WebGPURenderer } = await import('three/webgpu')
+  const renderer = new WebGPURenderer({ antialias })
+  await renderer.init()
+  return { renderer, backend: 'webgpu' }
 }
