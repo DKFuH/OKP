@@ -11,6 +11,7 @@ import {
   resolveRenderEnvironmentVisual,
   type RenderEnvironmentSettings,
 } from './renderEnvironmentState.js'
+import { createSceneRenderer, type RendererBackend } from './rendererCapabilities.js'
 import { makeStyles, tokens } from '@fluentui/react-components'
 
 const useStyles = makeStyles({
@@ -510,6 +511,7 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
     camera_height_mm: number
   } | null>(null)
   const [showReference, setShowReference] = useState(true)
+  const [rendererBackend, setRendererBackend] = useState<RendererBackend | null>(null)
 
   cameraStateRef.current = cameraState
   onCameraStateChangeRef.current = onCameraStateChange
@@ -552,384 +554,431 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
       return
     }
 
-    const scene = new THREE.Scene()
-    sceneRef.current = scene
-
-    const camera = new THREE.PerspectiveCamera(fovRef.current, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 200)
-    camera.position.set(3.5, 2.8, 3.5)
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.setSize(mount.clientWidth, Math.max(1, mount.clientHeight))
-    mount.appendChild(renderer.domElement)
-
-    const controls = new OrbitControls(camera, renderer.domElement)
-    controlsRef.current = controls
-    cameraRef.current = camera
-    controls.enableDamping = true
-    applyNavigationControls(controls, navigationSettings)
-    controls.target.set(0, 0.7, 0)
-
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6)
-    ambientLightRef.current = ambient
-    scene.add(ambient)
-    const directional = new THREE.DirectionalLight(0xffffff, 1)
-    directionalLightRef.current = directional
-    directional.position.set(3, 6, 3)
-    scene.add(directional)
-    applySunlight(ambient, directional, sunlight)
-
-    const environmentHemisphere = new THREE.HemisphereLight(0x9fb4cf, 0x94a3b8, 0.35)
-    environmentHemisphereRef.current = environmentHemisphere
-    scene.add(environmentHemisphere)
-
-    const environmentDirectional = new THREE.DirectionalLight(0xffffff, 0.25)
-    environmentDirectionalRef.current = environmentDirectional
-    environmentDirectional.position.set(6, 4.2, 0)
-    scene.add(environmentDirectional)
-
-    const environmentGroundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x9ab77c,
-      roughness: 0.95,
-      metalness: 0,
-    })
-    environmentGroundMaterialRef.current = environmentGroundMaterial
-
-    const group = new THREE.Group()
-    groupRef.current = group
-    scene.add(group)
-
-    const environmentGround = new THREE.Mesh(
-      new THREE.CircleGeometry(24, 72),
-      environmentGroundMaterial,
-    )
-    environmentGround.rotation.x = -Math.PI / 2
-    environmentGround.position.y = -0.004
-    group.add(environmentGround)
-
-    const grid = new THREE.GridHelper(20, 40, 0x334155, 0x1e293b)
-    grid.position.y = -0.001
-    group.add(grid)
-
-    applyRenderEnvironment(
-      scene,
-      environmentHemisphere,
-      environmentDirectional,
-      environmentGroundMaterial,
-      renderEnvironmentRef.current,
-    )
-
-    const floorShape = new THREE.Shape(
-      geometryInput.vertices.map((vertex) => new THREE.Vector2(vertex.x_mm * MM_TO_M, vertex.y_mm * MM_TO_M)),
-    )
-    const floorGeometry = new THREE.ShapeGeometry(floorShape)
-    const floorMaterial = new THREE.MeshStandardMaterial({
-      color: hexColorToThreeColor(geometryInput.surfaceColors.floor, 0x334155),
-      side: THREE.DoubleSide,
-    })
-    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial)
-    floorMesh.rotation.x = -Math.PI / 2
-    group.add(floorMesh)
-
-    const center = new THREE.Box3().setFromObject(floorMesh).getCenter(new THREE.Vector3())
-    group.position.set(-center.x, 0, -center.z)
-
-    const applyExternalCameraState = (state: NonNullable<Props['cameraState']>) => {
-      const direction = toCameraDirection(state.yaw_rad, state.pitch_rad)
-      const position = new THREE.Vector3(
-        state.x_mm * MM_TO_M + group.position.x,
-        state.camera_height_mm * MM_TO_M,
-        state.y_mm * MM_TO_M + group.position.z,
-      )
-      camera.position.copy(position)
-      controls.target.copy(position.clone().add(direction.multiplyScalar(1.2)))
-      controls.update()
-    }
-
-    if (cameraStateRef.current) {
-      applyExternalCameraState(cameraStateRef.current)
-    }
-
-    const wallById = new Map<string, WallSegmentResolved>()
-    const wallVisuals: Array<{
-      wall: WallSegmentResolved
-      mesh: THREE.Mesh
-      material: THREE.MeshStandardMaterial
-      currentOpacity: number
-    }> = []
-
-    for (const wall of geometryInput.walls) {
-      wallById.set(wall.id, wall)
-      const dx = wall.end.x_mm - wall.start.x_mm
-      const dy = wall.end.y_mm - wall.start.y_mm
-      const lengthMm = Math.hypot(dx, dy)
-      if (lengthMm <= 0) continue
-
-      const lengthM = lengthMm * MM_TO_M
-      const wallHeightM = geometryInput.ceilingHeightMm * MM_TO_M
-      const wallThicknessM = WALL_THICKNESS_MM * MM_TO_M
-
-      const wallGeometry = new THREE.BoxGeometry(lengthM, wallHeightM, wallThicknessM)
-      const wallMaterial = new THREE.MeshStandardMaterial({
-        color: hexColorToThreeColor(geometryInput.wallColor, 0x64748b),
-        transparent: true,
-        opacity: 1,
-      })
-      const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial)
-
-      const angle = Math.atan2(dy, dx)
-      wallMesh.rotation.y = -angle
-      wallMesh.position.set(
-        ((wall.start.x_mm + wall.end.x_mm) * 0.5) * MM_TO_M,
-        wallHeightM * 0.5,
-        ((wall.start.y_mm + wall.end.y_mm) * 0.5) * MM_TO_M,
-      )
-      wallMesh.visible = wall.manualVisible
-
-      group.add(wallMesh)
-      wallVisuals.push({
-        wall,
-        mesh: wallMesh,
-        material: wallMaterial,
-        currentOpacity: 1,
-      })
-
-      if (showReference) {
-        const lineGeom = new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(wall.start.x_mm * MM_TO_M, 0.002, wall.start.y_mm * MM_TO_M),
-          new THREE.Vector3(wall.end.x_mm * MM_TO_M, 0.002, wall.end.y_mm * MM_TO_M),
-        ])
-        const line = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({ color: 0x38bdf8 }))
-        group.add(line)
-      }
-    }
-
-    for (const opening of geometryInput.openings) {
-      const wall = wallById.get(opening.wall_id)
-      if (!wall) continue
-
-      const dx = wall.end.x_mm - wall.start.x_mm
-      const dy = wall.end.y_mm - wall.start.y_mm
-      const wallLength = Math.hypot(dx, dy)
-      if (wallLength <= 0) continue
-
-      const ux = dx / wallLength
-      const uy = dy / wallLength
-      const cx = wall.start.x_mm + ux * (opening.offset_mm + opening.width_mm * 0.5)
-      const cy = wall.start.y_mm + uy * (opening.offset_mm + opening.width_mm * 0.5)
-
-      const openingMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(opening.width_mm * MM_TO_M, 2.0, 0.06),
-        new THREE.MeshStandardMaterial({ color: 0x0ea5e9 }),
-      )
-      openingMesh.position.set(cx * MM_TO_M, 1.0, cy * MM_TO_M)
-      openingMesh.rotation.y = -Math.atan2(dy, dx)
-      openingMesh.visible = showReference
-      group.add(openingMesh)
-    }
-
-    for (const connection of geometryInput.verticalConnections) {
-      const bbox = resolveVerticalConnectionBbox(connection)
-      if (!bbox) continue
-
-      const centerX = ((bbox.min_x_mm + bbox.max_x_mm) * 0.5) * MM_TO_M
-      const centerY = ((bbox.min_y_mm + bbox.max_y_mm) * 0.5) * MM_TO_M
-      const width = Math.max(0.12, bbox.width_mm * MM_TO_M)
-      const depth = Math.max(0.12, bbox.depth_mm * MM_TO_M)
-
-      const openingMarker = new THREE.Mesh(
-        new THREE.BoxGeometry(width, 0.06, depth),
-        new THREE.MeshStandardMaterial({
-          color: 0x0ea5e9,
-          transparent: true,
-          opacity: 0.28,
-          roughness: 0.75,
-        }),
-      )
-      openingMarker.position.set(centerX, 0.03, centerY)
-      openingMarker.visible = showReference
-      group.add(openingMarker)
-
-      const stairMarker = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.045, 0.045, 0.7, 12),
-        new THREE.MeshStandardMaterial({
-          color: 0x38bdf8,
-          transparent: true,
-          opacity: 0.88,
-        }),
-      )
-      stairMarker.position.set(centerX, 0.35, centerY)
-      stairMarker.visible = showReference
-      group.add(stairMarker)
-    }
-
-    for (const placement of geometryInput.placements) {
-      const wall = wallById.get(placement.wall_id)
-      if (!wall) continue
-
-      const dx = wall.end.x_mm - wall.start.x_mm
-      const dy = wall.end.y_mm - wall.start.y_mm
-      const wallLength = Math.hypot(dx, dy)
-      if (wallLength <= 0) continue
-
-      const ux = dx / wallLength
-      const uy = dy / wallLength
-      const nx = uy
-      const ny = -ux
-
-      const centerOffset = placement.offset_mm + placement.width_mm * 0.5
-      const px = wall.start.x_mm + ux * centerOffset + nx * (placement.depth_mm * 0.5)
-      const py = wall.start.y_mm + uy * centerOffset + ny * (placement.depth_mm * 0.5)
-      const placementColor = hexColorToThreeColor(placement.material_assignment?.color_hex, 0xf59e0b)
-      const placementRoughness = clampUnitOrFallback(placement.material_assignment?.roughness, 1)
-      const placementMetalness = clampUnitOrFallback(placement.material_assignment?.metallic, 0)
-
-      const furnitureMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(
-          Math.max(0.2, placement.width_mm * MM_TO_M),
-          Math.max(0.2, placement.height_mm * MM_TO_M),
-          Math.max(0.2, placement.depth_mm * MM_TO_M),
-        ),
-        new THREE.MeshStandardMaterial({
-          color: placementColor,
-          roughness: placementRoughness,
-          metalness: placementMetalness,
-        }),
-      )
-      furnitureMesh.position.set(
-        px * MM_TO_M,
-        Math.max(0.2, placement.height_mm * MM_TO_M) * 0.5,
-        py * MM_TO_M,
-      )
-      furnitureMesh.rotation.y = -Math.atan2(dy, dx)
-      group.add(furnitureMesh)
-    }
+    // Capture non-null references so inner functions can use them without
+    // TypeScript narrowing issues across closure boundaries.
+    const mountEl = mount
+    const input = geometryInput
 
     let disposed = false
-    let lastEmitTs = 0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let rendererInstance: any = null
+    let cleanupFn: (() => void) | null = null
 
-    const emitCameraStateIfChanged = () => {
-      if (!onCameraStateChangeRef.current) {
+    async function initRenderer() {
+      const { renderer, backend } = await createSceneRenderer({ antialias: true })
+      await renderer.init()
+
+      if (disposed) {
+        renderer.dispose()
         return
       }
 
-      const now = performance.now()
-      if (now - lastEmitTs < 80) {
-        return
-      }
+      rendererInstance = renderer
+      setRendererBackend(backend)
 
-      const direction = controls.target.clone().sub(camera.position)
-      if (direction.lengthSq() < 1e-8) {
-        return
-      }
-      direction.normalize()
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setSize(mountEl.clientWidth, Math.max(1, mountEl.clientHeight))
+      mountEl.appendChild(renderer.domElement)
 
-      const next = {
-        x_mm: Math.round((camera.position.x - group.position.x) / MM_TO_M),
-        y_mm: Math.round((camera.position.z - group.position.z) / MM_TO_M),
-        yaw_rad: Math.atan2(direction.z, direction.x),
-        pitch_rad: Math.asin(Math.max(-1, Math.min(1, direction.y))),
-        camera_height_mm: Math.round(camera.position.y / MM_TO_M),
-      }
-
-      const prev = lastEmittedRef.current
-      if (prev) {
-        const same =
-          Math.abs(prev.x_mm - next.x_mm) < 6 &&
-          Math.abs(prev.y_mm - next.y_mm) < 6 &&
-          Math.abs(prev.camera_height_mm - next.camera_height_mm) < 6 &&
-          Math.abs(angleDelta(prev.yaw_rad, next.yaw_rad)) < 0.01 &&
-          Math.abs(angleDelta(prev.pitch_rad, next.pitch_rad)) < 0.01
-        if (same) {
-          return
-        }
-      }
-
-      lastEmitTs = now
-      lastEmittedRef.current = next
-      onCameraStateChangeRef.current(next)
-    }
-    const onResize = () => {
-      if (disposed) return
-      const width = Math.max(1, mount.clientWidth)
-      const height = Math.max(1, mount.clientHeight)
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      renderer.setSize(width, height)
+      setupScene(renderer)
     }
 
-    const resizeObserver = new ResizeObserver(onResize)
-    resizeObserver.observe(mount)
-
-    const animate = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function setupScene(renderer: any) {
       if (disposed) return
-      controls.update()
 
-      const facingDirection = controls.target.clone().sub(camera.position)
-      if (facingDirection.lengthSq() > 1e-8 && wallVisuals.length > 0) {
-        facingDirection.normalize()
-        const autoConfig = autoDollhouseSettingsRef.current
-        const resolved = resolveAutoDollhouseOpacities({
-          camera: {
-            x_mm: (camera.position.x - group.position.x) / MM_TO_M,
-            y_mm: (camera.position.z - group.position.z) / MM_TO_M,
-            yaw_rad: Math.atan2(facingDirection.z, facingDirection.x),
-          },
-          walls: wallVisuals.map((entry) => ({
-            id: entry.wall.id,
-            start: entry.wall.start,
-            end: entry.wall.end,
-            manualVisible: entry.wall.manualVisible,
-          })),
-          settings: autoConfig
-            ? {
-                enabled: autoConfig.enabled,
-                alpha_front_walls: autoConfig.alpha_front_walls,
-                distance_threshold: autoConfig.distance_threshold,
-                angle_threshold_deg: autoConfig.angle_threshold_deg,
-              }
-            : null,
+      const scene = new THREE.Scene()
+      sceneRef.current = scene
+
+      const camera = new THREE.PerspectiveCamera(fovRef.current, mountEl.clientWidth / Math.max(1, mountEl.clientHeight), 0.1, 200)
+      camera.position.set(3.5, 2.8, 3.5)
+
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controlsRef.current = controls
+      cameraRef.current = camera
+      controls.enableDamping = true
+      applyNavigationControls(controls, navigationSettings)
+      controls.target.set(0, 0.7, 0)
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.6)
+      ambientLightRef.current = ambient
+      scene.add(ambient)
+      const directional = new THREE.DirectionalLight(0xffffff, 1)
+      directionalLightRef.current = directional
+      directional.position.set(3, 6, 3)
+      scene.add(directional)
+      applySunlight(ambient, directional, sunlight)
+
+      const environmentHemisphere = new THREE.HemisphereLight(0x9fb4cf, 0x94a3b8, 0.35)
+      environmentHemisphereRef.current = environmentHemisphere
+      scene.add(environmentHemisphere)
+
+      const environmentDirectional = new THREE.DirectionalLight(0xffffff, 0.25)
+      environmentDirectionalRef.current = environmentDirectional
+      environmentDirectional.position.set(6, 4.2, 0)
+      scene.add(environmentDirectional)
+
+      const environmentGroundMaterial = new THREE.MeshStandardMaterial({
+        color: 0x9ab77c,
+        roughness: 0.95,
+        metalness: 0,
+      })
+      environmentGroundMaterialRef.current = environmentGroundMaterial
+
+      const group = new THREE.Group()
+      groupRef.current = group
+      scene.add(group)
+
+      const environmentGround = new THREE.Mesh(
+        new THREE.CircleGeometry(24, 72),
+        environmentGroundMaterial,
+      )
+      environmentGround.rotation.x = -Math.PI / 2
+      environmentGround.position.y = -0.004
+      group.add(environmentGround)
+
+      const grid = new THREE.GridHelper(20, 40, 0x334155, 0x1e293b)
+      grid.position.y = -0.001
+      group.add(grid)
+
+      applyRenderEnvironment(
+        scene,
+        environmentHemisphere,
+        environmentDirectional,
+        environmentGroundMaterial,
+        renderEnvironmentRef.current,
+      )
+
+      const floorShape = new THREE.Shape(
+        input.vertices.map((vertex) => new THREE.Vector2(vertex.x_mm * MM_TO_M, vertex.y_mm * MM_TO_M)),
+      )
+      const floorGeometry = new THREE.ShapeGeometry(floorShape)
+      const floorMaterial = new THREE.MeshStandardMaterial({
+        color: hexColorToThreeColor(input.surfaceColors.floor, 0x334155),
+        side: THREE.DoubleSide,
+      })
+      const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial)
+      floorMesh.rotation.x = -Math.PI / 2
+      group.add(floorMesh)
+
+      const center = new THREE.Box3().setFromObject(floorMesh).getCenter(new THREE.Vector3())
+      group.position.set(-center.x, 0, -center.z)
+
+      const applyExternalCameraState = (state: NonNullable<Props['cameraState']>) => {
+        const direction = toCameraDirection(state.yaw_rad, state.pitch_rad)
+        const position = new THREE.Vector3(
+          state.x_mm * MM_TO_M + group.position.x,
+          state.camera_height_mm * MM_TO_M,
+          state.y_mm * MM_TO_M + group.position.z,
+        )
+        camera.position.copy(position)
+        controls.target.copy(position.clone().add(direction.multiplyScalar(1.2)))
+        controls.update()
+      }
+
+      if (cameraStateRef.current) {
+        applyExternalCameraState(cameraStateRef.current)
+      }
+
+      const wallById = new Map<string, WallSegmentResolved>()
+      const wallVisuals: Array<{
+        wall: WallSegmentResolved
+        mesh: THREE.Mesh
+        material: THREE.MeshStandardMaterial
+        currentOpacity: number
+      }> = []
+
+      for (const wall of input.walls) {
+        wallById.set(wall.id, wall)
+        const dx = wall.end.x_mm - wall.start.x_mm
+        const dy = wall.end.y_mm - wall.start.y_mm
+        const lengthMm = Math.hypot(dx, dy)
+        if (lengthMm <= 0) continue
+
+        const lengthM = lengthMm * MM_TO_M
+        const wallHeightM = input.ceilingHeightMm * MM_TO_M
+        const wallThicknessM = WALL_THICKNESS_MM * MM_TO_M
+
+        const wallGeometry = new THREE.BoxGeometry(lengthM, wallHeightM, wallThicknessM)
+        const wallMaterial = new THREE.MeshStandardMaterial({
+          color: hexColorToThreeColor(input.wallColor, 0x64748b),
+          transparent: true,
+          opacity: 1,
+        })
+        const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial)
+
+        const angle = Math.atan2(dy, dx)
+        wallMesh.rotation.y = -angle
+        wallMesh.position.set(
+          ((wall.start.x_mm + wall.end.x_mm) * 0.5) * MM_TO_M,
+          wallHeightM * 0.5,
+          ((wall.start.y_mm + wall.end.y_mm) * 0.5) * MM_TO_M,
+        )
+        wallMesh.visible = wall.manualVisible
+
+        group.add(wallMesh)
+        wallVisuals.push({
+          wall,
+          mesh: wallMesh,
+          material: wallMaterial,
+          currentOpacity: 1,
         })
 
-        for (const entry of wallVisuals) {
-          entry.mesh.visible = entry.wall.manualVisible
-          if (!entry.wall.manualVisible) {
-            continue
-          }
-
-          const targetOpacity = resolved[entry.wall.id] ?? 1
-          entry.currentOpacity += (targetOpacity - entry.currentOpacity) * 0.18
-          if (Math.abs(targetOpacity - entry.currentOpacity) < 0.008) {
-            entry.currentOpacity = targetOpacity
-          }
-
-          entry.material.opacity = entry.currentOpacity
-          entry.material.transparent = entry.currentOpacity < 0.999
-          entry.material.depthWrite = entry.currentOpacity >= 0.999
+        if (showReference) {
+          const lineGeom = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(wall.start.x_mm * MM_TO_M, 0.002, wall.start.y_mm * MM_TO_M),
+            new THREE.Vector3(wall.end.x_mm * MM_TO_M, 0.002, wall.end.y_mm * MM_TO_M),
+          ])
+          const line = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({ color: 0x38bdf8 }))
+          group.add(line)
         }
       }
 
-      emitCameraStateIfChanged()
-      renderer.render(scene, camera)
-      requestAnimationFrame(animate)
+      for (const opening of input.openings) {
+        const wall = wallById.get(opening.wall_id)
+        if (!wall) continue
+
+        const dx = wall.end.x_mm - wall.start.x_mm
+        const dy = wall.end.y_mm - wall.start.y_mm
+        const wallLength = Math.hypot(dx, dy)
+        if (wallLength <= 0) continue
+
+        const ux = dx / wallLength
+        const uy = dy / wallLength
+        const cx = wall.start.x_mm + ux * (opening.offset_mm + opening.width_mm * 0.5)
+        const cy = wall.start.y_mm + uy * (opening.offset_mm + opening.width_mm * 0.5)
+
+        const openingMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(opening.width_mm * MM_TO_M, 2.0, 0.06),
+          new THREE.MeshStandardMaterial({ color: 0x0ea5e9 }),
+        )
+        openingMesh.position.set(cx * MM_TO_M, 1.0, cy * MM_TO_M)
+        openingMesh.rotation.y = -Math.atan2(dy, dx)
+        openingMesh.visible = showReference
+        group.add(openingMesh)
+      }
+
+      for (const connection of input.verticalConnections) {
+        const bbox = resolveVerticalConnectionBbox(connection)
+        if (!bbox) continue
+
+        const centerX = ((bbox.min_x_mm + bbox.max_x_mm) * 0.5) * MM_TO_M
+        const centerY = ((bbox.min_y_mm + bbox.max_y_mm) * 0.5) * MM_TO_M
+        const width = Math.max(0.12, bbox.width_mm * MM_TO_M)
+        const depth = Math.max(0.12, bbox.depth_mm * MM_TO_M)
+
+        const openingMarker = new THREE.Mesh(
+          new THREE.BoxGeometry(width, 0.06, depth),
+          new THREE.MeshStandardMaterial({
+            color: 0x0ea5e9,
+            transparent: true,
+            opacity: 0.28,
+            roughness: 0.75,
+          }),
+        )
+        openingMarker.position.set(centerX, 0.03, centerY)
+        openingMarker.visible = showReference
+        group.add(openingMarker)
+
+        const stairMarker = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.045, 0.045, 0.7, 12),
+          new THREE.MeshStandardMaterial({
+            color: 0x38bdf8,
+            transparent: true,
+            opacity: 0.88,
+          }),
+        )
+        stairMarker.position.set(centerX, 0.35, centerY)
+        stairMarker.visible = showReference
+        group.add(stairMarker)
+      }
+
+      for (const placement of input.placements) {
+        const wall = wallById.get(placement.wall_id)
+        if (!wall) continue
+
+        const dx = wall.end.x_mm - wall.start.x_mm
+        const dy = wall.end.y_mm - wall.start.y_mm
+        const wallLength = Math.hypot(dx, dy)
+        if (wallLength <= 0) continue
+
+        const ux = dx / wallLength
+        const uy = dy / wallLength
+        const nx = uy
+        const ny = -ux
+
+        const centerOffset = placement.offset_mm + placement.width_mm * 0.5
+        const px = wall.start.x_mm + ux * centerOffset + nx * (placement.depth_mm * 0.5)
+        const py = wall.start.y_mm + uy * centerOffset + ny * (placement.depth_mm * 0.5)
+        const placementColor = hexColorToThreeColor(placement.material_assignment?.color_hex, 0xf59e0b)
+        const placementRoughness = clampUnitOrFallback(placement.material_assignment?.roughness, 1)
+        const placementMetalness = clampUnitOrFallback(placement.material_assignment?.metallic, 0)
+
+        const furnitureMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(
+            Math.max(0.2, placement.width_mm * MM_TO_M),
+            Math.max(0.2, placement.height_mm * MM_TO_M),
+            Math.max(0.2, placement.depth_mm * MM_TO_M),
+          ),
+          new THREE.MeshStandardMaterial({
+            color: placementColor,
+            roughness: placementRoughness,
+            metalness: placementMetalness,
+          }),
+        )
+        furnitureMesh.position.set(
+          px * MM_TO_M,
+          Math.max(0.2, placement.height_mm * MM_TO_M) * 0.5,
+          py * MM_TO_M,
+        )
+        furnitureMesh.rotation.y = -Math.atan2(dy, dx)
+        group.add(furnitureMesh)
+      }
+
+      let lastEmitTs = 0
+
+      const emitCameraStateIfChanged = () => {
+        if (!onCameraStateChangeRef.current) {
+          return
+        }
+
+        const now = performance.now()
+        if (now - lastEmitTs < 80) {
+          return
+        }
+
+        const direction = controls.target.clone().sub(camera.position)
+        if (direction.lengthSq() < 1e-8) {
+          return
+        }
+        direction.normalize()
+
+        const next = {
+          x_mm: Math.round((camera.position.x - group.position.x) / MM_TO_M),
+          y_mm: Math.round((camera.position.z - group.position.z) / MM_TO_M),
+          yaw_rad: Math.atan2(direction.z, direction.x),
+          pitch_rad: Math.asin(Math.max(-1, Math.min(1, direction.y))),
+          camera_height_mm: Math.round(camera.position.y / MM_TO_M),
+        }
+
+        const prev = lastEmittedRef.current
+        if (prev) {
+          const same =
+            Math.abs(prev.x_mm - next.x_mm) < 6 &&
+            Math.abs(prev.y_mm - next.y_mm) < 6 &&
+            Math.abs(prev.camera_height_mm - next.camera_height_mm) < 6 &&
+            Math.abs(angleDelta(prev.yaw_rad, next.yaw_rad)) < 0.01 &&
+            Math.abs(angleDelta(prev.pitch_rad, next.pitch_rad)) < 0.01
+          if (same) {
+            return
+          }
+        }
+
+        lastEmitTs = now
+        lastEmittedRef.current = next
+        onCameraStateChangeRef.current(next)
+      }
+
+      const onResize = () => {
+        if (disposed) return
+        const width = Math.max(1, mountEl.clientWidth)
+        const height = Math.max(1, mountEl.clientHeight)
+        camera.aspect = width / height
+        camera.updateProjectionMatrix()
+        renderer.setSize(width, height)
+      }
+
+      const resizeObserver = new ResizeObserver(onResize)
+      resizeObserver.observe(mountEl)
+
+      const animate = () => {
+        if (disposed) return
+        controls.update()
+
+        const facingDirection = controls.target.clone().sub(camera.position)
+        if (facingDirection.lengthSq() > 1e-8 && wallVisuals.length > 0) {
+          facingDirection.normalize()
+          const autoConfig = autoDollhouseSettingsRef.current
+          const resolved = resolveAutoDollhouseOpacities({
+            camera: {
+              x_mm: (camera.position.x - group.position.x) / MM_TO_M,
+              y_mm: (camera.position.z - group.position.z) / MM_TO_M,
+              yaw_rad: Math.atan2(facingDirection.z, facingDirection.x),
+            },
+            walls: wallVisuals.map((entry) => ({
+              id: entry.wall.id,
+              start: entry.wall.start,
+              end: entry.wall.end,
+              manualVisible: entry.wall.manualVisible,
+            })),
+            settings: autoConfig
+              ? {
+                  enabled: autoConfig.enabled,
+                  alpha_front_walls: autoConfig.alpha_front_walls,
+                  distance_threshold: autoConfig.distance_threshold,
+                  angle_threshold_deg: autoConfig.angle_threshold_deg,
+                }
+              : null,
+          })
+
+          for (const entry of wallVisuals) {
+            entry.mesh.visible = entry.wall.manualVisible
+            if (!entry.wall.manualVisible) {
+              continue
+            }
+
+            const targetOpacity = resolved[entry.wall.id] ?? 1
+            entry.currentOpacity += (targetOpacity - entry.currentOpacity) * 0.18
+            if (Math.abs(targetOpacity - entry.currentOpacity) < 0.008) {
+              entry.currentOpacity = targetOpacity
+            }
+
+            entry.material.opacity = entry.currentOpacity
+            entry.material.transparent = entry.currentOpacity < 0.999
+            entry.material.depthWrite = entry.currentOpacity >= 0.999
+          }
+        }
+
+        emitCameraStateIfChanged()
+        renderer.render(scene, camera)
+        requestAnimationFrame(animate)
+      }
+      animate()
+
+      cleanupFn = () => {
+        resizeObserver.disconnect()
+        controls.dispose()
+        if (controlsRef.current === controls) controlsRef.current = null
+        if (cameraRef.current === camera) cameraRef.current = null
+        if (sceneRef.current === scene) sceneRef.current = null
+        if (groupRef.current === group) groupRef.current = null
+        if (ambientLightRef.current === ambient) ambientLightRef.current = null
+        if (directionalLightRef.current === directional) directionalLightRef.current = null
+        if (environmentHemisphereRef.current === environmentHemisphere) environmentHemisphereRef.current = null
+        if (environmentDirectionalRef.current === environmentDirectional) environmentDirectionalRef.current = null
+        if (environmentGroundMaterialRef.current === environmentGroundMaterial) environmentGroundMaterialRef.current = null
+        renderer.dispose()
+        if (mountEl.contains(renderer.domElement)) mountEl.removeChild(renderer.domElement)
+      }
     }
-    animate()
+
+    initRenderer().catch((err) => {
+      console.error('Preview3D: renderer initialization failed', err)
+    })
 
     return () => {
       disposed = true
-      resizeObserver.disconnect()
-      controls.dispose()
-      if (controlsRef.current === controls) controlsRef.current = null
-      if (cameraRef.current === camera) cameraRef.current = null
-      if (sceneRef.current === scene) sceneRef.current = null
-      if (groupRef.current === group) groupRef.current = null
-      if (ambientLightRef.current === ambient) ambientLightRef.current = null
-      if (directionalLightRef.current === directional) directionalLightRef.current = null
-      if (environmentHemisphereRef.current === environmentHemisphere) environmentHemisphereRef.current = null
-      if (environmentDirectionalRef.current === environmentDirectional) environmentDirectionalRef.current = null
-      if (environmentGroundMaterialRef.current === environmentGroundMaterial) environmentGroundMaterialRef.current = null
-      renderer.dispose()
-      mount.removeChild(renderer.domElement)
+      cleanupFn?.()
+      // Fallback: dispose the renderer if it was initialised but setupScene
+      // never ran (e.g. component unmounted between renderer.init() resolving
+      // and setupScene setting cleanupFn – which is a synchronous operation,
+      // but this guard makes the cleanup unconditionally safe).
+      if (rendererInstance && !cleanupFn) {
+        rendererInstance.dispose()
+        if (mountEl.contains(rendererInstance.domElement)) {
+          mountEl.removeChild(rendererInstance.domElement)
+        }
+      }
     }
   }, [geometryInput, navigationSettings, showReference])
 
@@ -1010,6 +1059,9 @@ room, verticalConnections = [], cameraState = null, onCameraStateChange, sunligh
       <header className={styles.toolbar}>
         <span className={styles.meta}>
           3D-Preview · Orbit/Zoom/Pan
+          {rendererBackend !== null && (
+            <> · {rendererBackend === 'webgpu' ? 'WebGPU' : 'WebGL'}</>
+          )}
         </span>
         <button
           type="button"
