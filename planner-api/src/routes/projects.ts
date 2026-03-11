@@ -142,6 +142,17 @@ function requireTenantId(request: { tenantId?: string | null }, reply: { status:
   return request.tenantId
 }
 
+async function ensureTenantRecord(tenantId: string) {
+  await prisma.tenant.upsert({
+    where: { id: tenantId },
+    update: {},
+    create: {
+      id: tenantId,
+      name: `Tenant ${tenantId.slice(0, 8)}`,
+    },
+  })
+}
+
 export async function projectRoutes(app: FastifyInstance) {
   app.get<{
     Querystring: {
@@ -319,6 +330,8 @@ export async function projectRoutes(app: FastifyInstance) {
     if (existingUser?.tenant_id && existingUser.tenant_id !== tenantId) {
       return sendForbidden(reply, 'Cross-tenant user assignment is not allowed')
     }
+
+    await ensureTenantRecord(tenantId)
 
     const user = await prisma.user.upsert({
       where: { id: user_id },

@@ -16,6 +16,7 @@ const { prismaMock } = vi.hoisted(() => {
   const alternativeFindFirst = vi.fn()
   const userFindUnique = vi.fn()
   const userUpsert = vi.fn()
+  const tenantUpsert = vi.fn()
   const tenantSettingFindUnique = vi.fn()
 
   return {
@@ -31,6 +32,9 @@ const { prismaMock } = vi.hoisted(() => {
       user: {
         findUnique: userFindUnique,
         upsert: userUpsert,
+      },
+      tenant: {
+        upsert: tenantUpsert,
       },
       tenantSetting: {
         findUnique: tenantSettingFindUnique,
@@ -108,6 +112,11 @@ describe('projectRoutes', () => {
       id: USER_ID,
       tenant_id: TENANT_ID,
       branch_id: 'branch-1',
+    })
+
+    prismaMock.tenant.upsert.mockResolvedValue({
+      id: TENANT_ID,
+      name: 'Tenant tenant-1',
     })
 
     prismaMock.tenantSetting.findUnique.mockResolvedValue({
@@ -299,6 +308,12 @@ describe('projectRoutes', () => {
     })
 
     expect(response.statusCode).toBe(201)
+    expect(prismaMock.tenant.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: TENANT_ID },
+        create: expect.objectContaining({ id: TENANT_ID }),
+      })
+    )
     expect(prismaMock.user.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: USER_ID },
